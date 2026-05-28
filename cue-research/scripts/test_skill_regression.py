@@ -63,6 +63,45 @@ class TestSkillMd(unittest.TestCase):
         # Codex Block B fix: matching is low-confidence, never auto-pick.
         self.assertRegex(self.md, r"不自动选搭子|never auto-?select")
 
+    def test_stage2_strips_entity_from_match_keywords(self):
+        """Real bug from production: user asked '兆易创新为什么值得投资' and
+        the agent searched literal '兆易创新' against templates — which
+        returns 0 because templates are GENERIC frameworks and their titles
+        / categories never contain specific entity names.
+
+        Stage 2 must explicitly instruct agents to:
+          1. Split query into 主体 (entity, → task_input) vs 意图 (intent,
+             → search keyword).
+          2. NEVER use entity names as search keywords.
+
+        Hard rule 6 codifies this so the anti-pattern can't reappear."""
+        import re as _re
+        # Stage 2 section must give the entity-vs-intent split explicitly.
+        stage2 = _re.search(r"###?\s*Stage 2:.*?(?=###?\s*Stage|\Z)", self.md, _re.S)
+        self.assertIsNotNone(stage2, "Stage 2 section not found")
+        s2 = stage2.group(0)
+        # The split itself must be present (entity vs intent terminology).
+        self.assertRegex(
+            s2, r"主体.*?意图|实体.*?意图",
+            "Stage 2 must distinguish 主体 (entity) from 意图 (intent)",
+        )
+        # An explicit empirical statement about entity-only search returning 0.
+        self.assertRegex(
+            s2, r"0 命中|永远不|绝不",
+            "Stage 2 must explicitly warn that entity-name search misses",
+        )
+        # A worked example with at least one concrete entity → intent mapping.
+        self.assertIn("task_input", s2)
+
+        # Hard rule 6 must exist enforcing this anti-pattern.
+        hr = _re.search(r"##\s*Hard rules.*?(?=^##\s|\Z)", self.md, _re.S | _re.M)
+        self.assertIsNotNone(hr)
+        self.assertRegex(
+            hr.group(0),
+            r"strip 主体|不进 search|不用主体名|不含.*主体",
+            "Hard rules must include the entity-strip anti-pattern",
+        )
+
     def test_stage6_save_prompt_does_not_leak_internal_verbs_to_user(self):
         """Codex onboarding review F: Stage 6 prompt previously read
         `1. 沉淀(handoff 给 cue-buddy 的 +author / +validate / 人工确认 +create)`,
