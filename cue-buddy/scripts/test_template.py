@@ -384,8 +384,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--timeout",
         type=float,
-        default=900.0,
-        help="SSE 流总超时秒（默认 900）",
+        default=3600.0,
+        help="SSE 流总超时秒（默认 3600=60min，对齐服务端任务硬超时；单次深研通常 3-15min，超时后走 DB 回放兜底）",
     )
     args = p.parse_args(argv)
 

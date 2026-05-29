@@ -893,7 +893,7 @@ def _cli() -> int:
                 return 2
             conv_id = sys.argv[2]
             rest = sys.argv[3:]
-            timeout = 600.0
+            timeout = 600.0  # replay 是 DB 重放（报告已跑完），很快，无需对齐实时 60min 上限
             report_only = False
             i = 0
             while i < len(rest):

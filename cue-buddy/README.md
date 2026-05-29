@@ -112,7 +112,7 @@ The agent reads SKILL.md and dispatches the right verb (`+author`, `+test`, `+tu
 | `+list` | List your templates | No |
 | `+get` | Fetch one full template | No |
 | `+update` | Modify an existing template | No |
-| `+test` | Run a real research conversation, capture report, run 8 checks | **Yes** (~3–8 积分) |
+| `+test` | Run a real research conversation, capture report, run 8 checks. A single deep-research run **typically takes 3–15 min** (longer for complex subjects); the server hard-times-out at **60 min**, so the client waits up to `--timeout` (default 3600s) and falls back to DB replay if the stream drops | **Yes** (~3–8 积分) |
 | `+tune` | Let LLM revise the template based on your issue notes; diff preview + auto-backup before PUT | **Yes** (~1–3 积分) |
 | `+frequent` | Mark template as "frequent" — pins it to your workbench home (`is_frequent=true`). This is *not* cross-user publishing; Cue has no such primitive. | No |
 | `+unfrequent` | Unmark "frequent" — unpins from workbench home | No |
