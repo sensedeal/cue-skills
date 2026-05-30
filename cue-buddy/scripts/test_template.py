@@ -17,10 +17,13 @@ Notes:
     - Each invocation consumes Cue credits (typical 3-8 积分 per run).
     - The script asks for explicit confirmation before starting.
     - No deletion / publishing / sensitive actions — read-only test.
-    - The query sent is a synthetic validation prompt ("请基于公开信息研究 <entity>")
-      with need_analysis off. This run is for VALIDATION only — do NOT publish it as
-      a user-facing playbook demo replay. A demo replay should use a realistic user
-      query and is published separately (cuecue.cn web share), not by this script.
+    - The user message is just the test subject (`<entity>`) — same as a real
+      buddy run, where the template (template_id) drives the research and the
+      user only supplies the subject. No editorializing prefix: public-data
+      scoping is already enforced by the template + backend supervisor routing.
+      need_analysis is off. This run is for VALIDATION only — do NOT publish it
+      as a user-facing playbook demo replay. A demo replay should use a realistic
+      user query and is published separately (cuecue.cn web share), not here.
 """
 
 from __future__ import annotations
@@ -258,7 +261,7 @@ def build_chat_payload(template_id: str, entity: str) -> dict:
     conv_id = f"buddy-test-{uuid.uuid4().hex[:12]}"
     return {
         "messages": [
-            {"role": "user", "content": f"请基于公开信息研究 {entity}"},
+            {"role": "user", "content": entity},
         ],
         "conversation_id": conv_id,
         "chat_id": uuid.uuid4().hex,
