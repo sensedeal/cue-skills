@@ -207,6 +207,49 @@ class TestSharedScriptImports(unittest.TestCase):
             self.assertTrue(hasattr(sse_report, fn),
                             f"sse_report.{fn} missing — Task 1 not applied?")
 
+    def test_skill_md_python_imports_resolve(self):
+        """Every name SKILL.md tells the agent to import from the shared
+        modules must actually exist there. Catches the class of bug where a
+        code/prose snippet references a non-importable name — e.g. the old
+        Stage 4a wording read like `stream_cut_before_reporter` was a function
+        to import, when it is only a `kind` string returned by
+        diagnose_empty_report. A doc that hands the agent a phantom import
+        makes the agent's first attempt fail, exactly as observed in the
+        field. We only resolve imports from the local shared modules
+        (cue_api / sse_report); stdlib imports (uuid/json/...) are skipped."""
+        import importlib
+
+        md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        local_modules = {"cue_api", "sse_report"}
+        checked = 0
+        for block in re.findall(r"```python\n(.*?)```", md, re.S):
+            for line in block.splitlines():
+                m = re.match(r"\s*from\s+(\w+)\s+import\s+(.+)$", line)
+                if not m:
+                    continue
+                module, names_part = m.group(1), m.group(2)
+                if module not in local_modules:
+                    continue  # stdlib / third-party — not our contract
+                mod = importlib.import_module(module)
+                # strip trailing inline comment, then split the import list
+                names_part = names_part.split("#", 1)[0]
+                for raw in names_part.split(","):
+                    name = raw.strip().split(" as ")[0].strip()
+                    if not name:
+                        continue
+                    self.assertTrue(
+                        hasattr(mod, name),
+                        f"SKILL.md code block imports `{name}` from "
+                        f"`{module}`, but it does not exist there — phantom "
+                        f"import will break the agent's first run.",
+                    )
+                    checked += 1
+        self.assertGreater(
+            checked, 0,
+            "expected SKILL.md to contain at least one resolvable "
+            "`from cue_api/sse_report import ...` to validate",
+        )
+
 
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False).result.wasSuccessful() else 1)

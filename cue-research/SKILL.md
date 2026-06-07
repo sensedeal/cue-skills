@@ -138,6 +138,9 @@ while True:
 
 ```python
 import uuid
+from cue_api import chat_stream, replay            # 两者 SSE 格式一致,共用同一套 extract
+from sse_report import extract_reporter_content, diagnose_empty_report
+
 payload = {
     "messages": [{"role": "user", "content": <原问题或澄清后问题>}],
     "conversation_id": f"cue-research-{uuid.uuid4().hex[:12]}",  # 状态持久化需要 conv id
@@ -148,11 +151,26 @@ payload = {
     "need_underlying": False,
     "need_recommend": False,
 }
-for event, data in chat_stream(payload, max_seconds=900):
-    ...  # 累 reporter content; 见 sse_report.extract_reporter_content
+conv_id = payload["conversation_id"]
+events = [(ev, d) for ev, d in chat_stream(payload, max_seconds=3600)]  # 对齐服务端 60min 硬超时
+report = extract_reporter_content(events)
 ```
 
-复用 `sse_report.extract_reporter_content` 累报告;空报告时用 `diagnose_empty_report` 分类原因,`stream_cut_before_reporter` 走 `replay(conversation_id)` 兜底。这一套硬化逻辑在 `cue-buddy/scripts/test_template.py` 已经验证过 4 个真实主体,直接照抄它的事件循环即可。
+**标准路径:流跑完 → reporter 仍为空 → replay 兜底(不是异常,是常态)。** 深研单次 3-15 分钟,**live SSE 流经常在 reporter 段开始前就被客户端/网络掐断**(server 仍跑完写 DB)——所以 `extract_reporter_content(events)` 返回空字符串是**长跑的常见结果,不代表报告没生成、更不代表解析器坏了**。`chat_stream` 与 `replay` 的 SSE 解析逻辑完全一致(见 `cue_api.py`)、共用同一个 `extract_reporter_content`;replay 走的是后端 DB 里完整的 `workflow_events`,所以它几乎总能拿到 reporter 段。**因此 live 流空报告时必须照下面走 replay,把它当默认收尾而非错误处理:**
+
+```python
+if not report:                                       # 长跑下这是常态,不是 bug
+    diag = diagnose_empty_report(events, elapsed, 3600.0)
+    # diag["kind"] 是诊断结果字符串(不是函数!),取值之一:
+    #   "stream_cut_before_reporter"  → live 流在 reporter 启动前断连 → replay 兜底
+    #   "no_agent_events"             → 多半 auth/template_id 错,replay 也救不了
+    #   "reporter_started_no_text"    → 服务端 reporter 真失败,去网页端查
+    if diag["kind"] == "stream_cut_before_reporter":
+        replay_events = [(ev, d) for ev, d in replay(conv_id, max_seconds=3600)]
+        report = extract_reporter_content(replay_events)  # 同一个 extract,replay 几乎总能拿到
+```
+
+这套 L1 诊断分流 + L2 replay 兜底的**完整硬化版**(含三种 `kind` 的处理、`replay` 自身失败的提示)已在 `cue-buddy/scripts/test_template.py` 的 `main()` 里跑通 ≥9 个真实主体——**直接照抄它 `if not report:` 那一段即可,别自己重写**。注意 `stream_cut_before_reporter` 是 `diagnose_empty_report` 返回的 `kind` 字符串,**不是可 import 的函数**。
 
 ### Stage 4b: 用户选 0 — 自由式深度调研(经过 /api/rewrite)
 

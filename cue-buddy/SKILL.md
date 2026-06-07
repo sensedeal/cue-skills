@@ -126,7 +126,7 @@ export CUE_API_KEY=sk...
 | `+list` | 列出你的所有模板 | 否 | `GET /api/templates` |
 | `+get <template_id>` | 拉取一个完整模板 | 否 | `GET /api/templates/<id>` |
 | `+update <template_id>` | 修改已有模板 | 否 | `PUT /api/templates/<id>` |
-| `+test <template_id> <entity>` | 跑一次真实对话（例如以"万科"做测试主体），抓 SSE 流，跑 8 项参数化验收。**单次深研通常 3-15 分钟，复杂主体更久；服务端 60 分钟硬超时**——客户端等待应按此设置（`--timeout` 默认 3600s），超时后走 DB 回放兜底、不重复扣费 | **是**（粗略 **3-8 积分** 起步，确切费用见工作台） | `POST /api/chat/stream` |
+| `+test <template_id> <entity>` | 跑一次真实对话（例如以"万科"做测试主体），抓 SSE 流，跑 8 项参数化验收。**单次深研通常 3-15 分钟，复杂主体更久；服务端 60 分钟硬超时**——客户端等待应按此设置（`--timeout` 默认 3600s）。长跑时 live SSE 流常在 reporter 段流到客户端前就断连（超时或网络掐断都会），脚本随即自动走 DB 回放（replay）兜底拿完整报告、不重复扣费——这是常态不是错误 | **是**（粗略 **3-8 积分** 起步，确切费用见工作台） | `POST /api/chat/stream` |
 | `+tune <template_id> --issues <path>` | 基于当前内容 + 问题清单让 LLM 优化模板（走 seed: bypass 路径），含 diff 预览与人工确认 | **是**（粗略 **1-3 积分** 起步） | `POST /api/generate_template` + `PUT /api/templates/<id>` |
 | `+frequent <template_id>` | 把模板设为"常用",钉到 cuecue.cn 工作台首页"常用"区 | 否 | `POST /api/templates/frequent` |
 | `+unfrequent <template_id>` | 取消"常用",从首页"常用"区移除 | 否 | `POST /api/templates/frequent` (`is_frequent=false`) |
