@@ -171,6 +171,14 @@ python3 <skill>/scripts/research_run.py \
 
 **rewrite 仍由 agent 在前台先做、runner 不碰**(Hard Rule 3/4:不在 runner 里重写后端 rewrite 逻辑;且要先把 `user_confirmation` + `pii_masked` 给用户确认)。**为什么必须先 rewrite?** chat_stream 本身不调 rewrite_prompt(只有 /api/rewrite 端点会),跳过会丢隐私脱敏 + 公开信源约束 + 意图增强。runner 只负责「跑 + 取报告 + 落盘」。
 
+**可选——仿写风格(mimic,仅自由式)。** 自由式跑时可让报告**模仿一篇参考的写作风格/结构**。在 Stage 4b 确认前顺带问一句(非必问,用户没需求就别打扰):
+
+> 想让报告模仿某篇的风格/结构吗?给个**链接**或一份**样本文档**(可选,不要就直接跑)。
+
+- 给链接 → 加 `--mimic-url "<URL>"`;给文档 → 加 `--mimic-file "<本地路径>"`(runner 会先上传换 `file_hash`,支持类型以服务端 `/api/file_server/accept_type` 为准)。
+- **仅自由式**:`--mimic-*` **不可**与 `--template-id` 同用(搭子已有 report_format,后端会让 template_id 压过 mimic → 静默失效,runner 直接拒绝)。两个 mimic 参数也互斥。
+- **一次跑完、不中途确认**(`need_confirm=False`):后端按样本自动生成风格模板并直接往下跑,**不**为「审模板」停下来等输入——这是为了不破坏后台一次跑完。代价:你没机会在烧 credits 前先看那个自动模板;若风格推歪了就重给样本再跑。(交互式审模板是 Phase 2,暂未做。)
+
 ### Stage 5: 交付 + 满意度
 
 展示报告(reporter content)。问:

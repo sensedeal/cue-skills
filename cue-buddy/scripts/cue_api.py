@@ -45,6 +45,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
@@ -765,6 +766,83 @@ def replay(
             yield event, data
         elif not line:
             event = ""
+
+
+# ---------------------------------------------------------------------------
+# File upload (for 仿写 / mimic by sample document)
+# ---------------------------------------------------------------------------
+
+
+def get_accept_type() -> list[str]:
+    """Return the server's accepted upload suffixes (lowercase, no dot).
+
+    GET /api/file_server/accept_type → DataResponse(data={accept_type: "doc,docx,..."}).
+    Empty list if unavailable (caller treats that as "skip pre-check")."""
+    data = _request("GET", "/file_server/accept_type", timeout=15)
+    payload = data.get("data") if isinstance(data, dict) else None
+    raw = payload.get("accept_type", "") if isinstance(payload, dict) else ""
+    return [s.strip().lower() for s in raw.split(",") if s.strip()]
+
+
+def upload_file(path: str, *, timeout: float = 120.0) -> str:
+    """Upload a local file to /api/file_server/upload and return its file_hash.
+
+    The server computes the MD5 hash AND parses the file to text synchronously,
+    so a successful return means the content is ready to be referenced as
+    `mimic.file_hash` in a chat_stream payload. Raises CueAPIError on HTTP /
+    network error, SystemExit(2) on missing key / unreadable / unsupported file.
+    """
+    p = Path(path).expanduser()
+    if not p.is_file():
+        sys.stderr.write(f"[cue] file not found: {p}\n")
+        raise SystemExit(2)
+    api_key, base = load_config()
+
+    # Best-effort pre-check against the server's accepted suffixes.
+    try:
+        accepted = get_accept_type()
+    except CueAPIError:
+        accepted = []
+    suffix = p.suffix.lower().lstrip(".")
+    if accepted and suffix not in accepted:
+        sys.stderr.write(
+            f"[cue] 文件类型 '{suffix}' 不在支持列表 {accepted} 内;"
+            "另存为受支持格式再传。\n"
+        )
+        raise SystemExit(2)
+
+    # Build a minimal multipart/form-data body with a single "file" field.
+    # (urllib has no native multipart; _request is JSON-only, so we do it here.)
+    boundary = "----cueupload" + uuid.uuid4().hex
+    pre = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file"; filename="{p.name}"\r\n'
+        "Content-Type: application/octet-stream\r\n\r\n"
+    ).encode("utf-8")
+    post = f"\r\n--{boundary}--\r\n".encode("utf-8")
+    body = pre + p.read_bytes() + post
+
+    url = base.rstrip("/") + "/file_server/upload"
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Authorization", f"Bearer {api_key}")
+    req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+    try:
+        resp = urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")[:400]
+        raise CueAPIError(e.code, detail, "/file_server/upload") from e
+    except urllib.error.URLError as e:
+        raise CueAPIError(
+            0, f"network unreachable: {getattr(e, 'reason', e)}", "/file_server/upload"
+        ) from e
+
+    raw = resp.read().decode("utf-8")
+    data = json.loads(raw) if raw else {}
+    payload = data.get("data") if isinstance(data, dict) else None
+    file_hash = payload.get("file_hash") if isinstance(payload, dict) else None
+    if not file_hash:
+        raise CueAPIError(0, f"upload returned no file_hash: {raw[:200]}", "/file_server/upload")
+    return file_hash
 
 
 # ---------------------------------------------------------------------------

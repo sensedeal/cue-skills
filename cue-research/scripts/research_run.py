@@ -49,6 +49,7 @@ from cue_api import (  # noqa: E402
     chat_stream,
     load_config,
     replay,
+    upload_file,
 )
 from sse_report import (  # noqa: E402
     extract_reporter_content,
@@ -56,12 +57,21 @@ from sse_report import (  # noqa: E402
 )
 
 
-def build_payload(query: str, template_id: str | None, conversation_id: str) -> dict:
+def build_payload(
+    query: str,
+    template_id: str | None,
+    conversation_id: str,
+    mimic: dict | None = None,
+) -> dict:
     """Minimal /api/chat/stream payload.
 
     need_* all False: non-interactive run — don't let the backend interrupt
-    the stream to wait on a clarification form / 仿写 confirmation.
+    the stream to wait on a clarification form / 仿写 confirmation. In
+    particular need_confirm=False makes mimic one-shot: the backend
+    auto-generates the style template from the sample and proceeds, with no
+    template-review round-trip (which would break background execution).
     Buddy run → include template_id. Free-form → omit it (deepresearch_team).
+    mimic → {"url": ...} or {"file_hash": ...} (free-form only; see main()).
     """
     payload: dict = {
         "messages": [{"role": "user", "content": query}],
@@ -74,16 +84,24 @@ def build_payload(query: str, template_id: str | None, conversation_id: str) -> 
     }
     if template_id:
         payload["template_id"] = template_id
+    if mimic:
+        payload["mimic"] = mimic
     return payload
 
 
-def run(query: str, template_id: str | None, conversation_id: str, timeout: float) -> tuple[str, str]:
+def run(
+    query: str,
+    template_id: str | None,
+    conversation_id: str,
+    timeout: float,
+    mimic: dict | None = None,
+) -> tuple[str, str]:
     """Run one chat_stream; on empty live report fall back to replay.
 
     Returns (report, conv_id). report == "" means retrieval failed (the
     caller prints the diagnosis and exits non-zero).
     """
-    payload = build_payload(query, template_id, conversation_id)
+    payload = build_payload(query, template_id, conversation_id, mimic)
     conv_id = payload["conversation_id"]
     print(f"[cue-research] conv_id={conv_id}, posting chat...", flush=True)
 
@@ -175,12 +193,50 @@ def main(argv: list[str] | None = None) -> int:
         default=3600.0,
         help="SSE 总超时秒(默认 3600=60min,对齐服务端硬超时;单次深研通常 3-15min)",
     )
+    p.add_argument(
+        "--mimic-url",
+        default=None,
+        help="仿写:模仿该网页的写作风格(仅自由式,与 --template-id / --mimic-file 互斥)",
+    )
+    p.add_argument(
+        "--mimic-file",
+        default=None,
+        help="仿写:模仿本地样本文档的写作风格,先上传换 file_hash(仅自由式,与 --template-id / --mimic-url 互斥)",
+    )
     args = p.parse_args(argv)
+
+    # Mimic constraints (Phase 1 scope): one-shot, free-form only.
+    if args.mimic_url and args.mimic_file:
+        sys.stderr.write("[cue-research] --mimic-url 与 --mimic-file 互斥,二选一\n")
+        return 2
+    if (args.mimic_url or args.mimic_file) and args.template_id:
+        # Backend prioritizes template_id over mimic, so mimic would silently
+        # no-op. Refuse rather than mislead. mimic = free-form styling only.
+        sys.stderr.write(
+            "[cue-research] 仿写仅用于自由式(不带 --template-id):"
+            "搭子已有 report_format,与仿写冲突\n"
+        )
+        return 2
 
     try:
         load_config()
     except SystemExit:
         return 2
+
+    mimic: dict | None = None
+    if args.mimic_url:
+        mimic = {"url": args.mimic_url}
+    elif args.mimic_file:
+        try:
+            print(f"[cue-research] 上传仿写样本 {args.mimic_file} …", flush=True)
+            file_hash = upload_file(args.mimic_file)
+        except CueAPIError as e:
+            sys.stderr.write(f"[cue-research] 样本上传失败: {e}\n        → {e.user_hint()}\n")
+            return 1
+        except SystemExit:
+            return 2
+        mimic = {"file_hash": file_hash}
+        print(f"[cue-research] ✓ 样本已上传 file_hash={file_hash[:12]}…", flush=True)
 
     if args.conversation_id:
         conv_id = args.conversation_id
@@ -199,7 +255,7 @@ def main(argv: list[str] | None = None) -> int:
         out_path = Path.home() / "cue-reports" / f"{time.strftime('%Y-%m-%d-%H%M')}-{slug}.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    report, conv_id = run(args.query, args.template_id, conv_id, args.timeout)
+    report, conv_id = run(args.query, args.template_id, conv_id, args.timeout, mimic)
     if not report:
         # Persist a stub so a backgrounded run always leaves a readable trace.
         out_path.write_text(
@@ -212,10 +268,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[cue-research] RESULT empty conv_id={conv_id} output={out_path}", flush=True)
         return 1
 
+    mimic_note = ""
+    if mimic:
+        mimic_note = " | mimic=" + ("url" if mimic.get("url") else "file")
     header = (
         f"<!-- cue-research run | conv_id={conv_id} | "
-        f"{'template=' + args.template_id if args.template_id else 'free-form'} | "
-        f"{time.strftime('%Y-%m-%d %H:%M')} -->\n\n"
+        f"{'template=' + args.template_id if args.template_id else 'free-form'}"
+        f"{mimic_note} | {time.strftime('%Y-%m-%d %H:%M')} -->\n\n"
     )
     out_path.write_text(header + report, encoding="utf-8")
     print(

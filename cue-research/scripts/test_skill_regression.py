@@ -201,6 +201,13 @@ class TestSharedScriptImports(unittest.TestCase):
         for fn in ("chat_stream", "replay", "create_template", "generate_template"):
             self.assertTrue(hasattr(cue_api, fn), f"cue_api.{fn} missing")
 
+    def test_cue_api_has_upload_helper_for_mimic(self):
+        # Sample-document mimic needs a file -> file_hash upload helper.
+        import cue_api
+        for fn in ("upload_file", "get_accept_type"):
+            self.assertTrue(hasattr(cue_api, fn), f"cue_api.{fn} missing")
+            self.assertTrue(callable(getattr(cue_api, fn)))
+
     def test_sse_report_helpers_exist(self):
         import sse_report
         for fn in ("extract_reporter_content", "diagnose_empty_report",
@@ -289,6 +296,31 @@ class TestResearchRunner(unittest.TestCase):
         # background execution + file output are the borrowed patterns
         self.assertRegex(md, r"run_in_background", )
         self.assertRegex(md, r"--output|cue-reports")
+
+    def test_runner_exposes_mimic_flags(self):
+        """Phase 1 + sample-document mimic: URL and local-file mimic flags,
+        one-shot (need_confirm=False), free-form only."""
+        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
+        self.assertIn("--mimic-url", src)
+        self.assertIn("--mimic-file", src)
+        # builds the backend mimic payload shape ({url} or {file_hash})
+        self.assertRegex(src, r'["\']url["\']\s*:')
+        self.assertRegex(src, r'["\']file_hash["\']\s*:')
+
+    def test_runner_mimic_is_freeform_only(self):
+        """mimic must be refused alongside --template-id (backend lets
+        template_id silently override mimic, so refuse rather than no-op)."""
+        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
+        self.assertRegex(
+            src, r"mimic.*template_id|template_id.*mimic",
+            "runner must guard mimic-vs-template_id mutual exclusivity",
+        )
+
+    def test_skill_md_documents_mimic_option(self):
+        md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertRegex(md, r"仿写|mimic")
+        self.assertIn("--mimic-url", md)
+        self.assertIn("--mimic-file", md)
 
 
 if __name__ == "__main__":
