@@ -262,3 +262,5 @@ from cue_api import search_templates, rewrite     # Stage 2-3 匹配 / Stage 4b 
 | Claude Code | 同 cue-buddy(SKILL.md 自动加载) |
 | Gemini CLI / Codex CLI | 同 cue-buddy 加载约定 |
 | Hermes / OpenClaw / Kimi | ✅ v0.2.0 cross-agent 已验证(真实任务 live API;同 cue-buddy 加载约定 + 共享脚本) |
+
+> **v0.3.0 新增面的验证状态(诚实标注)**:后台 runner(`research_run.py`)、replay 主路径、仿写(mimic URL+文档)均在 **Claude Code 上以真实 live API 跑通**(2026-06-08:replay 双路径对照、mimic PDF 端到端);但这些 v0.3.0 新 surface **尚未在 Hermes/OpenClaw/Kimi 等做 cross-agent 复跑**——上面那行的 cross-agent 结论是 v0.2.0 面的。新面跨 agent 仅"应可用(共享脚本+同加载约定)",未实证。

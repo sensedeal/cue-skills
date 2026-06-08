@@ -11,7 +11,7 @@
 | Skill | 用途 | 状态 |
 |---|---|---|
 | [`cue-buddy/`](./cue-buddy) — **cue-buddy** | 让业务专家通过自然对话起草、校验、测试、调优、设为常用 [Cue](https://cuecue.cn) 搭子（buddy）调研模板。不需要 Python / 不需要懂 API；agent 替用户调 Cue 生产 API。 | v0.2.0 |
-| [`cue-research/`](./cue-research) — **cue-research** | cue-buddy 的兄弟 skill,负责在你自己的 AI agent 里**用** Cue：自然语言提问 → 匹配 ≤2 个候选搭子(或走 `/api/rewrite` 自由式深研) → 确认 credits → 跑 → 满意可一键沉淀为搭子(回流给 cue-buddy)。 | v0.2.0 |
+| [`cue-research/`](./cue-research) — **cue-research** | cue-buddy 的兄弟 skill,负责在你自己的 AI agent 里**用** Cue：自然语言提问 → 匹配 ≤2 个候选搭子(或走 `/api/rewrite` 自由式深研) → 确认 credits → 后台跑、replay 取报告 → 满意可一键沉淀为搭子(回流给 cue-buddy)。支持仿写/mimic(模仿参考链接或样本文档的写作风格)。 | v0.3.0 |
 
 Cue surface 扩展会陆续在这里加新 skill。
 

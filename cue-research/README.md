@@ -12,6 +12,8 @@ cue-research ships **one thin runtime script** — `scripts/research_run.py` (fi
 
 `research_run.py` runs in the **background** (SKILL.md launches it with `run_in_background`) and treats **replay as the primary report-retrieval path** — long live SSE streams routinely drop the reporter segment, so it extracts from the live stream and falls back to replay (same parser, reads the full record from the backend DB). Patterns borrowed from the `cuecue-deep-research` sibling skill (async + file output).
 
+**仿写 / mimic** (free-form only): `--mimic-url <URL>` or `--mimic-file <path>` makes a free-form report imitate the **writing style/structure** of a reference page or sample document (the file is uploaded to get a `file_hash`; the backend parses it to text). One-shot by design (`need_confirm=False`) so it doesn't break background execution; mimic copies style, not conclusions. Mutually exclusive with a buddy `--template-id`.
+
 Status: v0.3.0 — see `SKILL.md`.
 
 ## License
