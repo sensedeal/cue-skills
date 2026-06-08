@@ -48,15 +48,16 @@ class TestSkillMd(unittest.TestCase):
 
     def test_freeform_path_mentions_rewrite_endpoint(self):
         # Codex Block C fix: free-form path must call /api/rewrite first
-        # AND disable backend need_analysis. Accept any of: kwarg form
-        # `need_analysis=False`, dict form `"need_analysis": False`, or
-        # JSON form `'need_analysis': false` — what matters is the intent,
-        # not the syntax.
+        # AND disable backend need_analysis. SKILL.md still owns the rewrite
+        # rule; the need_analysis=False enforcement moved into research_run.py
+        # (the runner builds the payload now — agent no longer hand-writes it),
+        # so the invariant is asserted there.
         self.assertIn("/api/rewrite", self.md)
+        runner = (_HERE / "research_run.py").read_text(encoding="utf-8")
         self.assertRegex(
-            self.md,
+            runner,
             r'["\']?need_analysis["\']?\s*[=:]\s*["\']?\s*[Ff]alse\b',
-            "SKILL.md must show need_analysis being set to False (any syntax)",
+            "research_run.py must set need_analysis False in the payload",
         )
 
     def test_never_autoselects_buddy_hard_rule(self):
@@ -249,6 +250,45 @@ class TestSharedScriptImports(unittest.TestCase):
             "expected SKILL.md to contain at least one resolvable "
             "`from cue_api/sse_report import ...` to validate",
         )
+
+
+class TestResearchRunner(unittest.TestCase):
+    """research_run.py is the one runtime script — a thin composer over the
+    shared cue-buddy primitives. SKILL.md routes Stage 4 through it (background
+    + replay-as-primary + file output) instead of hand-writing the stream loop
+    in prose, which was the original phantom-import / empty-report root cause."""
+
+    def test_runner_exists_and_parses(self):
+        import ast
+        runner = _HERE / "research_run.py"
+        self.assertTrue(runner.exists(), "scripts/research_run.py missing")
+        ast.parse(runner.read_text(encoding="utf-8"))  # raises on syntax error
+
+    def test_runner_imports_shared_primitives_not_duplicates(self):
+        """Must IMPORT from cue_api/sse_report (compose), never define its own
+        chat_stream/replay/extract (which would drift from cue-buddy)."""
+        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
+        self.assertRegex(src, r"from cue_api import")
+        self.assertRegex(src, r"from sse_report import")
+        for dup in ("def chat_stream", "def replay(", "def extract_reporter_content"):
+            self.assertNotIn(
+                dup, src,
+                f"research_run.py must not redefine `{dup}` — import it, don't copy",
+            )
+
+    def test_runner_exposes_expected_cli_flags(self):
+        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
+        for flag in ("--query", "--template-id", "--conversation-id",
+                     "--output", "--timeout"):
+            self.assertIn(flag, src, f"research_run.py must expose {flag}")
+
+    def test_skill_md_routes_stage4_through_runner(self):
+        md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("research_run.py", md,
+                      "SKILL.md must route Stage 4 through research_run.py")
+        # background execution + file output are the borrowed patterns
+        self.assertRegex(md, r"run_in_background", )
+        self.assertRegex(md, r"--output|cue-reports")
 
 
 if __name__ == "__main__":

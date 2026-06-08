@@ -8,9 +8,11 @@ A single deep-research run **typically takes 3–15 minutes** (longer for comple
 
 ## Requires cue-buddy alongside
 
-cue-research ships **no runtime scripts of its own** — it imports `cue_api` / `sse_report` from the sibling [`../cue-buddy/scripts`](../cue-buddy/scripts) (via a `sys.path` bootstrap; see `SKILL.md`). Install **both skills as sibling folders** under the same parent (e.g. both in `~/.claude/skills/`). Installing cue-research alone will fail at import. (Scripts are intentionally *not* copied here, to avoid version drift from cue-buddy.)
+cue-research ships **one thin runtime script** — `scripts/research_run.py` (fire a run → retrieve report → save to file), which *composes* `cue_api` / `sse_report` from the sibling [`../cue-buddy/scripts`](../cue-buddy/scripts) (via a `sys.path` bootstrap; see `SKILL.md`) rather than duplicating them. Install **both skills as sibling folders** under the same parent (e.g. both in `~/.claude/skills/`). Installing cue-research alone will fail at import. (The shared primitives are intentionally *not* copied here, to avoid version drift from cue-buddy.)
 
-Status: v0.2.0 — see `SKILL.md`.
+`research_run.py` runs in the **background** (SKILL.md launches it with `run_in_background`) and treats **replay as the primary report-retrieval path** — long live SSE streams routinely drop the reporter segment, so it extracts from the live stream and falls back to replay (same parser, reads the full record from the backend DB). Patterns borrowed from the `cuecue-deep-research` sibling skill (async + file output).
+
+Status: v0.3.0 — see `SKILL.md`.
 
 ## License
 
