@@ -337,16 +337,18 @@ class TestUploadMaterialSSE(unittest.TestCase):
         self.assertNotEqual(cm.exception.status, 0)
         self.assertNotIn("网络不可达", cm.exception.user_hint())
 
-    def test_failed_frame_raises_with_message(self):
+    def test_failed_frame_surfaces_error_field(self):
+        # The route puts the failure reason under `error` (not `message`).
         import cue_api
         frames = [
-            b'data: {"status":"failed","message":"file too large"}\n',
+            b'data: {"status":"failed","error":"\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xa7\xe5\xb0\x8f\xe8\xb6\x85\xe8\xbf\x87\xe9\x99\x90\xe5\x88\xb6 50MB"}\n',
             b"data: [DONE]\n",
         ]
         with self.assertRaises(cue_api.CueAPIError) as cm:
             self._call(frames)
-        self.assertIn("file too large", cm.exception.detail)
-        self.assertNotEqual(cm.exception.status, 0)
+        self.assertIn("50MB", cm.exception.detail)
+        self.assertEqual(cm.exception.status, 422)
+        self.assertNotIn("网络不可达", cm.exception.user_hint())
 
 
 class TestResearchRunner(unittest.TestCase):

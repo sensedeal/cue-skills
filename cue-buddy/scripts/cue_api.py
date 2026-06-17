@@ -946,7 +946,14 @@ def upload_material(
             if on_progress:
                 on_progress(status or "", obj.get("progress") or 0)
             if status == "failed":
-                last_error = obj.get("message") or "server reported status=failed"
+                # The route puts the reason under `error` (e.g. "文件大小超过限制
+                # 50MB" / "不支持的文件格式"), not `message`; keep `message` as a
+                # fallback in case that ever changes.
+                last_error = (
+                    obj.get("error")
+                    or obj.get("message")
+                    or "server reported status=failed"
+                )
             # file_id repeats from `parsing` on, but only bind it at `completed`.
             # NOTE: one upload = one file → one `completed`. If the backend ever
             # emits multiple `completed` frames, this keeps only the last id.
