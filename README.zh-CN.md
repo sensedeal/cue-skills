@@ -12,6 +12,7 @@
 |---|---|---|
 | [`cue-buddy/`](./cue-buddy) — **cue-buddy** | 让业务专家通过自然对话起草、校验、测试、调优、设为常用 [Cue](https://cuecue.cn) 搭子（buddy）调研模板。不需要 Python / 不需要懂 API；agent 替用户调 Cue 生产 API。 | v0.2.0 |
 | [`cue-research/`](./cue-research) — **cue-research** | cue-buddy 的兄弟 skill,负责在你自己的 AI agent 里**用** Cue：自然语言提问 → 匹配 ≤2 个候选搭子(或走 `/api/rewrite` 自由式深研) → 确认 credits → 后台跑、replay 取报告 → 满意可一键沉淀为搭子(回流给 cue-buddy)。支持仿写/mimic(模仿参考链接或样本文档的写作风格)。 | v0.3.0 |
+| [`playbook/`](./playbook) — **playbook 场景 skills** | [Cue 搭子广场](https://cuecue.cn/playbook)每个场景一个可供 agent 加载的 `SKILL.md`(投资研究 / 信贷尽调 / 财富投顾 / 全球宏观 …)。加载后你的 agent 就能跑该场景的 Cue 深度研究:运行时查 **live** `/api/playbook` 取该场景**当前**搭子 → 选一个 → 确认 credits → 跑 → 返回带来源报告。**运行时查 live、不烤 `template_id`**,搭子增删改自动反映、无需重生成。由 [`scripts/gen_scene_skills.py`](./scripts/gen_scene_skills.py) 自动生成;实际运行委托 `cue-research`(两者需同级并装)。 | 自动生成 |
 
 Cue surface 扩展会陆续在这里加新 skill。
 
@@ -32,6 +33,10 @@ Cue surface 扩展会陆续在这里加新 skill。
 **Claude Code**:把 skill 文件夹 copy 到 `~/.claude/skills/`,或用 `/use-skill <path>` 引用。具体安装看 skill 自己的 README。**装 `cue-research` 时,把 `cue-buddy` 装在它旁边**(同一父目录),共享脚本才能被找到。
 
 **其他 agent**:把 `<skill>/SKILL.md` 当 system instruction load。skill 的脚本尽量 stdlib-only。
+
+**`playbook/`** 场景 skill 把实际跑研究委托给 `cue-research` 的 runner,后者又复用 `cue-buddy` 的脚本——所以要把三者(`playbook/<场景>`、`cue-research`、`cue-buddy`)装在同一父目录下作兄弟目录。
+
+> **有免费积分可试**:每个 Cue 账号都送免费积分——**首次注册 50 分,之后每天再免费 10 分**。所以只要申请 API key(用 `cue` CLI 登录),就能先用免费额度跑深度研究、不花钱也能试。每次深度研究仍会消耗积分;skill 跑之前都会先跟你确认再花。
 
 ## 贡献
 

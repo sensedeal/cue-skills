@@ -5,7 +5,7 @@
 ## 怎么用
 1. 把某个 `<slug>/SKILL.md` 加载进你的 agent。
 2. 按 skill 指令：运行时拉 live `https://cuecue.cn/api/playbook` 取该场景**当前**搭子 → 选一个 → 经 `cue-research/scripts/research_run.py --template-id <id>` 跑 → replay 取报告。
-3. 前置：Cue 账号 API key（cue CLI 登录后在 `~/.cue/config.json`）；跑深度研究**耗 credits**。
+3. 前置：Cue 账号 API key（cue CLI 登录后在 `~/.cue/config.json`）；跑深度研究**耗 credits**。新账号送免费积分(注册 50 + 每天 10),可先免费试。
 
 ## 设计要点
 - **运行时查 live**：skill 不烤 `template_id`，运行时从 `/api/playbook` 取当前搭子 → 搭子动态增删改**自动反映**，无需重生成。
