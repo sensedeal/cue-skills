@@ -46,6 +46,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
@@ -98,6 +99,12 @@ class CueAPIError(Exception):
             )
         if self.status == 404:
             return "资源不存在（template_id 错了？或已被删除）。"
+        if self.status == 422:
+            return (
+                "文件被服务端拒绝（多为格式不支持或大小超限）。"
+                "换一个受支持的格式（见 /api/file_server/accept_type），"
+                "或压缩 / 拆分后重传。"
+            )
         if self.status == 429:
             return (
                 "调用过于频繁，被服务端限流。请等 30 秒后再试；"
@@ -773,11 +780,17 @@ def replay(
 # ---------------------------------------------------------------------------
 
 
+@lru_cache(maxsize=1)
 def get_accept_type() -> list[str]:
     """Return the server's accepted upload suffixes (lowercase, no dot).
 
     GET /api/file_server/accept_type → DataResponse(data={accept_type: "doc,docx,..."}).
-    Empty list if unavailable (caller treats that as "skip pre-check")."""
+    Empty list if unavailable (caller treats that as "skip pre-check").
+
+    Cached for the process: the accept list is effectively static within a run,
+    and the per-file upload pre-checks (upload_file / upload_material called once
+    per --material) would otherwise each re-hit the endpoint. lru_cache does not
+    memoize the raised CueAPIError, so a transient failure isn't stuck."""
     data = _request("GET", "/file_server/accept_type", timeout=15)
     payload = data.get("data") if isinstance(data, dict) else None
     raw = payload.get("accept_type", "") if isinstance(payload, dict) else ""
@@ -843,6 +856,134 @@ def upload_file(path: str, *, timeout: float = 120.0) -> str:
     if not file_hash:
         raise CueAPIError(0, f"upload returned no file_hash: {raw[:200]}", "/file_server/upload")
     return file_hash
+
+
+def upload_material(
+    path: str,
+    *,
+    timeout: float = 300.0,
+    on_progress: Callable[[str, int], None] | None = None,
+) -> str:
+    """Upload a local file to /api/file/upload_stream and return its file_id (cf_…).
+
+    This is the 添加素材 / research-grounding path — DISTINCT from upload_file
+    (which is mimic styling → /file_server/upload, plain-JSON file_hash). Here the
+    server parses + chunks + EMBEDS the file into the conversation's vector store;
+    the returned file_id is later passed in chat_stream's `conversation_file_ids`,
+    and the 研究 agent semantically retrieves the FULL document via its built-in
+    file_retrieval tool (real RAG, not a preview).
+
+    The endpoint streams SSE progress
+    (uploading→uploaded→parsing→chunking→indexing→completed). Two contract traps:
+      - the file_id appears early (at parsing) but is only USABLE at the terminal
+        status=="completed" event — embedding/indexing isn't done before that;
+      - the stream ends with a bare `data: [DONE]` line — it is NOT JSON, so it
+        must be string-matched, never json.loads'd.
+    Note the form field is `files` (plural — the route takes List[UploadFile]).
+
+    `timeout` is the socket read timeout (per blocking read), not a total
+    wall-clock budget — a server dribbling progress frames keeps the stream
+    alive; it only fires if no byte arrives for `timeout` seconds.
+
+    Raises CueAPIError on HTTP / network error, on a server `failed` frame
+    (422), or if the stream ends with no completed file_id (502); SystemExit(2)
+    on missing key / unreadable file.
+    """
+    p = Path(path).expanduser()
+    if not p.is_file():
+        sys.stderr.write(f"[cue] file not found: {p}\n")
+        raise SystemExit(2)
+    api_key, base = load_config()
+
+    # Best-effort SOFT pre-check: the upload_stream accept list may differ from
+    # /file_server/accept_type, so only warn — let the server be the authority
+    # (a wrong client-side reject is worse than a clear server reject).
+    try:
+        accepted = get_accept_type()
+    except CueAPIError:
+        accepted = []
+    suffix = p.suffix.lower().lstrip(".")
+    if accepted and suffix not in accepted:
+        sys.stderr.write(
+            f"[cue] 提示:文件类型 '{suffix}' 不在 /file_server/accept_type {accepted} 内;"
+            "仍尝试上传,若服务端拒绝请另存为受支持格式再传。\n"
+        )
+
+    boundary = "----cuematerial" + uuid.uuid4().hex
+    pre = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="files"; filename="{p.name}"\r\n'
+        "Content-Type: application/octet-stream\r\n\r\n"
+    ).encode("utf-8")
+    post = f"\r\n--{boundary}--\r\n".encode("utf-8")
+    body = pre + p.read_bytes() + post
+
+    url = base.rstrip("/") + "/file/upload_stream"
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Authorization", f"Bearer {api_key}")
+    req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+    req.add_header("Accept", "text/event-stream")
+    try:
+        resp = urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")[:400]
+        raise CueAPIError(e.code, detail, "/file/upload_stream") from e
+    except urllib.error.URLError as e:
+        raise CueAPIError(
+            0, f"network unreachable: {getattr(e, 'reason', e)}", "/file/upload_stream"
+        ) from e
+
+    file_id: str | None = None
+    last_error: str | None = None
+    try:
+        for raw in resp:
+            line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+            if not line.startswith("data:"):
+                continue
+            chunk = line[5:].lstrip() if line.startswith("data: ") else line[5:]
+            chunk = chunk.rstrip("\r")
+            if chunk == "[DONE]":  # terminal marker — bare string, NOT JSON
+                break
+            try:
+                obj = json.loads(chunk)
+            except json.JSONDecodeError:
+                continue
+            status = obj.get("status")
+            if on_progress:
+                on_progress(status or "", obj.get("progress") or 0)
+            if status == "failed":
+                # The route puts the reason under `error` (e.g. "文件大小超过限制
+                # 50MB" / "不支持的文件格式"), not `message`; keep `message` as a
+                # fallback in case that ever changes.
+                last_error = (
+                    obj.get("error")
+                    or obj.get("message")
+                    or "server reported status=failed"
+                )
+            # file_id repeats from `parsing` on, but only bind it at `completed`.
+            # NOTE: one upload = one file → one `completed`. If the backend ever
+            # emits multiple `completed` frames, this keeps only the last id.
+            if status == "completed" and obj.get("file_id"):
+                file_id = obj["file_id"]
+    finally:
+        # Early `break` (and the no-file_id raise below) would otherwise abandon
+        # the socket; the runner uploads several --material files in one process.
+        resp.close()
+    if not file_id:
+        # NOT a transport failure (the POST succeeded) — don't raise status 0,
+        # which user_hint() renders as "网络不可达" and sends operators chasing
+        # proxy/VPN. A `failed` frame is a file-level reject (422-ish); a silent
+        # cut with no completed/[DONE] is a server/pipeline issue (502-ish).
+        if last_error:
+            raise CueAPIError(
+                422, f"文件处理失败: {last_error}", "/file/upload_stream"
+            )
+        raise CueAPIError(
+            502,
+            "上传流中断,未收到 completed 回执(服务端解析/索引可能失败)",
+            "/file/upload_stream",
+        )
+    return file_id
 
 
 # ---------------------------------------------------------------------------

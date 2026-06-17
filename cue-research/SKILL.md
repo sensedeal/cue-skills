@@ -179,6 +179,21 @@ python3 <skill>/scripts/research_run.py \
 - **仅自由式**:`--mimic-*` **不可**与 `--template-id` 同用(搭子已有 report_format,后端会让 template_id 压过 mimic → 静默失效,runner 直接拒绝)。两个 mimic 参数也互斥。
 - **一次跑完、不中途确认**(`need_confirm=False`):后端按样本自动生成风格模板并直接往下跑,**不**为「审模板」停下来等输入——这是为了不破坏后台一次跑完。代价:你没机会在烧 credits 前先看那个自动模板;若风格推歪了就重给样本再跑。(交互式审模板是 Phase 2,暂未做。)
 
+**可选——文档接地(素材,搭子与自由式都可用)。** 当用户想让调研**基于自己的文档**(合同/年报/PDF/会议纪要…)而不只是公开信源时,把文档作为**素材**传进去:研究 agent 会用内置 `file_retrieval` 工具对其做**全文语义检索**(真 RAG,不是只看开头预览)。与 `mimic`(仿风格)正交、也能与 `--template-id` 同用。
+
+- 加 `--material "<本地路径>"`,**可重复**多个文件:`--material a.pdf --material b.docx`。runner 先把每个文件上传(SSE 走完 `…→completed` 才拿到 `file_id`),再随 `conversation_file_ids` 绑进这次跑。
+- **要先经用户确认再上传**(见安全规则:默认不上传本地材料)。问一句:"要把这份文档作为调研素材上传吗?它会用于检索,会占用本次 credits。"
+- 类型/大小(均为**服务端**约束,runner 不在本地预检大小):支持类型以 `/api/file_server/accept_type` 为准,**单文件约 ≤50MB**(超限/不支持类型由服务端拒绝并报错);file_id **单次绑定**(后端行为:一个 file_id 只能用于一次会话,续跑/换会话需重传)。据后端:上传只校验余额、**不单独扣费**,**跑** chat 才扣 credits。
+- query 写法上**明确请 agent 检索上传的文档**(如"请基于我上传的素材回答…"),让它真去调 `file_retrieval`;别写"不要检索/只读"之类把工具禁掉的话。
+
+```bash
+python3 <skill>/scripts/research_run.py \
+  --query "<问题;明确要求基于上传素材调研>" \
+  --material "~/Downloads/某公司年报.pdf" \
+  --output ~/cue-reports/$(date +%Y-%m-%d-%H%M)-<slug>.md
+# 自由式带素材如上(仍先 rewrite);搭子带素材则再加 --template-id <id>。同样 run_in_background:true。
+```
+
 ### Stage 5: 交付 + 满意度
 
 展示报告(reporter content)。问:
@@ -226,7 +241,7 @@ Stage 5 满意且是 4b 自由式跑时,问用户(**对外文案不出现 verb �
 
 ## 安全规则
 
-跟 cue-buddy 同源：API key 不出现在输出/日志/提交；用户粘了 key → 提醒去 cuecue.cn/api-key 立即轮换；本地材料不上传。
+跟 cue-buddy 同源：API key 不出现在输出/日志/提交；用户粘了 key → 提醒去 cuecue.cn/api-key 立即轮换。**默认不上传本地材料**;仅当用户**明确要求做文档接地**(`--material`)时,经用户确认后才上传其指定的素材文件(用于 `file_retrieval` 检索),其余情况一律不碰用户本地文件。
 
 ## 脚本到 verb 映射
 

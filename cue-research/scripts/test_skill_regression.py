@@ -12,10 +12,14 @@ Checks the skill's structural contract:
 
 from __future__ import annotations
 
+import inspect
+import os
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _SKILL_DIR = _HERE.parent
@@ -208,6 +212,21 @@ class TestSharedScriptImports(unittest.TestCase):
             self.assertTrue(hasattr(cue_api, fn), f"cue_api.{fn} missing")
             self.assertTrue(callable(getattr(cue_api, fn)))
 
+    def test_cue_api_has_material_upload_helper(self):
+        # 文档接地(素材) needs a file -> file_id SSE upload helper, distinct
+        # from upload_file (mimic file_hash). Posts to /file/upload_stream.
+        import cue_api
+        self.assertTrue(hasattr(cue_api, "upload_material"),
+                        "cue_api.upload_material missing — 素材接地 not applied?")
+        self.assertTrue(callable(cue_api.upload_material))
+        src = inspect.getsource(cue_api.upload_material)
+        self.assertIn("/file/upload_stream", src,
+                      "upload_material must POST to /file/upload_stream")
+        # must block until the terminal completed event, not the early file_id
+        self.assertIn("completed", src)
+        # form field is plural `files` (route takes List[UploadFile])
+        self.assertRegex(src, r'name="files"')
+
     def test_sse_report_helpers_exist(self):
         import sse_report
         for fn in ("extract_reporter_content", "diagnose_empty_report",
@@ -257,6 +276,93 @@ class TestSharedScriptImports(unittest.TestCase):
             "expected SKILL.md to contain at least one resolvable "
             "`from cue_api/sse_report import ...` to validate",
         )
+
+
+class TestUploadMaterialSSE(unittest.TestCase):
+    """Hermetic coverage of upload_material's SSE parsing — the riskiest new
+    logic. No network: a fake byte-line iterable stands in for the response."""
+
+    class _FakeResp:
+        def __init__(self, lines):
+            self._lines = lines
+            self.closed = False
+
+        def __iter__(self):
+            return iter(self._lines)
+
+        def close(self):
+            self.closed = True
+
+    def _call(self, frames):
+        import cue_api
+        self._last_resp = None
+
+        def fake_urlopen(req, timeout=None):
+            self._last_resp = self._FakeResp(frames)
+            return self._last_resp
+
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tf:
+            tf.write(b"hi")
+            tpath = tf.name
+        try:
+            with mock.patch.object(cue_api, "load_config",
+                                   lambda: ("sk", "https://x/api")), \
+                 mock.patch.object(cue_api, "get_accept_type", lambda: []), \
+                 mock.patch("cue_api.urllib.request.urlopen", fake_urlopen):
+                return cue_api.upload_material(tpath)
+        finally:
+            os.unlink(tpath)
+
+    def test_binds_on_completed_not_early_file_id(self):
+        # file_id present at `parsing` must be ignored; only `completed` binds.
+        frames = [
+            b'data: {"status":"parsing","file_id":"cf_EARLY"}\n',
+            b'data: {"status":"completed","progress":100,"file_id":"cf_DONE"}\n',
+            b"data: [DONE]\r\n",
+        ]
+        self.assertEqual(self._call(frames), "cf_DONE")
+        # the try/finally must close the response (success path)
+        self.assertTrue(self._last_resp.closed)
+
+    def test_done_marker_is_not_json_parsed(self):
+        # The bare [DONE] terminal frame must not crash the parse loop.
+        frames = [
+            b'data: {"status":"completed","file_id":"cf_X"}\n',
+            b"data: [DONE]\n",
+        ]
+        self.assertEqual(self._call(frames), "cf_X")
+
+    def test_no_completed_raises_non_network(self):
+        import cue_api
+        frames = [
+            b'data: {"status":"parsing","file_id":"cf_EARLY"}\n',
+            b"data: [DONE]\n",
+        ]
+        with self.assertRaises(cue_api.CueAPIError) as cm:
+            self._call(frames)
+        # must NOT be status 0 (which user_hint renders as "网络不可达").
+        self.assertNotEqual(cm.exception.status, 0)
+        self.assertNotIn("网络不可达", cm.exception.user_hint())
+        # the try/finally must close the response on the raise path too
+        self.assertTrue(self._last_resp.closed)
+
+    def test_failed_frame_surfaces_error_field(self):
+        # The route puts the failure reason under `error` (not `message`).
+        import cue_api
+        frames = [
+            b'data: {"status":"failed","error":"\xe6\x96\x87\xe4\xbb\xb6\xe5\xa4\xa7\xe5\xb0\x8f\xe8\xb6\x85\xe8\xbf\x87\xe9\x99\x90\xe5\x88\xb6 50MB"}\n',
+            b"data: [DONE]\n",
+        ]
+        with self.assertRaises(cue_api.CueAPIError) as cm:
+            self._call(frames)
+        self.assertIn("50MB", cm.exception.detail)
+        self.assertEqual(cm.exception.status, 422)
+        # 422 must render an actionable file-reject hint, not "未预期的错误".
+        hint = cm.exception.user_hint()
+        self.assertNotIn("网络不可达", hint)
+        self.assertNotIn("未预期的错误", hint)
+        self.assertIn("拒绝", hint)
+        self.assertTrue(self._last_resp.closed)
 
 
 class TestResearchRunner(unittest.TestCase):
@@ -316,11 +422,109 @@ class TestResearchRunner(unittest.TestCase):
             "runner must guard mimic-vs-template_id mutual exclusivity",
         )
 
+    def test_runner_exposes_material_flag(self):
+        """文档接地: --material (repeatable) uploads docs and threads their
+        file_ids into the payload as conversation_file_ids."""
+        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
+        self.assertIn("--material", src)
+        self.assertIn("upload_material", src)
+        # threaded into the payload as the conversation_file_ids key
+        self.assertRegex(src, r'["\']conversation_file_ids["\']')
+
+    def test_runner_build_payload_includes_material_ids(self):
+        """build_payload must emit conversation_file_ids only when non-empty
+        (mirrors the `if mimic:` guard), and omit it otherwise."""
+        import research_run
+        with_ids = research_run.build_payload(
+            "q", None, "conv1", None, ["cf_a", "cf_b"]
+        )
+        self.assertEqual(with_ids.get("conversation_file_ids"), ["cf_a", "cf_b"])
+        without = research_run.build_payload("q", None, "conv1")
+        self.assertNotIn("conversation_file_ids", without)
+
+    def test_runner_allows_material_with_template(self):
+        """Behavioral: unlike mimic (which is refused with --template-id),
+        --material is orthogonal — main() must accept the combo (not return 2)
+        and pass BOTH template_id and the file_ids through to run().
+
+        (A source-regex 'no guard' check is unreliable here — single-line regex
+        misses a multi-line guard, and re.DOTALL over-matches — so assert the
+        actual behavior instead.)"""
+        import research_run
+
+        captured = {}
+
+        def fake_run(query, template_id, conv, timeout,
+                     mimic=None, conversation_file_ids=None):
+            captured["template_id"] = template_id
+            captured["cfids"] = conversation_file_ids
+            return "REPORT", conv
+
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tf:
+            tf.write(b"hi")
+            tpath = tf.name
+        out = tpath + ".out.md"
+        try:
+            with mock.patch.object(research_run, "load_config",
+                                   lambda: ("sk", "https://x/api")), \
+                 mock.patch.object(research_run, "upload_material",
+                                   lambda p: "cf_fake"), \
+                 mock.patch.object(research_run, "run", fake_run):
+                rc = research_run.main(
+                    ["--query", "q", "--template-id", "template_X",
+                     "--material", tpath, "--output", out]
+                )
+        finally:
+            os.unlink(tpath)
+            if os.path.exists(out):
+                os.unlink(out)
+        self.assertEqual(rc, 0, "material+template must be accepted, not refused")
+        self.assertEqual(captured.get("template_id"), "template_X")
+        self.assertEqual(captured.get("cfids"), ["cf_fake"])
+
+    def test_runner_material_upload_failure_aborts_before_chat(self):
+        """Fail-fast: a failed --material upload returns 1 and never reaches
+        chat_stream (don't burn a research run on missing grounding)."""
+        import cue_api
+        import research_run
+
+        chat = mock.Mock()
+
+        def boom(path):
+            raise cue_api.CueAPIError(422, "bad file", "/file/upload_stream")
+
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tf:
+            tf.write(b"hi")
+            tpath = tf.name
+        out = tpath + ".out.md"
+        try:
+            with mock.patch.object(research_run, "load_config",
+                                   lambda: ("sk", "https://x/api")), \
+                 mock.patch.object(research_run, "upload_material", boom), \
+                 mock.patch.object(research_run, "chat_stream", chat):
+                rc = research_run.main(
+                    ["--query", "q", "--material", tpath, "--output", out]
+                )
+        finally:
+            os.unlink(tpath)
+            if os.path.exists(out):
+                os.unlink(out)
+        self.assertEqual(rc, 1)
+        chat.assert_not_called()
+
     def test_skill_md_documents_mimic_option(self):
         md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         self.assertRegex(md, r"仿写|mimic")
         self.assertIn("--mimic-url", md)
         self.assertIn("--mimic-file", md)
+
+    def test_skill_md_documents_material_option(self):
+        md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("--material", md)
+        self.assertRegex(md, r"素材|接地|file_retrieval")
+        # security rule must scope the "don't upload local files" default to
+        # explicitly-confirmed material uploads, not contradict it.
+        self.assertRegex(md, r"默认不上传本地材料|经用户确认后才上传")
 
 
 class TestNormalizeTemplateId(unittest.TestCase):
