@@ -13,10 +13,13 @@ Checks the skill's structural contract:
 from __future__ import annotations
 
 import inspect
+import os
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 _SKILL_DIR = _HERE.parent
@@ -275,6 +278,77 @@ class TestSharedScriptImports(unittest.TestCase):
         )
 
 
+class TestUploadMaterialSSE(unittest.TestCase):
+    """Hermetic coverage of upload_material's SSE parsing — the riskiest new
+    logic. No network: a fake byte-line iterable stands in for the response."""
+
+    class _FakeResp:
+        def __init__(self, lines):
+            self._lines = lines
+            self.closed = False
+
+        def __iter__(self):
+            return iter(self._lines)
+
+        def close(self):
+            self.closed = True
+
+    def _call(self, frames):
+        import cue_api
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tf:
+            tf.write(b"hi")
+            tpath = tf.name
+        try:
+            with mock.patch.object(cue_api, "load_config",
+                                   lambda: ("sk", "https://x/api")), \
+                 mock.patch.object(cue_api, "get_accept_type", lambda: []), \
+                 mock.patch("cue_api.urllib.request.urlopen",
+                            lambda req, timeout=None: self._FakeResp(frames)):
+                return cue_api.upload_material(tpath)
+        finally:
+            os.unlink(tpath)
+
+    def test_binds_on_completed_not_early_file_id(self):
+        # file_id present at `parsing` must be ignored; only `completed` binds.
+        frames = [
+            b'data: {"status":"parsing","file_id":"cf_EARLY"}\n',
+            b'data: {"status":"completed","progress":100,"file_id":"cf_DONE"}\n',
+            b"data: [DONE]\r\n",
+        ]
+        self.assertEqual(self._call(frames), "cf_DONE")
+
+    def test_done_marker_is_not_json_parsed(self):
+        # The bare [DONE] terminal frame must not crash the parse loop.
+        frames = [
+            b'data: {"status":"completed","file_id":"cf_X"}\n',
+            b"data: [DONE]\n",
+        ]
+        self.assertEqual(self._call(frames), "cf_X")
+
+    def test_no_completed_raises_non_network(self):
+        import cue_api
+        frames = [
+            b'data: {"status":"parsing","file_id":"cf_EARLY"}\n',
+            b"data: [DONE]\n",
+        ]
+        with self.assertRaises(cue_api.CueAPIError) as cm:
+            self._call(frames)
+        # must NOT be status 0 (which user_hint renders as "网络不可达").
+        self.assertNotEqual(cm.exception.status, 0)
+        self.assertNotIn("网络不可达", cm.exception.user_hint())
+
+    def test_failed_frame_raises_with_message(self):
+        import cue_api
+        frames = [
+            b'data: {"status":"failed","message":"file too large"}\n',
+            b"data: [DONE]\n",
+        ]
+        with self.assertRaises(cue_api.CueAPIError) as cm:
+            self._call(frames)
+        self.assertIn("file too large", cm.exception.detail)
+        self.assertNotEqual(cm.exception.status, 0)
+
+
 class TestResearchRunner(unittest.TestCase):
     """research_run.py is the one runtime script — a thin composer over the
     shared cue-buddy primitives. SKILL.md routes Stage 4 through it (background
@@ -352,16 +426,75 @@ class TestResearchRunner(unittest.TestCase):
         without = research_run.build_payload("q", None, "conv1")
         self.assertNotIn("conversation_file_ids", without)
 
-    def test_runner_material_works_with_template(self):
-        """Unlike mimic, --material is orthogonal to --template-id (verified:
-        the backend injects file info + file_retrieval on template runs too),
-        so the runner must NOT refuse the material+template combo."""
-        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
-        # No guard that returns early for material+template_id.
-        self.assertNotRegex(
-            src, r"material.*template_id.*return|template_id.*material.*return",
-            "--material must be allowed together with --template-id",
-        )
+    def test_runner_allows_material_with_template(self):
+        """Behavioral: unlike mimic (which is refused with --template-id),
+        --material is orthogonal — main() must accept the combo (not return 2)
+        and pass BOTH template_id and the file_ids through to run().
+
+        (A source-regex 'no guard' check is unreliable here — single-line regex
+        misses a multi-line guard, and re.DOTALL over-matches — so assert the
+        actual behavior instead.)"""
+        import research_run
+
+        captured = {}
+
+        def fake_run(query, template_id, conv, timeout,
+                     mimic=None, conversation_file_ids=None):
+            captured["template_id"] = template_id
+            captured["cfids"] = conversation_file_ids
+            return "REPORT", conv
+
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tf:
+            tf.write(b"hi")
+            tpath = tf.name
+        out = tpath + ".out.md"
+        try:
+            with mock.patch.object(research_run, "load_config",
+                                   lambda: ("sk", "https://x/api")), \
+                 mock.patch.object(research_run, "upload_material",
+                                   lambda p: "cf_fake"), \
+                 mock.patch.object(research_run, "run", fake_run):
+                rc = research_run.main(
+                    ["--query", "q", "--template-id", "template_X",
+                     "--material", tpath, "--output", out]
+                )
+        finally:
+            os.unlink(tpath)
+            if os.path.exists(out):
+                os.unlink(out)
+        self.assertEqual(rc, 0, "material+template must be accepted, not refused")
+        self.assertEqual(captured.get("template_id"), "template_X")
+        self.assertEqual(captured.get("cfids"), ["cf_fake"])
+
+    def test_runner_material_upload_failure_aborts_before_chat(self):
+        """Fail-fast: a failed --material upload returns 1 and never reaches
+        chat_stream (don't burn a research run on missing grounding)."""
+        import cue_api
+        import research_run
+
+        chat = mock.Mock()
+
+        def boom(path):
+            raise cue_api.CueAPIError(422, "bad file", "/file/upload_stream")
+
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tf:
+            tf.write(b"hi")
+            tpath = tf.name
+        out = tpath + ".out.md"
+        try:
+            with mock.patch.object(research_run, "load_config",
+                                   lambda: ("sk", "https://x/api")), \
+                 mock.patch.object(research_run, "upload_material", boom), \
+                 mock.patch.object(research_run, "chat_stream", chat):
+                rc = research_run.main(
+                    ["--query", "q", "--material", tpath, "--output", out]
+                )
+        finally:
+            os.unlink(tpath)
+            if os.path.exists(out):
+                os.unlink(out)
+        self.assertEqual(rc, 1)
+        chat.assert_not_called()
 
     def test_skill_md_documents_mimic_option(self):
         md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")

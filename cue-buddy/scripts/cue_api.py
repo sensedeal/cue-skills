@@ -46,6 +46,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
@@ -773,11 +774,17 @@ def replay(
 # ---------------------------------------------------------------------------
 
 
+@lru_cache(maxsize=1)
 def get_accept_type() -> list[str]:
     """Return the server's accepted upload suffixes (lowercase, no dot).
 
     GET /api/file_server/accept_type → DataResponse(data={accept_type: "doc,docx,..."}).
-    Empty list if unavailable (caller treats that as "skip pre-check")."""
+    Empty list if unavailable (caller treats that as "skip pre-check").
+
+    Cached for the process: the accept list is effectively static within a run,
+    and the per-file upload pre-checks (upload_file / upload_material called once
+    per --material) would otherwise each re-hit the endpoint. lru_cache does not
+    memoize the raised CueAPIError, so a transient failure isn't stuck."""
     data = _request("GET", "/file_server/accept_type", timeout=15)
     payload = data.get("data") if isinstance(data, dict) else None
     raw = payload.get("accept_type", "") if isinstance(payload, dict) else ""
@@ -868,8 +875,13 @@ def upload_material(
         must be string-matched, never json.loads'd.
     Note the form field is `files` (plural — the route takes List[UploadFile]).
 
-    Raises CueAPIError on HTTP / network error or if no completed file_id
-    arrives; SystemExit(2) on missing key / unreadable file.
+    `timeout` is the socket read timeout (per blocking read), not a total
+    wall-clock budget — a server dribbling progress frames keeps the stream
+    alive; it only fires if no byte arrives for `timeout` seconds.
+
+    Raises CueAPIError on HTTP / network error, on a server `failed` frame
+    (422), or if the stream ends with no completed file_id (502); SystemExit(2)
+    on missing key / unreadable file.
     """
     p = Path(path).expanduser()
     if not p.is_file():
@@ -917,31 +929,45 @@ def upload_material(
 
     file_id: str | None = None
     last_error: str | None = None
-    for raw in resp:
-        line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
-        if not line.startswith("data:"):
-            continue
-        chunk = line[5:].lstrip() if line.startswith("data: ") else line[5:]
-        chunk = chunk.rstrip("\r")
-        if chunk == "[DONE]":  # terminal marker — bare string, NOT JSON
-            break
-        try:
-            obj = json.loads(chunk)
-        except json.JSONDecodeError:
-            continue
-        status = obj.get("status")
-        if on_progress:
-            on_progress(status or "", obj.get("progress") or 0)
-        if status == "failed":
-            last_error = obj.get("message") or "server reported status=failed"
-        # file_id repeats from `parsing` on, but only bind it at `completed`.
-        if status == "completed" and obj.get("file_id"):
-            file_id = obj["file_id"]
+    try:
+        for raw in resp:
+            line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+            if not line.startswith("data:"):
+                continue
+            chunk = line[5:].lstrip() if line.startswith("data: ") else line[5:]
+            chunk = chunk.rstrip("\r")
+            if chunk == "[DONE]":  # terminal marker — bare string, NOT JSON
+                break
+            try:
+                obj = json.loads(chunk)
+            except json.JSONDecodeError:
+                continue
+            status = obj.get("status")
+            if on_progress:
+                on_progress(status or "", obj.get("progress") or 0)
+            if status == "failed":
+                last_error = obj.get("message") or "server reported status=failed"
+            # file_id repeats from `parsing` on, but only bind it at `completed`.
+            # NOTE: one upload = one file → one `completed`. If the backend ever
+            # emits multiple `completed` frames, this keeps only the last id.
+            if status == "completed" and obj.get("file_id"):
+                file_id = obj["file_id"]
+    finally:
+        # Early `break` (and the no-file_id raise below) would otherwise abandon
+        # the socket; the runner uploads several --material files in one process.
+        resp.close()
     if not file_id:
+        # NOT a transport failure (the POST succeeded) — don't raise status 0,
+        # which user_hint() renders as "网络不可达" and sends operators chasing
+        # proxy/VPN. A `failed` frame is a file-level reject (422-ish); a silent
+        # cut with no completed/[DONE] is a server/pipeline issue (502-ish).
+        if last_error:
+            raise CueAPIError(
+                422, f"文件处理失败: {last_error}", "/file/upload_stream"
+            )
         raise CueAPIError(
-            0,
-            "upload produced no completed file_id"
-            + (f": {last_error}" if last_error else ""),
+            502,
+            "上传流中断,未收到 completed 回执(服务端解析/索引可能失败)",
             "/file/upload_stream",
         )
     return file_id
