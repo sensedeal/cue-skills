@@ -343,5 +343,31 @@ class TestNormalizeTemplateId(unittest.TestCase):
         self.assertIsNone(self._fn()(None))
 
 
+class TestReplayableEmptyKinds(unittest.TestCase):
+    """A live stream that ends without reporter text may still have a report
+    persisted server-side; replay (no credit cost) should be attempted for
+    BOTH cut-before-reporter and reporter-started-no-text — not only the
+    former. no_agent_events (auth/template failure) has nothing to recover."""
+
+    def _kinds(self):
+        import research_run
+
+        return research_run.REPLAYABLE_EMPTY_KINDS
+
+    def test_reporter_started_no_text_is_replayable(self):
+        self.assertIn("reporter_started_no_text", self._kinds())
+
+    def test_stream_cut_before_reporter_is_replayable(self):
+        self.assertIn("stream_cut_before_reporter", self._kinds())
+
+    def test_no_agent_events_is_not_replayable(self):
+        self.assertNotIn("no_agent_events", self._kinds())
+
+    def test_run_routes_replay_off_the_kind_set(self):
+        # Guard against regressing to a hard-coded single-kind check.
+        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
+        self.assertIn("diag[\"kind\"] in REPLAYABLE_EMPTY_KINDS", src)
+
+
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False).result.wasSuccessful() else 1)

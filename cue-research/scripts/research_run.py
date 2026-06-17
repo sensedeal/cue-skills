@@ -57,6 +57,14 @@ from sse_report import (  # noqa: E402
 )
 
 
+# Empty-live-report diagnoses where the report may still exist in the DB, so a
+# (free) replay is worth attempting. no_agent_events is excluded — that's an
+# auth/template_id failure with nothing to recover.
+REPLAYABLE_EMPTY_KINDS = frozenset(
+    {"stream_cut_before_reporter", "reporter_started_no_text"}
+)
+
+
 def normalize_template_id(template_id: str | None) -> str | None:
     """Cue playbook ids are `template_<id>` (see /api/playbook buddies[].template_id).
 
@@ -155,7 +163,11 @@ def run(
         f"messages={diag['message_event_count']}, hit_timeout={diag['hit_timeout']}",
         flush=True,
     )
-    if diag["kind"] == "stream_cut_before_reporter":
+    if diag["kind"] in REPLAYABLE_EMPTY_KINDS:
+        # Both kinds mean the live stream ended without reporter text, but the
+        # server may still have finished + persisted to the DB. Replay reads the
+        # full workflow_events back (no credit cost), so always attempt it before
+        # giving up — for reporter_started_no_text too, not just a clean cut.
         print(f"[cue-research] retrieving via replay {conv_id} (no credit cost)…", flush=True)
         try:
             replay_events = [(ev, d) for ev, d in replay(conv_id, max_seconds=timeout)]
@@ -171,18 +183,14 @@ def run(
             print(f"[cue-research] ✓ recovered via replay: {len(report)} chars", flush=True)
             return report, conv_id
         sys.stderr.write(
-            "[cue-research] replay also empty — server-side reporter may have "
-            "failed. Check cuecue.cn web for this conversation_id.\n"
+            "[cue-research] replay also empty — server-side reporter likely "
+            "failed (started but persisted no text). Check cuecue.cn web for "
+            "this conversation_id; re-run if it was a transient model failure.\n"
         )
     elif diag["kind"] == "no_agent_events":
         sys.stderr.write(
             "[cue-research] no agent events — likely API auth / template_id "
             "problem (not a long-stream issue). Check args + key.\n"
-        )
-    else:  # reporter_started_no_text
-        sys.stderr.write(
-            "[cue-research] reporter started but emitted no text. Server-side "
-            "reporter likely failed; check cuecue.cn web replay.\n"
         )
     return "", conv_id
 
