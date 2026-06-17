@@ -12,7 +12,7 @@
 |---|---|---|
 | [`cue-buddy/`](./cue-buddy) — **cue-buddy** | 让业务专家通过自然对话起草、校验、测试、调优、设为常用 [Cue](https://cuecue.cn) 搭子（buddy）调研模板。不需要 Python / 不需要懂 API；agent 替用户调 Cue 生产 API。 | v0.2.0 |
 | [`cue-research/`](./cue-research) — **cue-research** | cue-buddy 的兄弟 skill,负责在你自己的 AI agent 里**用** Cue：自然语言提问 → 匹配 ≤2 个候选搭子(或走 `/api/rewrite` 自由式深研) → 确认 credits → 后台跑、replay 取报告 → 满意可一键沉淀为搭子(回流给 cue-buddy)。支持仿写/mimic(模仿参考链接或样本文档的写作风格)。 | v0.3.2 |
-| [`playbook/`](./playbook) — **playbook 场景 skills** | [Cue 搭子广场](https://cuecue.cn/playbook)每个场景一个可供 agent 加载的 `SKILL.md`(投资研究 / 信贷尽调 / 财富投顾 / 全球宏观 …)。加载后你的 agent 就能跑该场景的 Cue 深度研究:运行时查 **live** `/api/playbook` 取该场景**当前**搭子 → 选一个 → 确认 credits → 跑 → 返回带来源报告。**运行时查 live、不烤 `template_id`**,搭子增删改自动反映、无需重生成。由 [`scripts/gen_scene_skills.py`](./scripts/gen_scene_skills.py) 自动生成;实际运行委托 `cue-research`(两者需同级并装)。 | 自动生成 |
+| [`playbook/`](./playbook) — **playbook 场景 skills** | [Cue 搭子广场](https://cuecue.cn/playbook)每个场景一个可供 agent 加载的 `SKILL.md`(投资研究 / 信贷尽调 / 财富投顾 / 全球宏观 …)。加载后你的 agent 就能跑该场景的 Cue 深度研究:运行时查 **live** `/api/playbook` 取该场景**当前**搭子 → 选一个 → 确认 credits → 跑 → 返回带来源报告。**运行时查 live、不烤 `template_id`**,搭子增删改自动反映、无需重生成。由 [`scripts/gen_scene_skills.py`](./scripts/gen_scene_skills.py) 自动生成。两种用法:与 `cue-research`/`cue-buddy` 一起整包装,**或**单独发到第三方 skill 市场——单场景 skill **自带自举**(本机若无 runner 则克隆本仓获取,GitHub 不通走 Gitee 镜像)。 | 自动生成 |
 
 Cue surface 扩展会陆续在这里加新 skill。
 

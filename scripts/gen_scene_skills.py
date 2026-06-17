@@ -39,6 +39,14 @@ def plan_changes(live_dirs: set, existing_dirs: set):
     return live_dirs, existing_dirs - live_dirs
 
 
+def existing_scene_dirs(base: str) -> set:
+    """base 下的场景子目录集合——只算目录，忽略 README.md 等散文件
+    （否则它们会被当成退场场景，进入 plan_changes 的删除集被 rmtree）。"""
+    if not os.path.isdir(base):
+        return set()
+    return {d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))}
+
+
 def fetch_scene_skills(api_base: str) -> dict:
     """{dir_name: skill_md} for 每个当前浮现场景。"""
     pb = json.loads(_get(f"{api_base}/api/playbook"))
@@ -59,9 +67,7 @@ def main(argv=None) -> int:
 
     skills = fetch_scene_skills(args.api_base)
     live = set(skills)
-    existing = (
-        set(os.listdir(REPO_PLAYBOOK_DIR)) if os.path.isdir(REPO_PLAYBOOK_DIR) else set()
-    )
+    existing = existing_scene_dirs(REPO_PLAYBOOK_DIR)
     add, delete = plan_changes(live, existing)
     print(
         f"live scenes: {len(live)} | 写/更新: {sorted(add)} | 删除(退场): {sorted(delete)}"
