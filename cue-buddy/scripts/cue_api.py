@@ -845,6 +845,108 @@ def upload_file(path: str, *, timeout: float = 120.0) -> str:
     return file_hash
 
 
+def upload_material(
+    path: str,
+    *,
+    timeout: float = 300.0,
+    on_progress: Callable[[str, int], None] | None = None,
+) -> str:
+    """Upload a local file to /api/file/upload_stream and return its file_id (cf_…).
+
+    This is the 添加素材 / research-grounding path — DISTINCT from upload_file
+    (which is mimic styling → /file_server/upload, plain-JSON file_hash). Here the
+    server parses + chunks + EMBEDS the file into the conversation's vector store;
+    the returned file_id is later passed in chat_stream's `conversation_file_ids`,
+    and the 研究 agent semantically retrieves the FULL document via its built-in
+    file_retrieval tool (real RAG, not a preview).
+
+    The endpoint streams SSE progress
+    (uploading→uploaded→parsing→chunking→indexing→completed). Two contract traps:
+      - the file_id appears early (at parsing) but is only USABLE at the terminal
+        status=="completed" event — embedding/indexing isn't done before that;
+      - the stream ends with a bare `data: [DONE]` line — it is NOT JSON, so it
+        must be string-matched, never json.loads'd.
+    Note the form field is `files` (plural — the route takes List[UploadFile]).
+
+    Raises CueAPIError on HTTP / network error or if no completed file_id
+    arrives; SystemExit(2) on missing key / unreadable file.
+    """
+    p = Path(path).expanduser()
+    if not p.is_file():
+        sys.stderr.write(f"[cue] file not found: {p}\n")
+        raise SystemExit(2)
+    api_key, base = load_config()
+
+    # Best-effort SOFT pre-check: the upload_stream accept list may differ from
+    # /file_server/accept_type, so only warn — let the server be the authority
+    # (a wrong client-side reject is worse than a clear server reject).
+    try:
+        accepted = get_accept_type()
+    except CueAPIError:
+        accepted = []
+    suffix = p.suffix.lower().lstrip(".")
+    if accepted and suffix not in accepted:
+        sys.stderr.write(
+            f"[cue] 提示:文件类型 '{suffix}' 不在 /file_server/accept_type {accepted} 内;"
+            "仍尝试上传,若服务端拒绝请另存为受支持格式再传。\n"
+        )
+
+    boundary = "----cuematerial" + uuid.uuid4().hex
+    pre = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="files"; filename="{p.name}"\r\n'
+        "Content-Type: application/octet-stream\r\n\r\n"
+    ).encode("utf-8")
+    post = f"\r\n--{boundary}--\r\n".encode("utf-8")
+    body = pre + p.read_bytes() + post
+
+    url = base.rstrip("/") + "/file/upload_stream"
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Authorization", f"Bearer {api_key}")
+    req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+    req.add_header("Accept", "text/event-stream")
+    try:
+        resp = urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")[:400]
+        raise CueAPIError(e.code, detail, "/file/upload_stream") from e
+    except urllib.error.URLError as e:
+        raise CueAPIError(
+            0, f"network unreachable: {getattr(e, 'reason', e)}", "/file/upload_stream"
+        ) from e
+
+    file_id: str | None = None
+    last_error: str | None = None
+    for raw in resp:
+        line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+        if not line.startswith("data:"):
+            continue
+        chunk = line[5:].lstrip() if line.startswith("data: ") else line[5:]
+        chunk = chunk.rstrip("\r")
+        if chunk == "[DONE]":  # terminal marker — bare string, NOT JSON
+            break
+        try:
+            obj = json.loads(chunk)
+        except json.JSONDecodeError:
+            continue
+        status = obj.get("status")
+        if on_progress:
+            on_progress(status or "", obj.get("progress") or 0)
+        if status == "failed":
+            last_error = obj.get("message") or "server reported status=failed"
+        # file_id repeats from `parsing` on, but only bind it at `completed`.
+        if status == "completed" and obj.get("file_id"):
+            file_id = obj["file_id"]
+    if not file_id:
+        raise CueAPIError(
+            0,
+            "upload produced no completed file_id"
+            + (f": {last_error}" if last_error else ""),
+            "/file/upload_stream",
+        )
+    return file_id
+
+
 # ---------------------------------------------------------------------------
 # CLI smoke test
 # ---------------------------------------------------------------------------

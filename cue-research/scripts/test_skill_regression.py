@@ -12,6 +12,7 @@ Checks the skill's structural contract:
 
 from __future__ import annotations
 
+import inspect
 import re
 import sys
 import unittest
@@ -208,6 +209,21 @@ class TestSharedScriptImports(unittest.TestCase):
             self.assertTrue(hasattr(cue_api, fn), f"cue_api.{fn} missing")
             self.assertTrue(callable(getattr(cue_api, fn)))
 
+    def test_cue_api_has_material_upload_helper(self):
+        # 文档接地(素材) needs a file -> file_id SSE upload helper, distinct
+        # from upload_file (mimic file_hash). Posts to /file/upload_stream.
+        import cue_api
+        self.assertTrue(hasattr(cue_api, "upload_material"),
+                        "cue_api.upload_material missing — 素材接地 not applied?")
+        self.assertTrue(callable(cue_api.upload_material))
+        src = inspect.getsource(cue_api.upload_material)
+        self.assertIn("/file/upload_stream", src,
+                      "upload_material must POST to /file/upload_stream")
+        # must block until the terminal completed event, not the early file_id
+        self.assertIn("completed", src)
+        # form field is plural `files` (route takes List[UploadFile])
+        self.assertRegex(src, r'name="files"')
+
     def test_sse_report_helpers_exist(self):
         import sse_report
         for fn in ("extract_reporter_content", "diagnose_empty_report",
@@ -316,11 +332,50 @@ class TestResearchRunner(unittest.TestCase):
             "runner must guard mimic-vs-template_id mutual exclusivity",
         )
 
+    def test_runner_exposes_material_flag(self):
+        """文档接地: --material (repeatable) uploads docs and threads their
+        file_ids into the payload as conversation_file_ids."""
+        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
+        self.assertIn("--material", src)
+        self.assertIn("upload_material", src)
+        # threaded into the payload as the conversation_file_ids key
+        self.assertRegex(src, r'["\']conversation_file_ids["\']')
+
+    def test_runner_build_payload_includes_material_ids(self):
+        """build_payload must emit conversation_file_ids only when non-empty
+        (mirrors the `if mimic:` guard), and omit it otherwise."""
+        import research_run
+        with_ids = research_run.build_payload(
+            "q", None, "conv1", None, ["cf_a", "cf_b"]
+        )
+        self.assertEqual(with_ids.get("conversation_file_ids"), ["cf_a", "cf_b"])
+        without = research_run.build_payload("q", None, "conv1")
+        self.assertNotIn("conversation_file_ids", without)
+
+    def test_runner_material_works_with_template(self):
+        """Unlike mimic, --material is orthogonal to --template-id (verified:
+        the backend injects file info + file_retrieval on template runs too),
+        so the runner must NOT refuse the material+template combo."""
+        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
+        # No guard that returns early for material+template_id.
+        self.assertNotRegex(
+            src, r"material.*template_id.*return|template_id.*material.*return",
+            "--material must be allowed together with --template-id",
+        )
+
     def test_skill_md_documents_mimic_option(self):
         md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         self.assertRegex(md, r"仿写|mimic")
         self.assertIn("--mimic-url", md)
         self.assertIn("--mimic-file", md)
+
+    def test_skill_md_documents_material_option(self):
+        md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("--material", md)
+        self.assertRegex(md, r"素材|接地|file_retrieval")
+        # security rule must scope the "don't upload local files" default to
+        # explicitly-confirmed material uploads, not contradict it.
+        self.assertRegex(md, r"默认不上传本地材料|经用户确认后才上传")
 
 
 class TestNormalizeTemplateId(unittest.TestCase):
