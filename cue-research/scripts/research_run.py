@@ -57,6 +57,20 @@ from sse_report import (  # noqa: E402
 )
 
 
+def normalize_template_id(template_id: str | None) -> str | None:
+    """Cue playbook ids are `template_<id>` (see /api/playbook buddies[].template_id).
+
+    Both humans and agents routinely copy just the bare `<id>` suffix from chat
+    or notes and the backend then 404s "模板不存在". Prepend the prefix when it's
+    missing so a bare suffix still resolves. Conservative: only ever prepends —
+    never strips — so an already-correct id is untouched. None (free-form run)
+    passes through.
+    """
+    if template_id and not template_id.startswith("template_"):
+        return "template_" + template_id
+    return template_id
+
+
 def build_payload(
     query: str,
     template_id: str | None,
@@ -204,6 +218,9 @@ def main(argv: list[str] | None = None) -> int:
         help="仿写:模仿本地样本文档的写作风格,先上传换 file_hash(仅自由式,与 --template-id / --mimic-url 互斥)",
     )
     args = p.parse_args(argv)
+    # Tolerate a bare `<id>` for --template-id (prepend `template_` if missing),
+    # so logs, payload, and the empty-run stub all use the resolved id.
+    args.template_id = normalize_template_id(args.template_id)
 
     # Mimic constraints (Phase 1 scope): one-shot, free-form only.
     if args.mimic_url and args.mimic_file:

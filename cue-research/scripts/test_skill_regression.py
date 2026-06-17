@@ -323,5 +323,25 @@ class TestResearchRunner(unittest.TestCase):
         self.assertIn("--mimic-file", md)
 
 
+class TestNormalizeTemplateId(unittest.TestCase):
+    """A bare `<id>` (prefix dropped while copying from chat/notes) must still
+    resolve — both a human (Hermes) and an agent hit the backend 404
+    "模板不存在" this way. normalize_template_id prepends, never strips."""
+
+    def _fn(self):
+        import research_run
+
+        return research_run.normalize_template_id
+
+    def test_bare_suffix_gets_prefixed(self):
+        self.assertEqual(self._fn()("8qNgr5"), "template_8qNgr5")
+
+    def test_already_prefixed_is_untouched(self):
+        self.assertEqual(self._fn()("template_8qNgr5"), "template_8qNgr5")
+
+    def test_none_passes_through(self):
+        self.assertIsNone(self._fn()(None))
+
+
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False).result.wasSuccessful() else 1)
