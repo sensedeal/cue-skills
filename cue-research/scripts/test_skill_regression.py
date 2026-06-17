@@ -295,6 +295,12 @@ class TestUploadMaterialSSE(unittest.TestCase):
 
     def _call(self, frames):
         import cue_api
+        self._last_resp = None
+
+        def fake_urlopen(req, timeout=None):
+            self._last_resp = self._FakeResp(frames)
+            return self._last_resp
+
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tf:
             tf.write(b"hi")
             tpath = tf.name
@@ -302,8 +308,7 @@ class TestUploadMaterialSSE(unittest.TestCase):
             with mock.patch.object(cue_api, "load_config",
                                    lambda: ("sk", "https://x/api")), \
                  mock.patch.object(cue_api, "get_accept_type", lambda: []), \
-                 mock.patch("cue_api.urllib.request.urlopen",
-                            lambda req, timeout=None: self._FakeResp(frames)):
+                 mock.patch("cue_api.urllib.request.urlopen", fake_urlopen):
                 return cue_api.upload_material(tpath)
         finally:
             os.unlink(tpath)
@@ -316,6 +321,8 @@ class TestUploadMaterialSSE(unittest.TestCase):
             b"data: [DONE]\r\n",
         ]
         self.assertEqual(self._call(frames), "cf_DONE")
+        # the try/finally must close the response (success path)
+        self.assertTrue(self._last_resp.closed)
 
     def test_done_marker_is_not_json_parsed(self):
         # The bare [DONE] terminal frame must not crash the parse loop.
@@ -336,6 +343,8 @@ class TestUploadMaterialSSE(unittest.TestCase):
         # must NOT be status 0 (which user_hint renders as "网络不可达").
         self.assertNotEqual(cm.exception.status, 0)
         self.assertNotIn("网络不可达", cm.exception.user_hint())
+        # the try/finally must close the response on the raise path too
+        self.assertTrue(self._last_resp.closed)
 
     def test_failed_frame_surfaces_error_field(self):
         # The route puts the failure reason under `error` (not `message`).
@@ -348,7 +357,12 @@ class TestUploadMaterialSSE(unittest.TestCase):
             self._call(frames)
         self.assertIn("50MB", cm.exception.detail)
         self.assertEqual(cm.exception.status, 422)
-        self.assertNotIn("网络不可达", cm.exception.user_hint())
+        # 422 must render an actionable file-reject hint, not "未预期的错误".
+        hint = cm.exception.user_hint()
+        self.assertNotIn("网络不可达", hint)
+        self.assertNotIn("未预期的错误", hint)
+        self.assertIn("拒绝", hint)
+        self.assertTrue(self._last_resp.closed)
 
 
 class TestResearchRunner(unittest.TestCase):

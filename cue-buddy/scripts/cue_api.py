@@ -99,6 +99,12 @@ class CueAPIError(Exception):
             )
         if self.status == 404:
             return "资源不存在（template_id 错了？或已被删除）。"
+        if self.status == 422:
+            return (
+                "文件被服务端拒绝（多为格式不支持或大小超限）。"
+                "换一个受支持的格式（见 /api/file_server/accept_type），"
+                "或压缩 / 拆分后重传。"
+            )
         if self.status == 429:
             return (
                 "调用过于频繁，被服务端限流。请等 30 秒后再试；"
