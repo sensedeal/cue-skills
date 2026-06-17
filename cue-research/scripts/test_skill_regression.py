@@ -325,7 +325,7 @@ class TestResearchRunner(unittest.TestCase):
 
 class TestNormalizeTemplateId(unittest.TestCase):
     """A bare `<id>` (prefix dropped while copying from chat/notes) must still
-    resolve — both a human (Hermes) and an agent hit the backend 404
+    resolve — both a human user and an agent hit the backend 404
     "模板不存在" this way. normalize_template_id prepends, never strips."""
 
     def _fn(self):

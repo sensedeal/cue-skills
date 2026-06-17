@@ -10,6 +10,4 @@
 ## 设计要点
 - **运行时查 live**：skill 不烤 `template_id`，运行时从 `/api/playbook` 取当前搭子 → 搭子动态增删改**自动反映**，无需重生成。
 - **自动生成**：由 `scripts/gen_scene_skills.py` 从 `/api/playbook` + `GET /api/playbook/scenes/<scene>/skill` 端点生成。**场景集合变化**（新增/下线场景）时重跑生成器即可（`python3 scripts/gen_scene_skills.py --apply`）；搭子变动无需重跑。
-- 单一生成源在后端（cubemanus），本目录是其快照。
-
-设计 spec：cubemanus `docs/playbook_scene_skills_design_2026_06_16.md`。
+- 单一生成源在 Cue 后端服务，本目录是其快照。

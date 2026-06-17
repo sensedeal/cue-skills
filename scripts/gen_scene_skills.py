@@ -1,8 +1,8 @@
 """从 /api/playbook 生成每场景的 SKILL.md 到 cue-skills/playbook/<slug>/。
 
-单一生成源在 cubemanus 端点（GET /api/playbook/scenes/<scene>/skill）——本脚本只
-fetch + 写文件 + 删退场，不复制渲染逻辑。运行时查 live 设计 → 搭子变动无需重跑，
-仅场景集合变化才增删文件。仓分离，故走 HTTP（不能 import cubemanus）。
+单一生成源在 Cue 后端端点（GET /api/playbook/scenes/<scene>/skill）——本脚本只
+fetch + 写文件 + 删退场，不复制渲染逻辑。运行时查 live 设计 → 搭子变动无需重跑,
+仅场景集合变化才增删文件。仓分离,故走 HTTP（不能直接 import 后端代码）。
 
 用法: python3 gen_scene_skills.py [--api-base https://cuecue.cn] [--apply]
 默认 dry-run（只打印 diff）；--apply 才写盘。
