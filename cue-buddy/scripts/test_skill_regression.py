@@ -241,6 +241,11 @@ class Case5_ToolNameLeakRegexCoversAllFamilies(unittest.TestCase):
             "用 get_disclosure 拉公告",  # 原有 family,保持工作
             "调 list_companies",
             "find_recent_news",
+            # CJK-glued, no spaces — \b 不 fire,旧 regex 漏抓(Pz0sT5 上线泄漏)
+            "使用get_cninfo_disclosure_search工具",
+            "根据关键词搜索公告：使用get_cninfo_disclosure_search工具。",
+            "优先list_companies再深挖",
+            "调用search_tool_company查",
         ):
             with self.subTest(sample=sample):
                 self.assertRegex(sample, TOOL_NAME_LEAK_RE, f"未抓 {sample!r}")
