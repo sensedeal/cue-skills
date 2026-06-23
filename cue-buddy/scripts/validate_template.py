@@ -58,14 +58,23 @@ FORBIDDEN_TOOL_PREFIXES = ("get_", "list_", "find_", "search_tool", "crawl_tool"
 # - get_*/list_*/find_*: tool family verbs, snake_case
 # - search_tool*/crawl_tool*: tool-naming convention with optional suffix
 #   (search_tool_company / crawl_tool_disclosure / etc.)
+#
+# Boundaries use explicit ASCII-word-char lookarounds, NOT `\b`: in Python 3
+# `\w` (hence `\b`) treats CJK as word chars, so `\b` does NOT fire between a
+# Chinese char and the ASCII tool name. A CJK-glued leak with no spaces —
+# `使用get_cninfo_disclosure_search工具` — slipped past R5 and shipped to prod
+# (Pz0sT5, found 2026-06-24). The lookarounds assert the match isn't glued to
+# another ASCII identifier char on either side, so CJK-adjacent leaks ARE
+# caught, while genuine substrings of a larger ASCII identifier
+# (`myget_x` / `get_xBar`) are still NOT flagged.
 TOOL_NAME_LEAK_RE = re.compile(
-    r"\b(?:"
+    r"(?<![A-Za-z0-9_])(?:"
     r"get_[a-z_]+|"
     r"list_[a-z_]+|"
     r"find_[a-z_]+|"
     r"search_tool[a-z_]*|"
     r"crawl_tool[a-z_]*"
-    r")\b"
+    r")(?![A-Za-z0-9_])"
 )
 
 # Decision phrases that turn the buddy into a verdict-maker.
