@@ -1,29 +1,30 @@
 ---
-name: cue-person-check
+name: cue-financial-deep-read
 description: >
-  用 Cue 跑「人物核查」场景的深度研究：多源公开数据交叉、结论带来源。
-  Run Cue deep research for the "Person Background Check" scenario.
-  触发 Triggers: 人物核查、企业尽调、全网检索 / person background check, executive history, related entities
+  用 Cue 跑「财报深读」场景的深度研究：多源公开数据交叉、结论带来源。
+  Run Cue deep research for the "Financial Deep Read" scenario.
+  触发 Triggers: 财报深读、财务与业绩、信披与监管 / financial deep read, footnote risk scan, audit opinion
 license: MIT
 metadata:
   source: cuecue.cn/playbook
-  scene: "人物核查"
+  scene: "财报深读"
   generated_from: /api/playbook
 ---
 
-# Cue「人物核查」研究 skill
+# Cue「财报深读」研究 skill
 
 加载本 skill 后，你可以用 Cue 跑这个场景的深度研究（多源公开数据交叉、结论带来源链接）。
 
 ## 何时用
-人物核查：企业尽调、全网检索、信披与监管。
+财报深读：财务与业绩、信披与监管。
 
 ## 当前可用搭子（仅供理解；运行时以 live 为准）
-  - 个人背调底稿：穿透人物的全生命周期工商与司法轨迹，剥离当前在册与历史风险、映射其商业控制版图，产出可用于 IPO 或重大交易的背调底稿
-  - 基金经理言行核查：他嘴上说的，和实际操作一致吗？把基金经理公开宣称的选股逻辑、换手与风控，和真实持仓、集中度、回撤归因逐项对账，揪出言行偏
-  - 企业管理层风险体检：批量穿透企业董监高与实控人的对外任职、失信、限高与被执行，逐人定级排序，产出尽调前可用的管理层风险清单。
-  - 实控人关联穿透：从一家企业穿透到实控人与最终受益人，画出其关联企业网络、对外担保圈、资金占用与隐性代持线索，识别关联交易与利益输送风险，
-  - 关键人物批量核查：给一批人名，批量核查每人的失信、限高、被执行、行政处罚、股权冻结等公开风险，逐人定级、按风险排序，产出合作或准入前可用的
+  - 上市公司财报分析：围绕指定上市公司最新一期财报,从核心数据变动、业务驱动因子、利润含金量、产业链话语权与典型财务信号产出一份带可回查出处的
+  - 财报极速排雷：用财务诊断框架快速扫描企业利润含金量、产业链话语权、典型财务雷区,叠加司法监管与同业对照,产出可回查的风险信号清单与证据
+  - 财务质量与供应链核查：穿透三张报表、经营指标、客户供应商披露与应收款账龄，区分报表事实与机构解读，产出财务质量与供应链风险证据框架。
+  - 财报前瞻指引兑现核查：管理层的业绩指引，到底能不能信？把公司的业绩预告与发布时的市场一致预期、以及后续实际兑现三方对账，看它是连续兑现还是惯于
+  - 财报附注雷达：给定一个风险信号或主题，跨全 A 股年报附注做语义检索，定位讨论它的公司清单、章节摘要与页码溯源，并归纳共性诱因——一句
+  - 可转债与审计意见核查：交叉核验可转债基本信息、正股、审计意见与全市场清单，快速确认转债主体与财务审计质量，产出可复核的核查底稿。
 
 ## 准备 Cue runner（首次用时，幂等）
 本 skill 不自带脚本，靠 Cue 开源 runner 跑研究。先确认 runner 是否就绪：
@@ -40,7 +41,7 @@ metadata:
   之后 runner = `~/.cue/cue-skills/cue-research/scripts/research_run.py`。需 `git` + `python3`（runner 仅用标准库）。
 
 ## 怎么跑（搭子是动态的，运行时查 live）
-1. **拉本场景当前搭子**：`GET https://cuecue.cn/api/playbook`，找 `secondary_category == "人物核查"` 的 scene，读 `buddies[]`（每个有 `template_id`/`title`/`goal`）。若该场景当前不在返回里（临时未达展示门槛）→ 告知用户暂不可用。
+1. **拉本场景当前搭子**：`GET https://cuecue.cn/api/playbook`，找 `secondary_category == "财报深读"` 的 scene，读 `buddies[]`（每个有 `template_id`/`title`/`goal`）。若该场景当前不在返回里（临时未达展示门槛）→ 告知用户暂不可用。
 2. **选一个搭子**：**委托 cue-research 的匹配逻辑**（其 `+match`/Stage-2：对 `goal` 做语义匹配、把用户的具体主体从匹配中剥离、弱命中先列 ≤2 候选确认）——不要只按字面 title 关键词裸选。取选中搭子的 `template_id`。
 3. **确认 credits（强制）**：跑深度研究消耗 credits。运行前显式问用户「将用搭子 X 跑【主体】，耗 credits，是否继续？」并等确认。
 4. **跑**：`python3 ~/.cue/cue-skills/cue-research/scripts/research_run.py --query "<用户主体/问题>" --template-id <template_id>`（用上一节就绪的 runner 路径；已装 cue-skills 则用你本地的 `cue-research/scripts/research_run.py`）。深度研究 3–15 分钟；长跑 live 流常不带报告段，用 replay 取最终报告。 读 runner 末行 `RESULT ok|empty`：`empty` → 告知用户本次未取到内容、可换主体/搭子重试，**不要编造**。
