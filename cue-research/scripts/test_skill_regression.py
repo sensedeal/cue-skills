@@ -685,6 +685,14 @@ class TestEmitProgress(unittest.TestCase):
         }})
         self.assertIn("▶ agent=researcher task=扫描年报资产减值", out)
 
+    def test_nested_data_non_dict_no_crash(self):
+        # payload is a dict but payload["data"] is a truthy non-dict (str) —
+        # _agent_name used to do (payload.get("data") or {}).get(...) which
+        # raised AttributeError on the str, killing run() mid-stream. The
+        # isinstance(nested, dict) guard in _agent_name prevents this.
+        out = self._emit("start_of_agent", {"data": "oops"})
+        self.assertIn("▶ agent=?", out)  # degraded, not crashed
+
 
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False).result.wasSuccessful() else 1)

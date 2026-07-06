@@ -12,7 +12,10 @@ import json
 
 
 def _agent_name(payload: dict) -> str:
-    return payload.get("agent_name") or (payload.get("data") or {}).get("agent_name", "")
+    nested = payload.get("data")
+    if not isinstance(nested, dict):
+        nested = {}
+    return payload.get("agent_name") or nested.get("agent_name", "")
 
 
 def _event_data(payload: dict) -> dict:

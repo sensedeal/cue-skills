@@ -75,6 +75,11 @@ REPLAYABLE_EMPTY_KINDS = frozenset(
     {"stream_cut_before_reporter", "reporter_started_no_text"}
 )
 
+# Events _emit_progress renders a line for. Gate before json.loads so the
+# thousands of message/tool_chunk/start_of_llm deltas per run are skipped
+# without parsing.
+_PROGRESS_EVENTS = frozenset({"start_of_agent", "tool_call", "report_finalized"})
+
 
 def _emit_progress(event: str, data: str) -> None:
     """Print a flushed progress line for key SSE events.
@@ -87,6 +92,8 @@ def _emit_progress(event: str, data: str) -> None:
     to stdout so the full stream (start → progress → RESULT) reads
     top-to-bottom in one file.
     """
+    if event not in _PROGRESS_EVENTS:
+        return
     if not data:
         return
     try:
@@ -182,7 +189,7 @@ def run(
             events.append((event, data))
             _emit_progress(event, data)
             if time.time() - t0 > timeout:
-                sys.stderr.write("[cue-research] timeout watching SSE\n")
+                print("[cue-research] timeout watching SSE", flush=True)
                 break
     except CueAPIError as e:
         # 4xx/5xx (auth / template_id) — replay can't save these.
@@ -194,9 +201,10 @@ def run(
     except (OSError, ValueError) as e:
         # Network blip / SSE parse error: keep the partial events and let the
         # diagnose+replay path below still try to recover.
-        sys.stderr.write(
+        print(
             f"[cue-research] stream raised {type(e).__name__}: {e}; "
-            f"events so far={len(events)}, will try replay fallback\n"
+            f"events so far={len(events)}, will try replay fallback",
+            flush=True,
         )
 
     elapsed = time.time() - t0
@@ -223,25 +231,28 @@ def run(
         try:
             replay_events = [(ev, d) for ev, d in replay(conv_id, max_seconds=timeout)]
         except CueAPIError as e:
-            sys.stderr.write(
+            print(
                 f"[cue-research] replay failed: {e}\n"
-                f"        → server may not have finished; wait a bit and run: "
-                f"cue_api.py replay {conv_id}\n"
+                f"[cue-research] → server may not have finished; wait a bit and run: "
+                f"cue_api.py replay {conv_id}",
+                flush=True,
             )
             return "", conv_id
         report = extract_reporter_content(replay_events)
         if report:
             print(f"[cue-research] ✓ recovered via replay: {len(report)} chars", flush=True)
             return report, conv_id
-        sys.stderr.write(
+        print(
             "[cue-research] replay also empty — server-side reporter likely "
             "failed (started but persisted no text). Check cuecue.cn web for "
-            "this conversation_id; re-run if it was a transient model failure.\n"
+            "this conversation_id; re-run if it was a transient model failure.",
+            flush=True,
         )
     elif diag["kind"] == "no_agent_events":
-        sys.stderr.write(
+        print(
             "[cue-research] no agent events — likely API auth / template_id "
-            "problem (not a long-stream issue). Check args + key.\n"
+            "problem (not a long-stream issue). Check args + key.",
+            flush=True,
         )
     return "", conv_id
 
