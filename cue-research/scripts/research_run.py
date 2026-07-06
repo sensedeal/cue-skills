@@ -34,6 +34,7 @@ Exit codes: 0 = report retrieved + saved; 1 = empty/failed (diagnosis printed).
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from pathlib import Path
@@ -54,6 +55,7 @@ from cue_api import (  # noqa: E402
     upload_material,
 )
 from sse_report import (  # noqa: E402
+    _agent_name,
     extract_reporter_content,
     diagnose_empty_report,
 )
@@ -65,6 +67,41 @@ from sse_report import (  # noqa: E402
 REPLAYABLE_EMPTY_KINDS = frozenset(
     {"stream_cut_before_reporter", "reporter_started_no_text"}
 )
+
+
+def _emit_progress(event: str, data: str) -> None:
+    """Print a flushed progress line for key SSE events.
+
+    Lets the agent (and user, if reading the backgrounded stdout) see research
+    steps as they happen: which agent phase is running (with its
+    task_requirement), each tool call, and report finalization. Other event
+    types (message / start_of_llm / tool_chunk / ...) are too noisy or are
+    report content, so skipped. Lines share the `[cue-research]` prefix and go
+    to stdout so the full stream (start → progress → RESULT) reads
+    top-to-bottom in one file.
+    """
+    if not data:
+        return
+    try:
+        payload = json.loads(data)
+    except json.JSONDecodeError:
+        return
+    if event == "start_of_agent":
+        ag = _agent_name(payload) or "?"
+        tr = payload.get("task_requirement")
+        if tr:
+            print(f"[cue-research] ▶ agent={ag} task={tr}", flush=True)
+        else:
+            print(f"[cue-research] ▶ agent={ag}", flush=True)
+    elif event == "tool_call":
+        name = payload.get("tool_name") or "?"
+        title = payload.get("tool_title") or ""
+        if title:
+            print(f"[cue-research] 🔧 {name} ({title})", flush=True)
+        else:
+            print(f"[cue-research] 🔧 {name}", flush=True)
+    elif event == "report_finalized":
+        print("[cue-research] ✓ report finalized", flush=True)
 
 
 def build_payload(
@@ -126,9 +163,14 @@ def run(
 
     t0 = time.time()
     events: list[tuple[str, str]] = []
+    started = False
     try:
         for event, data in chat_stream(payload, max_seconds=timeout):
+            if not started:
+                started = True
+                print(f"[cue-research] STARTED conv_id={conv_id}", flush=True)
             events.append((event, data))
+            _emit_progress(event, data)
             if time.time() - t0 > timeout:
                 sys.stderr.write("[cue-research] timeout watching SSE\n")
                 break

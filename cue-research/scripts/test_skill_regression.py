@@ -573,5 +573,71 @@ class TestReplayableEmptyKinds(unittest.TestCase):
         self.assertIn("diag[\"kind\"] in REPLAYABLE_EMPTY_KINDS", src)
 
 
+class TestEmitProgress(unittest.TestCase):
+    """_emit_progress prints flushed, human+machine-readable progress lines
+    for key SSE events so the agent (and user reading backgrounded stdout)
+    can see research steps: agent phase + task_requirement, tool calls,
+    report finalization. Other events are ignored (too noisy / report
+    content). Lets the agent confirm startup, check progress mid-run, and
+    see completion — fixing the fire-and-retrieve black-box."""
+
+    def _emit(self, event, payload):
+        import contextlib
+        import io
+        import json
+        import research_run
+        data = json.dumps(payload) if payload is not None else ""
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            research_run._emit_progress(event, data)
+        return buf.getvalue()
+
+    def test_start_of_agent_with_task_requirement(self):
+        out = self._emit("start_of_agent", {
+            "agent_name": "researcher",
+            "task_requirement": "扫描年报资产减值",
+        })
+        self.assertIn("▶ agent=researcher task=扫描年报资产减值", out)
+
+    def test_start_of_agent_without_task_requirement(self):
+        out = self._emit("start_of_agent", {"agent_name": "coordinator"})
+        self.assertIn("▶ agent=coordinator", out)
+        self.assertNotIn("task=", out)
+
+    def test_tool_call_with_title(self):
+        out = self._emit("tool_call", {
+            "tool_name": "scan_financial_report_evidence",
+            "tool_title": "财报章节语义检索",
+        })
+        self.assertIn("🔧 scan_financial_report_evidence (财报章节语义检索)", out)
+
+    def test_tool_call_without_title(self):
+        out = self._emit("tool_call", {"tool_name": "scan_x"})
+        self.assertIn("🔧 scan_x", out)
+        self.assertNotIn("(", out)
+
+    def test_report_finalized(self):
+        out = self._emit("report_finalized", {"agent_name": "reporter"})
+        self.assertIn("✓ report finalized", out)
+
+    def test_message_event_ignored(self):
+        # message events carry report content delta — too noisy, must skip.
+        out = self._emit("message", {"delta": {"content": "报告正文..."}})
+        self.assertEqual("", out)
+
+    def test_empty_data_ignored(self):
+        out = self._emit("message", None)
+        self.assertEqual("", out)
+
+    def test_malformed_json_ignored(self):
+        import contextlib
+        import io
+        import research_run
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            research_run._emit_progress("start_of_agent", "{not json")
+        self.assertEqual("", buf.getvalue())
+
+
 if __name__ == "__main__":
     sys.exit(0 if unittest.main(exit=False).result.wasSuccessful() else 1)

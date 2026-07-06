@@ -146,7 +146,11 @@ python3 <skill>/scripts/research_run.py \
 # 续跑(Stage 5 不满意补充澄清时复用上下文,省 credits):再加 --conversation-id <上次的 conv_id>
 ```
 
-起跑后**对用户说一句**:"已在后台开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。" 然后让出回合。
+**起跑后确认启动(不等结果,只等启动信号):** 后台 stdout 出现 `[cue-research] STARTED conv_id=…`(通常 2-5 秒内,第一个 SSE 事件到达=后端已接受)再让出回合。若出现 `[cue-research] chat_stream failed`(启动失败,参数/鉴权问题),立即按诊断处理,不对用户说"已开跑"。
+
+**让出前对用户说:** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。"
+
+**中途查进度(可选):** 让出回合后,若用户问"跑到哪了"或 agent 想确认进展,读后台 stdout 文件看进度行——`▶ agent=… task=…`(研究步骤,如 `agent=researcher task=扫描年报资产减值`)/ `🔧 tool=…`(工具调用)/ `✓ report finalized`(报告定稿)。整个进度流从起跑的 `STARTED` 到完成的 `RESULT` 都在 stdout 一个文件里,随时可读。
 
 **完成回叫后:** 读 stdout 末行 `[cue-research] RESULT ok conv_id=… chars=… output=…`(失败是 `RESULT empty …`),`ok` 则读 `--output` 文件 → Stage 5 交付;`empty` 则按文件里/stdout 的诊断给下一步(多半去 cuecue.cn 网页端看该 conversation)。
 
