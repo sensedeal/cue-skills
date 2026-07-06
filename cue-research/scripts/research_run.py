@@ -310,14 +310,15 @@ def main(argv: list[str] | None = None) -> int:
 
     # Mimic constraints (Phase 1 scope): one-shot, free-form only.
     if args.mimic_url and args.mimic_file:
-        sys.stderr.write("[cue-research] --mimic-url 与 --mimic-file 互斥,二选一\n")
+        print("[cue-research] --mimic-url 与 --mimic-file 互斥,二选一", flush=True)
         return 2
     if (args.mimic_url or args.mimic_file) and args.template_id:
         # Backend prioritizes template_id over mimic, so mimic would silently
         # no-op. Refuse rather than mislead. mimic = free-form styling only.
-        sys.stderr.write(
+        print(
             "[cue-research] 仿写仅用于自由式(不带 --template-id):"
-            "搭子已有 report_format,与仿写冲突\n"
+            "搭子已有 report_format,与仿写冲突",
+            flush=True,
         )
         return 2
 
@@ -334,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[cue-research] 上传仿写样本 {args.mimic_file} …", flush=True)
             file_hash = upload_file(args.mimic_file)
         except CueAPIError as e:
-            sys.stderr.write(f"[cue-research] 样本上传失败: {e}\n        → {e.user_hint()}\n")
+            print(f"[cue-research] 样本上传失败: {e}\n[cue-research] → {e.user_hint()}", flush=True)
             return 1
         except SystemExit:
             return 2
@@ -351,8 +352,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[cue-research] 上传素材 {mpath} …", flush=True)
                 fid = upload_material(mpath)
             except CueAPIError as e:
-                sys.stderr.write(
-                    f"[cue-research] 素材上传失败 ({mpath}): {e}\n        → {e.user_hint()}\n"
+                print(
+                    f"[cue-research] 素材上传失败 ({mpath}): {e}\n"
+                    f"[cue-research] → {e.user_hint()}",
+                    flush=True,
                 )
                 return 1
             except SystemExit:
