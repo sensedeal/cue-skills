@@ -3,7 +3,7 @@ name: cue-research
 description: "Use when the user asks a research question they want Cue to run — against a saved 搭子(buddy) template or as free-form deep research. Triggers: 帮我查/调研/研究 + 主体或话题; ask Cue about X; 用 Cue 跑一下 Y; 看看哪个搭子能查 X; 把刚才那次调研存成搭子. Public-data scope only — refuse for private-data scenarios (real AML / medical / internal accounting)."
 license: MIT
 metadata:
-  version: "0.3.0"
+  version: "0.3.3"
   requires:
     bins: ["python3"]
     envOptional: ["CUE_API_KEY", "CUE_API_BASE"]
@@ -146,7 +146,11 @@ python3 <skill>/scripts/research_run.py \
 # 续跑(Stage 5 不满意补充澄清时复用上下文,省 credits):再加 --conversation-id <上次的 conv_id>
 ```
 
-起跑后**对用户说一句**:"已在后台开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。" 然后让出回合。
+**起跑后确认启动(不等结果,只等启动信号):** 后台 stdout 出现 `[cue-research] STARTED conv_id=…`(通常 2-5 秒内,第一个 SSE 事件到达=后端已接受)再让出回合。若出现 `[cue-research] chat_stream failed`(启动失败,参数/鉴权问题),立即按诊断处理,不对用户说"已开跑"。
+
+**让出前对用户说:** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。"
+
+**中途查进度(可选):** 让出回合后,若用户问"跑到哪了"或 agent 想确认进展,读后台 stdout 文件看进度行——`▶ agent=… task=…`(研究步骤,如 `agent=researcher task=扫描年报资产减值`)/ `🔧 tool=…`(工具调用)/ `✓ report finalized`(报告定稿)。整个进度流从起跑的 `STARTED` 到完成的 `RESULT` 都在 stdout 一个文件里,随时可读。
 
 **完成回叫后:** 读 stdout 末行 `[cue-research] RESULT ok conv_id=… chars=… output=…`(失败是 `RESULT empty …`),`ok` 则读 `--output` 文件 → Stage 5 交付;`empty` 则按文件里/stdout 的诊断给下一步(多半去 cuecue.cn 网页端看该 conversation)。
 
@@ -166,7 +170,7 @@ python3 <skill>/scripts/research_run.py \
 python3 <skill>/scripts/research_run.py \
   --query "<rewrite_result['rewritten_mandate']>" \
   --output ~/cue-reports/$(date +%Y-%m-%d-%H%M)-<主体slug>.md
-# 不传 --template-id = 自由式深研。同样 run_in_background:true,完成回叫后读 --output。
+# 不传 --template-id = 自由式深研。同样 run_in_background:true(起跑后等 STARTED 信号确认启动 + 中途可读 stdout 查进度,见 Stage 4a),完成回叫后读 --output。
 ```
 
 **rewrite 仍由 agent 在前台先做、runner 不碰**(Hard Rule 3/4:不在 runner 里重写后端 rewrite 逻辑;且要先把 `user_confirmation` + `pii_masked` 给用户确认)。**为什么必须先 rewrite?** chat_stream 本身不调 rewrite_prompt(只有 /api/rewrite 端点会),跳过会丢隐私脱敏 + 公开信源约束 + 意图增强。runner 只负责「跑 + 取报告 + 落盘」。

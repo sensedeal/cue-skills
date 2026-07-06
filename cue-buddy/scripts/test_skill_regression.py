@@ -668,8 +668,23 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
 
     def test_detect_install_mode_copy_when_no_dotgit(self) -> None:
         import tempfile
+        from unittest.mock import patch
         from update_skill import detect_install_mode
-        with tempfile.TemporaryDirectory() as tmp:
+        # TMPDIR may itself sit inside a git worktree (e.g. /fast/tmp has a
+        # stray .git, or a dev sets TMPDIR into a project dir). Since
+        # detect_install_mode walks ancestors looking for .git, a stray
+        # ancestor .git would make this return "git" and break the
+        # "no .git anywhere → copy" assertion. Force .git ancestor checks
+        # to miss so the test is robust regardless of where TMPDIR lives.
+        real_exists = Path.exists
+
+        def fake_exists(self):
+            if self.name == ".git":
+                return False
+            return real_exists(self)
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(Path, "exists", fake_exists):
             skill_dir = Path(tmp) / "cue-buddy"
             skill_dir.mkdir()
             mode, root = detect_install_mode(skill_dir)
@@ -857,6 +872,81 @@ class Case15_UpgradeGitBranchGuard(unittest.TestCase):
                 check=True,
             )
             self.assertEqual(git_current_branch(tmp_p), "feature/x")
+
+
+class Case16_NormalizeTemplateId(unittest.TestCase):
+    """A bare `<id>` (prefix dropped while copying from chat/notes) must
+    still resolve — both humans and agents hit the backend 404 "模板不存
+    在" this way. normalize_template_id is called at every template_id
+    entry point in cue_api (get/update/frequent/recommended-task) so
+    callers never need to pre-normalize. PR#29 only covered research_run's
+    CLI; this codifies the cue_api layer coverage."""
+
+    def _fn(self):
+        from cue_api import normalize_template_id
+        return normalize_template_id
+
+    def test_bare_suffix_gets_prefixed(self):
+        self.assertEqual(self._fn()("8qNgr5"), "template_8qNgr5")
+
+    def test_already_prefixed_is_untouched(self):
+        self.assertEqual(self._fn()("template_8qNgr5"), "template_8qNgr5")
+
+    def test_none_passes_through(self):
+        self.assertIsNone(self._fn()(None))
+
+    def test_double_underscore_id_not_mangled(self):
+        # `template__xWp8N` = prefix `template_` + suffix `_xWp8N` (double
+        # underscore) — already starts with template_, must stay as-is.
+        self.assertEqual(self._fn()("template__xWp8N"), "template__xWp8N")
+
+    def test_bare_double_underscore_suffix_gets_one_prefix(self):
+        # Bare `_xWp8N` → `template__xWp8N` (correct: one prefix prepended).
+        self.assertEqual(self._fn()("_xWp8N"), "template__xWp8N")
+
+    def test_long_slug_bare_form_gets_prefixed(self):
+        self.assertEqual(
+            self._fn()("corporate_credit_pre_due_diligence"),
+            "template_corporate_credit_pre_due_diligence",
+        )
+
+    def test_get_template_normalizes_bare_id_in_url(self):
+        from unittest.mock import patch
+        import cue_api
+        with patch.object(cue_api, "_request", return_value={}) as m:
+            cue_api.get_template("8qNgr5")
+        m.assert_called_once_with("GET", "/templates/template_8qNgr5")
+
+    def test_update_template_normalizes_bare_id_in_url(self):
+        from unittest.mock import patch
+        import cue_api
+        with patch.object(cue_api, "_request", return_value={"data": {}}) as m:
+            cue_api.update_template("fnig0i", {"title": "x"})
+        self.assertEqual(m.call_args.args[0], "PUT")
+        self.assertEqual(m.call_args.args[1], "/templates/template_fnig0i")
+
+    def test_set_template_frequent_normalizes_bare_id_in_body(self):
+        from unittest.mock import patch
+        import cue_api
+        # frequent endpoint URL has no id; the canonical id rides in body.
+        with patch.object(cue_api, "_request", return_value={"data": {}}) as m:
+            cue_api.set_template_frequent("Pz0sT5", True)
+        self.assertEqual(m.call_args.args[1], "/templates/frequent")
+        self.assertEqual(
+            m.call_args.kwargs["body"]["template_id"], "template_Pz0sT5"
+        )
+
+    def test_update_recommended_task_normalizes_bare_id_in_url(self):
+        from unittest.mock import patch
+        import cue_api
+        with patch.object(cue_api, "_request", return_value={"data": {}}) as m:
+            cue_api.update_template_recommended_task(
+                "7qiAwz", schedules=[{"type": "daily", "time": "09:00"}]
+            )
+        self.assertEqual(
+            m.call_args.args[1],
+            "/templates/template_7qiAwz/recommended-task",
+        )
 
 
 if __name__ == "__main__":

@@ -242,8 +242,26 @@ def get_templates(mode: str = "is_me", include_system: bool = False) -> list[dic
     return []
 
 
+def normalize_template_id(template_id: str | None) -> str | None:
+    """Cue playbook ids are `template_<id>` (see /api/playbook buddies[].template_id).
+
+    Both humans and agents routinely copy just the bare `<id>` suffix from chat
+    or notes and the backend then 404s "模板不存在". Prepend the prefix when
+    missing so a bare suffix still resolves. Called at every template_id entry
+    point below (get/update/frequent/recommended-task) so callers never need to
+    pre-normalize. Conservative: only ever prepends — never strips — so an
+    already-correct id (incl. `template__xWp8N` double-underscore,
+    `template_-GxhWk` leading-dash, `template_corporate_credit_pre_due_diligence`
+    long-slug) is untouched. None passes through (free-form run).
+    """
+    if template_id and not template_id.startswith("template_"):
+        return "template_" + template_id
+    return template_id
+
+
 def get_template(template_id: str) -> dict:
     """Fetch one full template."""
+    template_id = normalize_template_id(template_id)
     data = _request("GET", f"/templates/{template_id}")
     if isinstance(data, dict) and "data" in data and isinstance(data["data"], dict):
         return data["data"]
@@ -460,6 +478,7 @@ def update_template(template_id: str, payload: dict) -> dict:
         CueAPIError: 400 if caller sends ONLY task_input/schedules
             without a regular template field (backend contract).
     """
+    template_id = normalize_template_id(template_id)
     body = _normalize_template_payload(payload)
     # PUT contract sanity: backend (template.py:598-599) rejects 400 if
     # caller didn't include any regular template field. Surface this
@@ -507,6 +526,7 @@ def update_template_recommended_task(
         task_input: directly-executable subject (R9 client-side checked).
             None=omit field (server keeps existing value).
     """
+    template_id = normalize_template_id(template_id)
     if not isinstance(schedules, list) or len(schedules) < 1:
         raise ValueError(
             "update_template_recommended_task requires schedules with ≥1 item; "
@@ -629,6 +649,7 @@ def set_template_frequent(template_id: str, is_frequent: bool = True) -> dict:
     cross-user publishing primitive at the API level; "frequent" simply
     means "pin this to my own workbench 常用 area for quick access."
     """
+    template_id = normalize_template_id(template_id)
     body = {"template_id": template_id, "is_frequent": is_frequent}
     data = _request("POST", "/templates/frequent", body=body)
     if isinstance(data, dict) and isinstance(data.get("data"), dict):

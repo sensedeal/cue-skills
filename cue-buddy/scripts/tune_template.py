@@ -41,6 +41,7 @@ from cue_api import (  # noqa: E402
     generate_template,
     get_template,
     load_config,
+    normalize_template_id,
     update_template,
 )
 from validate_template import validate  # noqa: E402
@@ -301,7 +302,8 @@ def render_diff(field: str, old: str, new: str) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("template_id")
+    p.add_argument("template_id", type=normalize_template_id,
+                   help="搭子模板 id (裸 <id> 自动补 template_ 前缀)")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--issues", help="path to issues.txt (one bullet per line)")
     g.add_argument("--message", help="single-line issue description")

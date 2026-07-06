@@ -186,6 +186,24 @@ class TestSkillMd(unittest.TestCase):
             "SKILL.md must forbid client-side rewrite reimplementation",
         )
 
+    def test_version_matches_root_readme(self):
+        """cue-research SKILL.md version must match the version advertised in
+        the root README.md Skills table — these have drifted before (SKILL.md
+        stuck at 0.3.0 while README reached 0.3.2)."""
+        m = re.search(r'^\s*version:\s*"([^"]+)"', self.md, re.M)
+        self.assertIsNotNone(m, "SKILL.md missing frontmatter version")
+        skill_ver = m.group(1)
+        readme_path = _REPO_ROOT / "README.md"
+        if not readme_path.exists():
+            self.skipTest("root README.md absent (standalone sibling-skills layout)")
+        readme = readme_path.read_text(encoding="utf-8")
+        row = re.search(r'cue-research.*?\| v(\d+\.\d+\.\d+) \|', readme)
+        self.assertIsNotNone(row, "root README.md missing cue-research version row")
+        self.assertEqual(
+            skill_ver, row.group(1),
+            f"version drift: SKILL.md={skill_ver} vs README.md=v{row.group(1)}",
+        )
+
 
 class TestSharedScriptImports(unittest.TestCase):
     def test_cue_api_search_templates_exists(self):
@@ -571,6 +589,109 @@ class TestReplayableEmptyKinds(unittest.TestCase):
         # Guard against regressing to a hard-coded single-kind check.
         src = (_HERE / "research_run.py").read_text(encoding="utf-8")
         self.assertIn("diag[\"kind\"] in REPLAYABLE_EMPTY_KINDS", src)
+
+
+class TestEmitProgress(unittest.TestCase):
+    """_emit_progress prints flushed, human+machine-readable progress lines
+    for key SSE events so the agent (and user reading backgrounded stdout)
+    can see research steps: agent phase + task_requirement, tool calls,
+    report finalization. Other events are ignored (too noisy / report
+    content). Lets the agent confirm startup, check progress mid-run, and
+    see completion — fixing the fire-and-retrieve black-box."""
+
+    def _emit(self, event, payload):
+        import contextlib
+        import io
+        import json
+        import research_run
+        data = json.dumps(payload) if payload is not None else ""
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            research_run._emit_progress(event, data)
+        return buf.getvalue()
+
+    def test_start_of_agent_with_task_requirement(self):
+        out = self._emit("start_of_agent", {
+            "agent_name": "researcher",
+            "task_requirement": "扫描年报资产减值",
+        })
+        self.assertIn("▶ agent=researcher task=扫描年报资产减值", out)
+
+    def test_start_of_agent_without_task_requirement(self):
+        out = self._emit("start_of_agent", {"agent_name": "coordinator"})
+        self.assertIn("▶ agent=coordinator", out)
+        self.assertNotIn("task=", out)
+
+    def test_tool_call_with_title(self):
+        out = self._emit("tool_call", {
+            "tool_name": "scan_financial_report_evidence",
+            "tool_title": "财报章节语义检索",
+        })
+        self.assertIn("🔧 tool=scan_financial_report_evidence (财报章节语义检索)", out)
+
+    def test_tool_call_without_title(self):
+        out = self._emit("tool_call", {"tool_name": "scan_x"})
+        self.assertIn("🔧 tool=scan_x", out)
+        self.assertNotIn("(", out)
+
+    def test_report_finalized(self):
+        out = self._emit("report_finalized", {"agent_name": "reporter"})
+        self.assertIn("✓ report finalized", out)
+
+    def test_message_event_ignored(self):
+        # message events carry report content delta — too noisy, must skip.
+        out = self._emit("message", {"delta": {"content": "报告正文..."}})
+        self.assertEqual("", out)
+
+    def test_empty_data_ignored(self):
+        out = self._emit("message", None)
+        self.assertEqual("", out)
+
+    def test_malformed_json_ignored(self):
+        import contextlib
+        import io
+        import research_run
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            research_run._emit_progress("start_of_agent", "{not json")
+        self.assertEqual("", buf.getvalue())
+
+    def test_non_dict_json_ignored(self):
+        # valid JSON but not a dict (null/list/string) — must not AttributeError
+        import contextlib
+        import io
+        import research_run
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            research_run._emit_progress("tool_call", "[1, 2, 3]")
+            research_run._emit_progress("start_of_agent", '"a string"')
+            research_run._emit_progress("tool_call", "null")
+        self.assertEqual("", buf.getvalue())
+
+    def test_tool_call_nested_live_shape(self):
+        # live chat_stream wraps payload in {"data": {...}}; replay is flat.
+        # _emit_progress must handle both (via _event_data) — flat-only access
+        # degrades to 🔧 tool=? on live streams, exactly where the feature matters.
+        out = self._emit("tool_call", {"data": {
+            "tool_name": "scan_financial_report_evidence",
+            "tool_title": "财报章节语义检索",
+        }})
+        self.assertIn("🔧 tool=scan_financial_report_evidence (财报章节语义检索)", out)
+
+    def test_start_of_agent_nested_live_shape(self):
+        out = self._emit("start_of_agent", {"data": {
+            "agent_name": "researcher",
+            "task_requirement": "扫描年报资产减值",
+        }})
+        self.assertIn("▶ agent=researcher task=扫描年报资产减值", out)
+
+    def test_nested_data_non_dict_no_crash(self):
+        # payload is a dict but payload["data"] is a truthy non-dict (str) —
+        # _agent_name used to do (payload.get("data") or {}).get(...) which
+        # raised AttributeError on the str, killing run() mid-stream. The
+        # isinstance(nested, dict) guard in _agent_name prevents this.
+        out = self._emit("start_of_agent", {"data": "oops"})
+        self.assertIn("▶ agent=?", out)  # degraded, not crashed
 
 
 if __name__ == "__main__":

@@ -47,6 +47,7 @@ from cue_api import (  # noqa: E402
     chat_stream,
     get_template,
     load_config,
+    normalize_template_id,
     replay,
 )
 from validate_template import (  # noqa: E402
@@ -363,7 +364,8 @@ def _render_run_md(
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("template_id")
+    p.add_argument("template_id", type=normalize_template_id,
+                   help="搭子模板 id (裸 <id> 自动补 template_ 前缀)")
     p.add_argument("entity", help="测试主体（如 万科 / 宁德时代）")
     p.add_argument(
         "--save",
@@ -391,6 +393,8 @@ def main(argv: list[str] | None = None) -> int:
         help="SSE 流总超时秒（默认 3600=60min，对齐服务端任务硬超时；单次深研通常 3-15min，超时后走 DB 回放兜底）",
     )
     args = p.parse_args(argv)
+    # type=normalize_template_id covers build_chat_payload, which puts the id
+    # straight into the chat payload bypassing the cue_api function layer.
 
     try:
         load_config()

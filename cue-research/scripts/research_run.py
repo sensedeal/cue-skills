@@ -34,6 +34,7 @@ Exit codes: 0 = report retrieved + saved; 1 = empty/failed (diagnosis printed).
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from pathlib import Path
@@ -52,7 +53,16 @@ from cue_api import (  # noqa: E402
     upload_file,
     upload_material,
 )
+try:  # noqa: E402 — cue-buddy v0.2.1+ exposes this; fall back for older siblings
+    from cue_api import normalize_template_id
+except ImportError:
+    def normalize_template_id(template_id: str | None) -> str | None:
+        if template_id and not template_id.startswith("template_"):
+            return "template_" + template_id
+        return template_id
 from sse_report import (  # noqa: E402
+    _agent_name,
+    _event_data,
     extract_reporter_content,
     diagnose_empty_report,
 )
@@ -65,19 +75,50 @@ REPLAYABLE_EMPTY_KINDS = frozenset(
     {"stream_cut_before_reporter", "reporter_started_no_text"}
 )
 
+# Events _emit_progress renders a line for. Gate before json.loads so the
+# thousands of message/tool_chunk/start_of_llm deltas per run are skipped
+# without parsing.
+_PROGRESS_EVENTS = frozenset({"start_of_agent", "tool_call", "report_finalized"})
 
-def normalize_template_id(template_id: str | None) -> str | None:
-    """Cue playbook ids are `template_<id>` (see /api/playbook buddies[].template_id).
 
-    Both humans and agents routinely copy just the bare `<id>` suffix from chat
-    or notes and the backend then 404s "模板不存在". Prepend the prefix when it's
-    missing so a bare suffix still resolves. Conservative: only ever prepends —
-    never strips — so an already-correct id is untouched. None (free-form run)
-    passes through.
+def _emit_progress(event: str, data: str) -> None:
+    """Print a flushed progress line for key SSE events.
+
+    Lets the agent (and user, if reading the backgrounded stdout) see research
+    steps as they happen: which agent phase is running (with its
+    task_requirement), each tool call, and report finalization. Other event
+    types (message / start_of_llm / tool_chunk / ...) are too noisy or are
+    report content, so skipped. Lines share the `[cue-research]` prefix and go
+    to stdout so the full stream (start → progress → RESULT) reads
+    top-to-bottom in one file.
     """
-    if template_id and not template_id.startswith("template_"):
-        return "template_" + template_id
-    return template_id
+    if event not in _PROGRESS_EVENTS:
+        return
+    if not data:
+        return
+    try:
+        payload = json.loads(data)
+    except json.JSONDecodeError:
+        return
+    if not isinstance(payload, dict):
+        return
+    ed = _event_data(payload)
+    if event == "start_of_agent":
+        ag = _agent_name(payload) or "?"
+        tr = ed.get("task_requirement")
+        if tr:
+            print(f"[cue-research] ▶ agent={ag} task={tr}", flush=True)
+        else:
+            print(f"[cue-research] ▶ agent={ag}", flush=True)
+    elif event == "tool_call":
+        name = ed.get("tool_name") or "?"
+        title = ed.get("tool_title") or ""
+        if title:
+            print(f"[cue-research] 🔧 tool={name} ({title})", flush=True)
+        else:
+            print(f"[cue-research] 🔧 tool={name}", flush=True)
+    elif event == "report_finalized":
+        print("[cue-research] ✓ report finalized", flush=True)
 
 
 def build_payload(
@@ -139,23 +180,31 @@ def run(
 
     t0 = time.time()
     events: list[tuple[str, str]] = []
+    started = False
     try:
         for event, data in chat_stream(payload, max_seconds=timeout):
+            if not started:
+                started = True
+                print(f"[cue-research] STARTED conv_id={conv_id}", flush=True)
             events.append((event, data))
+            _emit_progress(event, data)
             if time.time() - t0 > timeout:
-                sys.stderr.write("[cue-research] timeout watching SSE\n")
+                print("[cue-research] timeout watching SSE", flush=True)
                 break
     except CueAPIError as e:
         # 4xx/5xx (auth / template_id) — replay can't save these.
-        sys.stderr.write(f"[cue-research] chat_stream failed: {e}\n")
-        sys.stderr.write(f"        → {e.user_hint()}\n")
+        # Print to stdout so the agent's stdout-only capture sees the failure
+        # (SKILL.md tells it to watch stdout for chat_stream failed).
+        print(f"[cue-research] chat_stream failed: {e}", flush=True)
+        print(f"[cue-research] → {e.user_hint()}", flush=True)
         return "", conv_id
     except (OSError, ValueError) as e:
         # Network blip / SSE parse error: keep the partial events and let the
         # diagnose+replay path below still try to recover.
-        sys.stderr.write(
+        print(
             f"[cue-research] stream raised {type(e).__name__}: {e}; "
-            f"events so far={len(events)}, will try replay fallback\n"
+            f"events so far={len(events)}, will try replay fallback",
+            flush=True,
         )
 
     elapsed = time.time() - t0
@@ -182,30 +231,41 @@ def run(
         try:
             replay_events = [(ev, d) for ev, d in replay(conv_id, max_seconds=timeout)]
         except CueAPIError as e:
-            sys.stderr.write(
+            print(
                 f"[cue-research] replay failed: {e}\n"
-                f"        → server may not have finished; wait a bit and run: "
-                f"cue_api.py replay {conv_id}\n"
+                f"[cue-research] → server may not have finished; wait a bit and run: "
+                f"cue_api.py replay {conv_id}",
+                flush=True,
             )
             return "", conv_id
         report = extract_reporter_content(replay_events)
         if report:
             print(f"[cue-research] ✓ recovered via replay: {len(report)} chars", flush=True)
             return report, conv_id
-        sys.stderr.write(
+        print(
             "[cue-research] replay also empty — server-side reporter likely "
             "failed (started but persisted no text). Check cuecue.cn web for "
-            "this conversation_id; re-run if it was a transient model failure.\n"
+            "this conversation_id; re-run if it was a transient model failure.",
+            flush=True,
         )
     elif diag["kind"] == "no_agent_events":
-        sys.stderr.write(
+        print(
             "[cue-research] no agent events — likely API auth / template_id "
-            "problem (not a long-stream issue). Check args + key.\n"
+            "problem (not a long-stream issue). Check args + key.",
+            flush=True,
         )
     return "", conv_id
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Tolerate legacy-encoding stdout (e.g. Windows consoles) so the emoji
+    # progress markers (▶/🔧/✓) don't UnicodeEncodeError — which would be
+    # caught as ValueError and misdiagnosed as a network blip.
+    try:
+        sys.stdout.reconfigure(errors="replace")
+        sys.stderr.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--query", required=True, help="问题原文,或自由式已 rewrite 的 mandate")
     p.add_argument("--template-id", default=None, help="搭子模板 id;留空=自由式深研")
@@ -250,14 +310,15 @@ def main(argv: list[str] | None = None) -> int:
 
     # Mimic constraints (Phase 1 scope): one-shot, free-form only.
     if args.mimic_url and args.mimic_file:
-        sys.stderr.write("[cue-research] --mimic-url 与 --mimic-file 互斥,二选一\n")
+        print("[cue-research] --mimic-url 与 --mimic-file 互斥,二选一", flush=True)
         return 2
     if (args.mimic_url or args.mimic_file) and args.template_id:
         # Backend prioritizes template_id over mimic, so mimic would silently
         # no-op. Refuse rather than mislead. mimic = free-form styling only.
-        sys.stderr.write(
+        print(
             "[cue-research] 仿写仅用于自由式(不带 --template-id):"
-            "搭子已有 report_format,与仿写冲突\n"
+            "搭子已有 report_format,与仿写冲突",
+            flush=True,
         )
         return 2
 
@@ -274,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[cue-research] 上传仿写样本 {args.mimic_file} …", flush=True)
             file_hash = upload_file(args.mimic_file)
         except CueAPIError as e:
-            sys.stderr.write(f"[cue-research] 样本上传失败: {e}\n        → {e.user_hint()}\n")
+            print(f"[cue-research] 样本上传失败: {e}\n[cue-research] → {e.user_hint()}", flush=True)
             return 1
         except SystemExit:
             return 2
@@ -291,8 +352,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[cue-research] 上传素材 {mpath} …", flush=True)
                 fid = upload_material(mpath)
             except CueAPIError as e:
-                sys.stderr.write(
-                    f"[cue-research] 素材上传失败 ({mpath}): {e}\n        → {e.user_hint()}\n"
+                print(
+                    f"[cue-research] 素材上传失败 ({mpath}): {e}\n"
+                    f"[cue-research] → {e.user_hint()}",
+                    flush=True,
                 )
                 return 1
             except SystemExit:
