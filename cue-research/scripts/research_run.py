@@ -49,13 +49,20 @@ from cue_api import (  # noqa: E402
     CueAPIError,
     chat_stream,
     load_config,
-    normalize_template_id,
     replay,
     upload_file,
     upload_material,
 )
+try:  # noqa: E402 — cue-buddy v0.2.1+ exposes this; fall back for older siblings
+    from cue_api import normalize_template_id
+except ImportError:
+    def normalize_template_id(template_id: str | None) -> str | None:
+        if template_id and not template_id.startswith("template_"):
+            return "template_" + template_id
+        return template_id
 from sse_report import (  # noqa: E402
     _agent_name,
+    _event_data,
     extract_reporter_content,
     diagnose_empty_report,
 )
@@ -86,20 +93,23 @@ def _emit_progress(event: str, data: str) -> None:
         payload = json.loads(data)
     except json.JSONDecodeError:
         return
+    if not isinstance(payload, dict):
+        return
+    ed = _event_data(payload)
     if event == "start_of_agent":
         ag = _agent_name(payload) or "?"
-        tr = payload.get("task_requirement")
+        tr = ed.get("task_requirement")
         if tr:
             print(f"[cue-research] ▶ agent={ag} task={tr}", flush=True)
         else:
             print(f"[cue-research] ▶ agent={ag}", flush=True)
     elif event == "tool_call":
-        name = payload.get("tool_name") or "?"
-        title = payload.get("tool_title") or ""
+        name = ed.get("tool_name") or "?"
+        title = ed.get("tool_title") or ""
         if title:
-            print(f"[cue-research] 🔧 {name} ({title})", flush=True)
+            print(f"[cue-research] 🔧 tool={name} ({title})", flush=True)
         else:
-            print(f"[cue-research] 🔧 {name}", flush=True)
+            print(f"[cue-research] 🔧 tool={name}", flush=True)
     elif event == "report_finalized":
         print("[cue-research] ✓ report finalized", flush=True)
 
@@ -176,8 +186,10 @@ def run(
                 break
     except CueAPIError as e:
         # 4xx/5xx (auth / template_id) — replay can't save these.
-        sys.stderr.write(f"[cue-research] chat_stream failed: {e}\n")
-        sys.stderr.write(f"        → {e.user_hint()}\n")
+        # Print to stdout so the agent's stdout-only capture sees the failure
+        # (SKILL.md tells it to watch stdout for chat_stream failed).
+        print(f"[cue-research] chat_stream failed: {e}", flush=True)
+        print(f"[cue-research] → {e.user_hint()}", flush=True)
         return "", conv_id
     except (OSError, ValueError) as e:
         # Network blip / SSE parse error: keep the partial events and let the
@@ -235,6 +247,14 @@ def run(
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Tolerate legacy-encoding stdout (e.g. Windows consoles) so the emoji
+    # progress markers (▶/🔧/✓) don't UnicodeEncodeError — which would be
+    # caught as ValueError and misdiagnosed as a network blip.
+    try:
+        sys.stdout.reconfigure(errors="replace")
+        sys.stderr.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--query", required=True, help="问题原文,或自由式已 rewrite 的 mandate")
     p.add_argument("--template-id", default=None, help="搭子模板 id;留空=自由式深研")

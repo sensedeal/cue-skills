@@ -193,7 +193,10 @@ class TestSkillMd(unittest.TestCase):
         m = re.search(r'^\s*version:\s*"([^"]+)"', self.md, re.M)
         self.assertIsNotNone(m, "SKILL.md missing frontmatter version")
         skill_ver = m.group(1)
-        readme = (_REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        readme_path = _REPO_ROOT / "README.md"
+        if not readme_path.exists():
+            self.skipTest("root README.md absent (standalone sibling-skills layout)")
+        readme = readme_path.read_text(encoding="utf-8")
         row = re.search(r'cue-research.*?\| v(\d+\.\d+\.\d+) \|', readme)
         self.assertIsNotNone(row, "root README.md missing cue-research version row")
         self.assertEqual(
@@ -624,11 +627,11 @@ class TestEmitProgress(unittest.TestCase):
             "tool_name": "scan_financial_report_evidence",
             "tool_title": "财报章节语义检索",
         })
-        self.assertIn("🔧 scan_financial_report_evidence (财报章节语义检索)", out)
+        self.assertIn("🔧 tool=scan_financial_report_evidence (财报章节语义检索)", out)
 
     def test_tool_call_without_title(self):
         out = self._emit("tool_call", {"tool_name": "scan_x"})
-        self.assertIn("🔧 scan_x", out)
+        self.assertIn("🔧 tool=scan_x", out)
         self.assertNotIn("(", out)
 
     def test_report_finalized(self):
@@ -652,6 +655,35 @@ class TestEmitProgress(unittest.TestCase):
         with contextlib.redirect_stdout(buf):
             research_run._emit_progress("start_of_agent", "{not json")
         self.assertEqual("", buf.getvalue())
+
+    def test_non_dict_json_ignored(self):
+        # valid JSON but not a dict (null/list/string) — must not AttributeError
+        import contextlib
+        import io
+        import research_run
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            research_run._emit_progress("tool_call", "[1, 2, 3]")
+            research_run._emit_progress("start_of_agent", '"a string"')
+            research_run._emit_progress("tool_call", "null")
+        self.assertEqual("", buf.getvalue())
+
+    def test_tool_call_nested_live_shape(self):
+        # live chat_stream wraps payload in {"data": {...}}; replay is flat.
+        # _emit_progress must handle both (via _event_data) — flat-only access
+        # degrades to 🔧 tool=? on live streams, exactly where the feature matters.
+        out = self._emit("tool_call", {"data": {
+            "tool_name": "scan_financial_report_evidence",
+            "tool_title": "财报章节语义检索",
+        }})
+        self.assertIn("🔧 tool=scan_financial_report_evidence (财报章节语义检索)", out)
+
+    def test_start_of_agent_nested_live_shape(self):
+        out = self._emit("start_of_agent", {"data": {
+            "agent_name": "researcher",
+            "task_requirement": "扫描年报资产减值",
+        }})
+        self.assertIn("▶ agent=researcher task=扫描年报资产减值", out)
 
 
 if __name__ == "__main__":

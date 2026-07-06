@@ -302,7 +302,8 @@ def render_diff(field: str, old: str, new: str) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("template_id")
+    p.add_argument("template_id", type=normalize_template_id,
+                   help="搭子模板 id (裸 <id> 自动补 template_ 前缀)")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--issues", help="path to issues.txt (one bullet per line)")
     g.add_argument("--message", help="single-line issue description")
@@ -316,10 +317,6 @@ def main(argv: list[str] | None = None) -> int:
         "中文数字章节、章节编号不连续、`可提供:` 段缺失等机械格式问题）",
     )
     args = p.parse_args(argv)
-    # Tolerate a bare `<id>` (prepend `template_` prefix); see
-    # cue_api.normalize_template_id — also keeps the `cue_api.py update
-    # <id>` hint strings below showing the canonical form.
-    args.template_id = normalize_template_id(args.template_id)
 
     try:
         load_config()
