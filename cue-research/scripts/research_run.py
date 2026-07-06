@@ -48,6 +48,7 @@ from cue_api import (  # noqa: E402
     CueAPIError,
     chat_stream,
     load_config,
+    normalize_template_id,
     replay,
     upload_file,
     upload_material,
@@ -64,20 +65,6 @@ from sse_report import (  # noqa: E402
 REPLAYABLE_EMPTY_KINDS = frozenset(
     {"stream_cut_before_reporter", "reporter_started_no_text"}
 )
-
-
-def normalize_template_id(template_id: str | None) -> str | None:
-    """Cue playbook ids are `template_<id>` (see /api/playbook buddies[].template_id).
-
-    Both humans and agents routinely copy just the bare `<id>` suffix from chat
-    or notes and the backend then 404s "模板不存在". Prepend the prefix when it's
-    missing so a bare suffix still resolves. Conservative: only ever prepends —
-    never strips — so an already-correct id is untouched. None (free-form run)
-    passes through.
-    """
-    if template_id and not template_id.startswith("template_"):
-        return "template_" + template_id
-    return template_id
 
 
 def build_payload(
