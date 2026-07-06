@@ -186,6 +186,21 @@ class TestSkillMd(unittest.TestCase):
             "SKILL.md must forbid client-side rewrite reimplementation",
         )
 
+    def test_version_matches_root_readme(self):
+        """cue-research SKILL.md version must match the version advertised in
+        the root README.md Skills table — these have drifted before (SKILL.md
+        stuck at 0.3.0 while README reached 0.3.2)."""
+        m = re.search(r'^\s*version:\s*"([^"]+)"', self.md, re.M)
+        self.assertIsNotNone(m, "SKILL.md missing frontmatter version")
+        skill_ver = m.group(1)
+        readme = (_REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        row = re.search(r'cue-research.*?\| v(\d+\.\d+\.\d+) \|', readme)
+        self.assertIsNotNone(row, "root README.md missing cue-research version row")
+        self.assertEqual(
+            skill_ver, row.group(1),
+            f"version drift: SKILL.md={skill_ver} vs README.md=v{row.group(1)}",
+        )
+
 
 class TestSharedScriptImports(unittest.TestCase):
     def test_cue_api_search_templates_exists(self):

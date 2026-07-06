@@ -14,7 +14,7 @@ cue-research ships **one thin runtime script** — `scripts/research_run.py` (fi
 
 **仿写 / mimic** (free-form only): `--mimic-url <URL>` or `--mimic-file <path>` makes a free-form report imitate the **writing style/structure** of a reference page or sample document (the file is uploaded to get a `file_hash`; the backend parses it to text). One-shot by design (`need_confirm=False`) so it doesn't break background execution; mimic copies style, not conclusions. Mutually exclusive with a buddy `--template-id`.
 
-Status: v0.3.0 — see `SKILL.md`.
+Status: v0.3.3 — see `SKILL.md`.
 
 ## License
 

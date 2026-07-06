@@ -3,7 +3,7 @@ name: cue-research
 description: "Use when the user asks a research question they want Cue to run — against a saved 搭子(buddy) template or as free-form deep research. Triggers: 帮我查/调研/研究 + 主体或话题; ask Cue about X; 用 Cue 跑一下 Y; 看看哪个搭子能查 X; 把刚才那次调研存成搭子. Public-data scope only — refuse for private-data scenarios (real AML / medical / internal accounting)."
 license: MIT
 metadata:
-  version: "0.3.0"
+  version: "0.3.3"
   requires:
     bins: ["python3"]
     envOptional: ["CUE_API_KEY", "CUE_API_BASE"]
@@ -170,7 +170,7 @@ python3 <skill>/scripts/research_run.py \
 python3 <skill>/scripts/research_run.py \
   --query "<rewrite_result['rewritten_mandate']>" \
   --output ~/cue-reports/$(date +%Y-%m-%d-%H%M)-<主体slug>.md
-# 不传 --template-id = 自由式深研。同样 run_in_background:true,完成回叫后读 --output。
+# 不传 --template-id = 自由式深研。同样 run_in_background:true(起跑后等 STARTED 信号确认启动 + 中途可读 stdout 查进度,见 Stage 4a),完成回叫后读 --output。
 ```
 
 **rewrite 仍由 agent 在前台先做、runner 不碰**(Hard Rule 3/4:不在 runner 里重写后端 rewrite 逻辑;且要先把 `user_confirmation` + `pii_masked` 给用户确认)。**为什么必须先 rewrite?** chat_stream 本身不调 rewrite_prompt(只有 /api/rewrite 端点会),跳过会丢隐私脱敏 + 公开信源约束 + 意图增强。runner 只负责「跑 + 取报告 + 落盘」。
