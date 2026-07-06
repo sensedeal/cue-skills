@@ -668,8 +668,23 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
 
     def test_detect_install_mode_copy_when_no_dotgit(self) -> None:
         import tempfile
+        from unittest.mock import patch
         from update_skill import detect_install_mode
-        with tempfile.TemporaryDirectory() as tmp:
+        # TMPDIR may itself sit inside a git worktree (e.g. /fast/tmp has a
+        # stray .git, or a dev sets TMPDIR into a project dir). Since
+        # detect_install_mode walks ancestors looking for .git, a stray
+        # ancestor .git would make this return "git" and break the
+        # "no .git anywhere → copy" assertion. Force .git ancestor checks
+        # to miss so the test is robust regardless of where TMPDIR lives.
+        real_exists = Path.exists
+
+        def fake_exists(self):
+            if self.name == ".git":
+                return False
+            return real_exists(self)
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(Path, "exists", fake_exists):
             skill_dir = Path(tmp) / "cue-buddy"
             skill_dir.mkdir()
             mode, root = detect_install_mode(skill_dir)
