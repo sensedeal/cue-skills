@@ -949,6 +949,45 @@ class Case16_NormalizeTemplateId(unittest.TestCase):
         )
 
 
+class Case17_ValidateTemplateId(unittest.TestCase):
+    """validate_template_id catches a pure-digit suffix (e.g. `142` →
+    `template_142`) — the agent grabbed the buddy's numeric DB `id` or a list
+    index, not the template_id string. Cue suffixes are base62 (verified
+    0/159 buddies have a pure-digit suffix), so this is a guaranteed 404;
+    fail fast instead of burning credits. normalize prepends the prefix,
+    validate checks the suffix."""
+
+    def _fn(self):
+        from cue_api import validate_template_id
+        return validate_template_id
+
+    def test_pure_digit_suffix_rejected(self):
+        # `142` → normalize → `template_142` → validate rejects.
+        self.assertIsNotNone(self._fn()("template_142"))
+
+    def test_bare_pure_digit_rejected(self):
+        # bare `142` (pre-normalize) also rejected — suffix is still pure-digit.
+        self.assertIsNotNone(self._fn()("142"))
+
+    def test_canonical_id_accepted(self):
+        self.assertIsNone(self._fn()("template_fnig0i"))
+
+    def test_double_underscore_id_accepted(self):
+        # `template__xWp8N` suffix `_xWp8N` has letters — not pure-digit.
+        self.assertIsNone(self._fn()("template__xWp8N"))
+
+    def test_long_slug_accepted(self):
+        self.assertIsNone(self._fn()("template_corporate_credit_pre_due_diligence"))
+
+    def test_none_accepted(self):
+        self.assertIsNone(self._fn()(None))
+
+    def test_error_message_names_the_id_and_hints_source(self):
+        msg = self._fn()("template_142")
+        self.assertIn("template_142", msg)
+        self.assertIn("template_id", msg)  # hints: use the template_id field
+
+
 if __name__ == "__main__":
     # Unbuffered + verbose for skill author workflow.
     unittest.main(verbosity=2)
