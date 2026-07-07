@@ -160,6 +160,8 @@ python3 <skill>/scripts/research_run.py \
 
 翻译:`▶ agent=researcher task=扫描年报资产减值` → "正在扫描年报里讨论资产减值的公司";`▶ agent=reporter task=撰写资产减值报告` → "正在撰写报告";`✓ report finalized` → "报告已生成,正在取回";`RESULT ok` → 读 `--output` 报告交付。**不贴原始 `▶ agent=` 行**(见上 ⚠️)。整个进度流从 `STARTED` 到 `RESULT` 都在 stdout 一个文件里。
 
+**⚠️ 别高频 Read stdout 轮询:** 进度是**事件驱动**的——要么用 `Monitor` 被动收推送(每行进度主动通知你),要么起一个 background Bash `until grep -q RESULT <stdout文件>; do sleep 5; done` 等 RESULT 再由完成通知触发。长间歇无输出是**正常现象**(深研某步可能跑几分钟无进度行),**不要反复 Read 同一个 stdout 文件等事件**(浪费回合 + 上下文 overflow 风险)。
+
 **记住 conv_id:** 起跑后从 stdout `STARTED conv_id=…` 行取 conv_id(或起跑时用 `--conversation-id <自定义>` 指定),后续检查/replay 都用它。**绝不重复起跑**:已有 conv_id 在跑/已完成时,用户问进度检查该 conv_id(stdout/replay),**不要重新 `research_run.py`**(烧新 credits + 丢上下文);只有用户要换主体/换搭子才新起跑。
 
 **主动检查完成(别干等回叫):** fire-and-retrieve 的"完成回叫"依赖平台后台任务通知,有的平台(非 Claude Code)通知不可靠——agent 不能干等。用户问进度、或跑了很久(>5 分钟)没回叫时,主动检查:
