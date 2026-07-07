@@ -129,45 +129,40 @@ def _emit_progress(event: str, data: str) -> None:
         print("[cue-research] ✓ report finalized", flush=True)
 
 
-def format_sources_section(sources: list[dict]) -> str:
-    """Format citation sources as a markdown appendix for the .md report.
+def inline_citations(report: str, sources: list[dict]) -> str:
+    """Replace 【N-M】 in the report with markdown links [N-M](url "title").
 
-    Aligns with the product: 【N】 source = data.{url,title,description}
-    (search_snippet/url class — search_tool, crawl) or scan-class rows[M]
-    (company+pdf+page) or mcp output preview. Returns "" when no sources.
+    The product renders 【N-M】 inline as clickable source cards; a .md file
+    can't do cards, but markdown links render as clickable citations in any
+    preview (GitHub/VSCode) — closer to the product's inline experience than
+    a tail appendix. Drops the ## 数据来源详情 list.
+
+    - search_snippet/url class: 【N-M】→ data.url (one url per N; M ignored)
+    - scan class: 【N-M】→ rows[M].pdf_url (M = row index, company+title)
+    - mcp class (no url/rows): 【N-M】kept as text (no link)
     """
-    if not sources:
-        return ""
-    lines = ["\n\n---\n\n## 数据来源详情\n"]
-    for s in sources:
-        title = f" ({s['tool_title']})" if s.get('tool_title') else ""
-        lines.append(f"### 【{s['index']}】{s['tool_name']}{title}")
-        inp = s.get("input")
-        if isinstance(inp, dict) and inp:
-            parts = [f"{k}={str(v)[:40]}" for k, v in list(inp.items())[:3]]
-            lines.append(f"- input: {', '.join(parts)}")
-        # 1. search_snippet/url class: data.url/title/description (产品方式)
-        if s.get("url"):
-            lines.append(f"- 来源: {s['url']}")
-            if s.get("title"):
-                lines.append(f"- 标题: {s['title']}")
-            if s.get("description"):
-                lines.append(f"- 摘要: {s['description'][:120]}")
-        # 2. scan class: rows[M] (company+pdf+page, 兼容)
-        rows = s.get("rows") or []
-        if rows and any(r.get("pdf_url") or r.get("company") for r in rows):
-            for r in rows:  # no cap — positional ref, truncating orphans citations
-                comp = f"{r['company']} " if r.get('company') else ""
-                ttl = f"{r['title']} " if r.get('title') else ""
-                url = f" → {r['pdf_url']}" if r.get('pdf_url') else ""
-                page = f" p{r['page_range']}" if r.get('page_range') else ""
-                summ = f" — {r['summary'][:100]}" if r.get('summary') else ""
-                lines.append(f"- 【{s['index']}-{r['m']}】{comp}{ttl}{url}{page}{summ}")
-        # 3. mcp class fallback: output preview
-        elif not s.get("url") and s.get("output_preview"):
-            lines.append(f"- preview: {s['output_preview']}…")
-        lines.append("")
-    return "\n".join(lines)
+    import re
+    by_index = {s["index"]: s for s in sources}
+
+    def repl(m):
+        n, mi = int(m.group(1)), int(m.group(2))
+        s = by_index.get(n)
+        if not s:
+            return m.group(0)
+        url = s.get("url") or ""
+        title = s.get("title") or ""
+        if not url:
+            rows = s.get("rows") or []
+            if mi < len(rows):
+                r = rows[mi]
+                url = r.get("pdf_url") or ""
+                title = f"{r.get('company', '')} {r.get('title', '')}".strip()
+        if not url:
+            return m.group(0)  # no url → keep text marker
+        t = title.replace('"', "'")[:60] if title else ""
+        return f'[{n}-{mi}]({url} "{t}")' if t else f'[{n}-{mi}]({url})'
+
+    return re.sub(r"【(\d+)-(\d+)】", repl, report)
 
 
 def build_payload(
@@ -488,7 +483,7 @@ def main(argv: list[str] | None = None) -> int:
         f"{'template=' + args.template_id if args.template_id else 'free-form'}"
         f"{mimic_note}{material_note} | {time.strftime('%Y-%m-%d %H:%M')} -->\n\n"
     )
-    out_path.write_text(header + report + format_sources_section(sources), encoding="utf-8")
+    out_path.write_text(header + inline_citations(report, sources), encoding="utf-8")
     print(
         f"[cue-research] ✓ report {len(report)} chars → {out_path}", flush=True
     )
