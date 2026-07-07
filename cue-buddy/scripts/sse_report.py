@@ -164,7 +164,12 @@ def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
             out = str(d.get("output", "") or "")
             urls = []
             for u in re.findall(r"https?://[^\"\s\\]+", out):
-                u = u.rstrip(",)}];'\"")
+                u = u.rstrip(",;\"'")
+                # strip trailing ) ] } only when unbalanced — Wikipedia-style
+                # parenthesized paths (Foo_(bar)) legitimately end in ).
+                for closer, opener in ((")", "("), ("]", "["), ("}", "{")):
+                    while u.endswith(closer) and u.count(opener) < u.count(closer):
+                        u = u[:-1]
                 if u and u not in urls:
                     urls.append(u)
             sources[k] = {

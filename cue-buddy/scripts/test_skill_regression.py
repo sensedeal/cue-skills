@@ -1062,6 +1062,15 @@ class Case18_ExtractSources(unittest.TestCase):
         out = self._fn()(ev)
         self.assertEqual(out[0]["urls"], ["http://a.pdf", "http://b.pdf"])
 
+    def test_urls_keeps_balanced_parens(self):
+        # Wikipedia-style parenthesized paths legitimately end in ) — only
+        # strip unbalanced closers, else Foo_(bar) → Foo_(bar (broken link).
+        # get_wikipedia_revision is in the tool set, so this matters.
+        ev = [self._chunk(0, "t", "", {},
+                          '{"url":"http://en.wikipedia.org/wiki/Foo_(bar)"}')]
+        out = self._fn()(ev)
+        self.assertEqual(out[0]["urls"], ["http://en.wikipedia.org/wiki/Foo_(bar)"])
+
 
 if __name__ == "__main__":
     # Unbuffered + verbose for skill author workflow.
