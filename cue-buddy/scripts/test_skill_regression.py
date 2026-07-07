@@ -1041,6 +1041,27 @@ class Case18_ExtractSources(unittest.TestCase):
               ("tool_chunk", '{"chunk":{"not-digit":{}}}')]
         self.assertEqual(self._fn()(ev), [])
 
+    def test_nested_live_shape(self):
+        # live chat_stream wraps payload in {"data": {...}}; replay is flat.
+        # extract_sources must read chunk through _event_data (like all
+        # sibling extractors) or the appendix silently empties on live runs
+        # — which PR#40's report_finalized-break made the dominant path.
+        import json
+        ev = [("tool_chunk", json.dumps({"data": {"chunk": {"0": {
+            "type": "mcp", "data": {"tool_name": "t", "tool_title": "",
+            "input": {}, "output": '{"url":"http://a.pdf"}'}}}}}))]
+        out = self._fn()(ev)
+        self.assertEqual(len(out), 1, "nested live shape must resolve via _event_data")
+        self.assertEqual(out[0]["tool_name"], "t")
+        self.assertIn("http://a.pdf", out[0]["urls"])
+
+    def test_urls_strips_trailing_punctuation(self):
+        # prose output (not JSON string) leaks trailing punctuation into the
+        # regex match; rstrip cleans it so links aren't broken.
+        ev = [self._chunk(0, "t", "", {}, "see http://a.pdf, and http://b.pdf)")]
+        out = self._fn()(ev)
+        self.assertEqual(out[0]["urls"], ["http://a.pdf", "http://b.pdf"])
+
 
 if __name__ == "__main__":
     # Unbuffered + verbose for skill author workflow.

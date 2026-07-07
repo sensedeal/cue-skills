@@ -152,7 +152,7 @@ def format_sources_section(sources: list[dict]) -> str:
             lines.append(f"- {u}")
         preview = s.get("output_preview", "")
         if preview:
-            lines.append(f"- preview: {preview[:150]}…")
+            lines.append(f"- preview: {preview}…")
         lines.append("")
     return "\n".join(lines)
 

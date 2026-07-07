@@ -134,9 +134,14 @@ def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
     tool_title, input, output}}}; output holds source links (e.g.
     rows[M].source.pdf_url). 【N-M】 in the report maps N→序号, M→output row.
 
+    Reads chunk through _event_data — live chat_stream payloads are nested
+    {"data":{...}} while replay is flat, and PR#40's report_finalized-break
+    makes run() complete on the live (nested) path.
+
     Returns list sorted by 序号: [{index, tool_name, tool_title, input,
-    urls, output_preview}]. urls extracted from output via regex (generic,
-    doesn't assume output JSON structure) and de-duped preserving order.
+    urls, output_preview}]. urls extracted from output via regex (clean for
+    JSON-string output, the production shape; trailing punctuation stripped
+    so prose output doesn't leak broken links) and de-duped preserving order.
     """
     sources: dict[str, dict] = {}
     for event, data in events:
@@ -146,17 +151,22 @@ def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
             payload = json.loads(data)
         except json.JSONDecodeError:
             continue
-        chunk = payload.get("chunk", {})
+        chunk = _event_data(payload).get("chunk", {})
         if not isinstance(chunk, dict):
             continue
         for k, v in chunk.items():
-            if not (isinstance(k, str) and k.isdigit()):
+            # isascii() guards int(k): '²'.isdigit() is True but int('²') raises.
+            if not (isinstance(k, str) and k.isascii() and k.isdigit()):
                 continue
             d = v.get("data", v) if isinstance(v, dict) else {}
             if not isinstance(d, dict):
                 continue
             out = str(d.get("output", "") or "")
-            urls = list(dict.fromkeys(re.findall(r"https?://[^\"\s\\]+", out)))
+            urls = []
+            for u in re.findall(r"https?://[^\"\s\\]+", out):
+                u = u.rstrip(",)}];'\"")
+                if u and u not in urls:
+                    urls.append(u)
             sources[k] = {
                 "index": int(k),
                 "tool_name": d.get("tool_name", "") or "",
