@@ -156,9 +156,10 @@ python3 <skill>/scripts/research_run.py \
 
 **让出前对用户说(人话):** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。" **不要把 `STARTED conv_id=` / `▶ agent=` 这些 stdout 行转给用户**(见上 ⚠️)。
 
-**主动监控进度(不等用户问):** 起跑后主动跟踪 stdout 进度,进度变化时**主动翻译人话报用户**(不等用户问)——
-- **Claude Code**: 用 `Monitor` 工具监控 stdout 文件(`tail -f <stdout文件> | grep --line-buffered "▶\|✓\|RESULT"`),每行进度出现时 agent 被通知 → 翻译报用户。
-- **其他 agent**: 定期轮询 stdout(每 1-2 分钟读最新进度行)或等价异步通知。
+**起跑后立即主动跟踪(不等回叫、不等用户问):** fire-and-retrieve 的"让出回合"≠ 睡等回叫——回叫只是兜底,**你是主动方**。起跑确认 STARTED 后,立即设主动跟踪机制,全程监控进度 + 检查完成:
+- **Claude Code**: 用 `Monitor` 工具监控 stdout 文件(`tail -f <stdout文件> | grep --line-buffered "▶\|✓\|RESULT"`),每行进度出现时 agent 被通知 → 翻译报用户;`RESULT` 出现 → 交付。
+- **其他 agent**(无 Monitor): 用你的后台任务查询工具(如 TaskOutput)定期查 stdout(每 1-2 分钟读最新进度行 + 末行 RESULT),或起 background Bash `until grep -q RESULT <stdout>; do sleep 5; done` 等完成通知。**别纯等回叫**——定期主动查。
+- **绝不告诉用户"完成后会自动通知我"**——你主动查完成,不把希望寄托在回叫上(回叫机制因平台而异、并非总可靠)。
 
 翻译:把 `▶ agent=… task=<requirement>` 的 **task_requirement** 作为**研究步骤**告诉用户,**不贴 agent 名**(coordinator/supervisor/researcher 是内部角色,用户不关心):
 - `▶ agent=researcher task=查半导体细分景气度` → "研究步骤:查半导体细分景气度"
@@ -172,7 +173,7 @@ python3 <skill>/scripts/research_run.py \
 
 **记住 conv_id:** 起跑后从 stdout `STARTED conv_id=…` 行取 conv_id(或起跑时用 `--conversation-id <自定义>` 指定),后续检查/replay 都用它。**绝不重复起跑**:已有 conv_id 在跑/已完成时,用户问进度检查该 conv_id(stdout/replay),**不要重新 `research_run.py`**(烧新 credits + 丢上下文);只有用户要换主体/换搭子才新起跑。
 
-**主动检查完成(别干等回叫):** fire-and-retrieve 的"完成回叫"依赖平台后台任务通知,有的平台(非 Claude Code)通知不可靠——agent 不能干等。用户问进度、或跑了很久(>5 分钟)没回叫时,主动检查:
+**主动检查完成(持续定时查,别等回叫/别等用户问/别等 5 分钟):** 回叫不可靠——你不是被动等通知,而是**持续定时查 stdout 末行(每 1-2 分钟,直到 `RESULT` 出现)**(同上"起跑后立即主动跟踪"的定期查机制;不是查一次就完)。查到 `RESULT ok` → 交付;没 RESULT → replay(conv_id) 取报告:
 1. 读后台 stdout 末行。`RESULT ok` → 读 `--output` 交付;`RESULT empty` → 按诊断给下一步。
 2. stdout 没 `RESULT`(任务跑很久/回叫没来)→ **用 conv_id 主动 replay 取报告**(不耗 credits,后端若已完成必有报告):
    ```python
