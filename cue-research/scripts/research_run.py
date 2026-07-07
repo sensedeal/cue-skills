@@ -149,14 +149,10 @@ def format_sources_section(sources: list[dict]) -> str:
             parts = [f"{k}={str(v)[:40]}" for k, v in list(inp.items())[:3]]
             lines.append(f"- input: {', '.join(parts)}")
         rows = s.get("rows") or []
-        # M-level only when rows carry meaningful content (pdf_url/company) —
-        # else a schema mismatch (rows with other keys) would render empty
-        # 【N-M】 markers AND suppress the N-level urls (net regression vs N-only).
-        # NOTE: M is the 0-based row index; correctness hinges on the reporter
-        # citing rows by array position (verified on 76YiklrU 【0-15】→特变电工;
-        # not cross-checked against every tool's reporter citation convention).
+        # M-level (【N-M】→rows[M]) only when rows carry content; else N-level
+        # urls (a schema mismatch would otherwise emit empty markers + drop links).
         if rows and any(r.get("pdf_url") or r.get("company") for r in rows):
-            for r in rows:  # no cap — 【N-M】 is positional, truncating orphans citations
+            for r in rows:  # no cap — positional ref, truncating orphans citations
                 comp = f"{r['company']} " if r.get('company') else ""
                 ttl = f"{r['title']} " if r.get('title') else ""
                 url = f" → {r['pdf_url']}" if r.get('pdf_url') else ""
