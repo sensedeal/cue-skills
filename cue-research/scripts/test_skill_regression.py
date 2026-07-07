@@ -431,6 +431,17 @@ class TestResearchRunner(unittest.TestCase):
         self.assertRegex(src, r'["\']url["\']\s*:')
         self.assertRegex(src, r'["\']file_hash["\']\s*:')
 
+    def test_report_finalized_breaks_live_loop(self):
+        """report_finalized must break the live SSE loop. The stream often
+        stays open after the report is done; without the break the run
+        holds until the 60min timeout and the agent stays stuck at
+        '已开跑' with the report already in the DB."""
+        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
+        self.assertRegex(src, r'if event == "report_finalized"')
+        # the break must be inside that branch (not falling through to timeout)
+        m = re.search(r'if event == "report_finalized".*?break', src, re.S)
+        self.assertIsNotNone(m, "report_finalized must break the live loop")
+
     def test_runner_mimic_is_freeform_only(self):
         """mimic must be refused alongside --template-id (backend lets
         template_id silently override mimic, so refuse rather than no-op)."""

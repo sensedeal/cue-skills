@@ -195,6 +195,13 @@ def run(
                 print(f"[cue-research] STARTED conv_id={conv_id}", flush=True)
             events.append((event, data))
             _emit_progress(event, data)
+            if event == "report_finalized":
+                # Report is done; the live stream often stays open after this,
+                # which would hold the run until the 60min timeout (agent stuck
+                # at "已开跑" with the report already in the DB). Break and
+                # extract now — reporter's message events are all in `events`
+                # by this point, so extract_reporter_content below resolves.
+                break
             if time.time() - t0 > timeout:
                 print("[cue-research] timeout watching SSE", flush=True)
                 break
