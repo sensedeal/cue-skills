@@ -136,6 +136,8 @@ while True:
 
 **别在 agent 回合里死守一小时的 live 流。** 深研单次 3-15 分钟(服务端 60min 硬超时),同步阻塞既浪费回合又脆弱(live 流常丢 reporter 段)。改用 **fire-and-retrieve**:`research_run.py` 在**后台**跑完整流程(发起 chat_stream → live 取报告 → 空则 replay 兜底 → 落盘),agent 回合立即让出;后台任务完成后 agent 被回叫,再读 `--output` 文件交付。
 
+**⚠️ stdout 是 agent 内部信号,不转用户:** `research_run.py` 的 `[cue-research] …` 行(`STARTED conv_id=` / `▶ agent=…` / `🔧 tool=…` / `✓ report finalized` / `RESULT`)是给 **agent 内部判断**启动/进度/完成用的,**绝不直接贴给用户**。agent 对用户说人话(起跑确认 / 进度翻译 / 完成交付);用户不该看到 conv_id / agent= / tool= 这些技术行。
+
 **起跑(Bash,`run_in_background: true`):**
 
 `--template-id` 取 Stage 2 候选搭子的 `template_id` 字段值(形如 `template_fnig0i`)。**别传数字 `id` 或序号**——runner 会对纯数字后缀(如 `142`→`template_142`)fail-fast 拒绝(不烧 credits),因 Cue id 后缀从不纯数字。
@@ -150,9 +152,9 @@ python3 <skill>/scripts/research_run.py \
 
 **起跑后确认启动(不等结果,只等启动信号):** 后台 stdout 出现 `[cue-research] STARTED conv_id=…`(通常 2-5 秒内,第一个 SSE 事件到达=后端已接受)再让出回合。若出现 `[cue-research] chat_stream failed`(启动失败,参数/鉴权问题),立即按诊断处理,不对用户说"已开跑"。
 
-**让出前对用户说:** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。"
+**让出前对用户说(人话):** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。" **不要把 `STARTED conv_id=` / `▶ agent=` 这些 stdout 行转给用户**(见上 ⚠️)。
 
-**中途查进度(可选):** 让出回合后,若用户问"跑到哪了"或 agent 想确认进展,读后台 stdout 文件看进度行——`▶ agent=… task=…`(研究步骤,如 `agent=researcher task=扫描年报资产减值`)/ `🔧 tool=…`(工具调用)/ `✓ report finalized`(报告定稿)。整个进度流从起跑的 `STARTED` 到完成的 `RESULT` 都在 stdout 一个文件里,随时可读。
+**中途查进度(用户问时):** 用户问"跑到哪了"时,读后台 stdout 最新进度行,**翻译成人话**告诉用户——`▶ agent=researcher task=扫描年报资产减值` → "正在扫描年报里讨论资产减值的公司";`▶ agent=reporter task=撰写资产减值报告` → "正在撰写报告";`✓ report finalized` → "报告已生成,正在取回"。**不要直接贴 `▶ agent=` 行**(见上 ⚠️)。整个进度流从 `STARTED` 到 `RESULT` 都在 stdout 一个文件里,随时可读。
 
 **完成回叫后:** 读 stdout 末行 `[cue-research] RESULT ok conv_id=… chars=… output=…`(失败是 `RESULT empty …`),`ok` 则读 `--output` 文件 → Stage 5 交付;`empty` 则按文件里/stdout 的诊断给下一步(多半去 cuecue.cn 网页端看该 conversation)。
 
