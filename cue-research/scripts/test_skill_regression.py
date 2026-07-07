@@ -468,48 +468,57 @@ class TestResearchRunner(unittest.TestCase):
         self.assertEqual(conv_id, "c1")
         self.assertEqual(len(sources), 1, "run() should return the tool_chunk source")
         self.assertEqual(sources[0]["tool_name"], "scan_x")
-        self.assertIn("http://example.com/a.pdf", sources[0]["urls"])
+        self.assertEqual(sources[0]["rows"][0]["pdf_url"], "http://example.com/a.pdf")
 
     def test_format_sources_section(self):
-        """format_sources_section renders 【N-M】 (M-level when rows present)
-        or 【N】 urls (N-level fallback) as a markdown appendix."""
+        """format_sources_section renders 【N】 url/title (search_snippet/url class),
+        【N-M】rows (scan class), or output preview (mcp class)."""
         import research_run
         sources = [
-            {"index": 0, "tool_name": "scan_x", "tool_title": "财报检索",
-             "input": {"query": "资产减值"},
-             "urls": [], "output_preview": "",
-             "rows": [{"m": 0, "company": "002385", "title": "商誉减值",
-                       "pdf_url": "http://a.pdf", "summary": "大北农商誉减值",
-                       "page_range": [10, 20]}]},
-            {"index": 1, "tool_name": "get_section", "tool_title": "",
-             "input": {}, "urls": ["http://b.pdf"], "output_preview": "",
-             "rows": []},
+            # search_snippet class: data.url/title/description
+            {"index": 0, "tool_name": "search_tool", "tool_title": "网页搜索",
+             "input": {}, "url": "http://a.pdf", "title": "来源A",
+             "description": "来源A摘要", "chunks": ["切片0"], "rows": [],
+             "output_preview": ""},
+            # scan class: rows[M]
+            {"index": 1, "tool_name": "scan_x", "tool_title": "财报检索",
+             "input": {"query": "资产减值"}, "url": "", "title": "",
+             "description": "", "chunks": [], "rows": [{"m": 0,
+             "company": "002385", "title": "商誉减值", "pdf_url": "http://b.pdf",
+             "summary": "大北农商誉减值", "page_range": [10, 20]}],
+             "output_preview": ""},
+            # mcp class: output preview (no url, no rows)
+            {"index": 2, "tool_name": "get_section", "tool_title": "",
+             "input": {}, "url": "", "title": "", "description": "",
+             "chunks": [], "rows": [], "output_preview": '{"stock_code":"002385"}'},
         ]
         out = research_run.format_sources_section(sources)
         self.assertIn("## 数据来源详情", out)
-        # M-level: 【0-0】条目 (company + pdf_url + page + summary)
-        self.assertIn("### 【0】scan_x (财报检索)", out)
-        self.assertIn("【0-0】002385", out)
+        # search_snippet class: url + title + description
+        self.assertIn("### 【0】search_tool (网页搜索)", out)
         self.assertIn("http://a.pdf", out)
-        self.assertIn("大北农", out)
-        # N-level: get_section urls (rows empty → fallback)
-        self.assertIn("### 【1】get_section", out)
+        self.assertIn("来源A", out)
+        # scan class: 【1-0】rows[M]
+        self.assertIn("### 【1】scan_x (财报检索)", out)
+        self.assertIn("【1-0】002385", out)
         self.assertIn("http://b.pdf", out)
+        self.assertIn("大北农", out)
+        # mcp class: output preview
+        self.assertIn("### 【2】get_section", out)
+        self.assertIn("stock_code", out)
         self.assertEqual(research_run.format_sources_section([]), "")
 
     def test_format_sources_section_mismatched_schema_falls_back(self):
-        # rows present but with unrecognized keys (no pdf_url/company) → must
-        # NOT render empty 【N-M】 markers; fall back to N-level urls so the
-        # source links the regex did extract aren't suppressed (net regression
-        # vs N-only). Gates on meaningful row content.
+        # rows present but no pdf_url/company (schema mismatch) + no data.url
+        # → must NOT render empty 【N-M】 markers; fall back to output_preview.
         import research_run
         sources = [{"index": 0, "tool_name": "scan_x", "tool_title": "",
-                    "input": {}, "urls": ["http://real.pdf"],
-                    "output_preview": "",
+                    "input": {}, "url": "", "title": "", "description": "",
+                    "chunks": [], "output_preview": "http://real.pdf in output",
                     "rows": [{"m": 0, "company": "", "title": "",
                               "pdf_url": "", "summary": "", "page_range": ""}]}]
         out = research_run.format_sources_section(sources)
-        self.assertIn("http://real.pdf", out)   # N-level urls preserved
+        self.assertIn("http://real.pdf", out)   # output_preview fallback
         self.assertNotIn("【0-0】", out)          # no empty M-level marker
 
     def test_format_sources_section_no_truncate(self):
@@ -519,7 +528,8 @@ class TestResearchRunner(unittest.TestCase):
                  "pdf_url": f"http://x{m}.pdf", "summary": "", "page_range": ""}
                 for m in range(32)]
         sources = [{"index": 0, "tool_name": "scan_x", "tool_title": "",
-                    "input": {}, "urls": [], "output_preview": "", "rows": rows}]
+                    "input": {}, "url": "", "title": "", "description": "",
+                    "chunks": [], "output_preview": "", "rows": rows}]
         out = research_run.format_sources_section(sources)
         self.assertIn("【0-31】", out)  # high-M row not orphaned
 

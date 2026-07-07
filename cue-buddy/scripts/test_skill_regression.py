@@ -989,10 +989,10 @@ class Case17_ValidateTemplateId(unittest.TestCase):
 
 
 class Case18_ExtractSources(unittest.TestCase):
-    """extract_sources pulls citation sources from tool_chunk events so the
-    agent can render 【N-M】 markers in the report. tool_call_result.tool_result
-    is empty on replay; source detail (tool_name/input/output/urls) lives in
-    tool_chunk.chunk = {序号: {type:'mcp', data:{...}}}."""
+    """extract_sources pulls citation sources from tool_chunk events, aligning
+    with the cubemanus product: entry = {type, data, chunks}. search_snippet/
+    url class (search_tool, crawl) sources at data.{url,title,description};
+    scan-class output.rows[M] kept as compat for company+pdf+page precision."""
 
     def _fn(self):
         from sse_report import extract_sources
@@ -1004,76 +1004,28 @@ class Case18_ExtractSources(unittest.TestCase):
             "type": "mcp", "data": {"tool_name": name, "tool_title": title,
                                      "input": inp, "output": out}}}})
 
-    def test_extracts_index_tool_name_urls_preview(self):
-        ev = [self._chunk(0, "scan_x", "财报检索", {"query": "资产减值"},
-                          '{"rows":[{"source":{"pdf_url":"http://a.pdf"}}]}'),
-              self._chunk(2, "get_section", "", {}, '{"stock_code":"002385"}')]
-        out = self._fn()(ev)
-        self.assertEqual(len(out), 2)
-        self.assertEqual(out[0]["index"], 0)
-        self.assertEqual(out[0]["tool_name"], "scan_x")
-        self.assertEqual(out[0]["tool_title"], "财报检索")
-        self.assertIn("http://a.pdf", out[0]["urls"])
-        self.assertEqual(out[1]["index"], 2)
-        self.assertEqual(out[1]["tool_name"], "get_section")
-
-    def test_sorted_by_index_with_gaps(self):
-        ev = [self._chunk(5, "t5", "", {}, ""), self._chunk(0, "t0", "", {}, "")]
-        out = self._fn()(ev)
-        self.assertEqual([s["index"] for s in out], [0, 5])
-
-    def test_non_tool_chunk_events_ignored(self):
-        ev = [("start_of_agent", '{"agent_name":"reporter"}'),
-              ("message", '{"delta":{"content":"x"}}')]
-        self.assertEqual(self._fn()(ev), [])
-
-    def test_urls_deduped_and_clean(self):
-        # output JSON has urls inside quotes; regex must stop at the closing
-        # quote so the url isn't followed by JSON noise.
-        ev = [self._chunk(0, "t", "", {},
-                          '{"a":"http://x.pdf","b":"http://x.pdf","c":"http://y.pdf"}')]
-        out = self._fn()(ev)
-        self.assertEqual(out[0]["urls"], ["http://x.pdf", "http://y.pdf"])
-
-    def test_empty_or_malformed_ignored(self):
-        ev = [("tool_chunk", ""), ("tool_chunk", "{not json"),
-              ("tool_chunk", '{"chunk":"not-a-dict"}'),
-              ("tool_chunk", '{"chunk":{"not-digit":{}}}')]
-        self.assertEqual(self._fn()(ev), [])
-
-    def test_nested_live_shape(self):
-        # live chat_stream wraps payload in {"data": {...}}; replay is flat.
-        # extract_sources must read chunk through _event_data (like all
-        # sibling extractors) or the appendix silently empties on live runs
-        # — which PR#40's report_finalized-break made the dominant path.
+    def _chunk_snippet(self, idx, name, title, url, desc="", chunks=None):
         import json
-        ev = [("tool_chunk", json.dumps({"data": {"chunk": {"0": {
-            "type": "mcp", "data": {"tool_name": "t", "tool_title": "",
-            "input": {}, "output": '{"url":"http://a.pdf"}'}}}}}))]
-        out = self._fn()(ev)
-        self.assertEqual(len(out), 1, "nested live shape must resolve via _event_data")
-        self.assertEqual(out[0]["tool_name"], "t")
-        self.assertIn("http://a.pdf", out[0]["urls"])
+        return "tool_chunk", json.dumps({"chunk": {str(idx): {
+            "type": "search_snippet",
+            "data": {"tool_name": name, "tool_title": title, "title": title,
+                     "url": url, "description": desc, "question": ""},
+            "chunks": chunks or ["正文切片"]}}})
 
-    def test_urls_strips_trailing_punctuation(self):
-        # prose output (not JSON string) leaks trailing punctuation into the
-        # regex match; rstrip cleans it so links aren't broken.
-        ev = [self._chunk(0, "t", "", {}, "see http://a.pdf, and http://b.pdf)")]
-        out = self._fn()(ev)
-        self.assertEqual(out[0]["urls"], ["http://a.pdf", "http://b.pdf"])
+    def test_extracts_search_snippet_url_title_description(self):
+        # search_tool 走 crawl.py: 来源在 data.{url,title,description}, output=null
+        ev = [self._chunk_snippet(0, "search_tool", "网页搜索",
+                                  "http://a.pdf", "来源摘要", ["切片0"])]
+        s = self._fn()(ev)
+        self.assertEqual(len(s), 1)
+        self.assertEqual(s[0]["url"], "http://a.pdf")
+        self.assertEqual(s[0]["title"], "网页搜索")
+        self.assertEqual(s[0]["description"], "来源摘要")
+        self.assertEqual(s[0]["chunks"], ["切片0"])
+        self.assertEqual(s[0]["output_preview"], "")  # output null
 
-    def test_urls_keeps_balanced_parens(self):
-        # Wikipedia-style parenthesized paths legitimately end in ) — only
-        # strip unbalanced closers, else Foo_(bar) → Foo_(bar (broken link).
-        # get_wikipedia_revision is in the tool set, so this matters.
-        ev = [self._chunk(0, "t", "", {},
-                          '{"url":"http://en.wikipedia.org/wiki/Foo_(bar)"}')]
-        out = self._fn()(ev)
-        self.assertEqual(out[0]["urls"], ["http://en.wikipedia.org/wiki/Foo_(bar)"])
-
-    def test_extracts_rows_from_scan_output(self):
-        # M-level: scan-class output has rows[M] = {company, title, summary,
-        # source.pdf_url, page_range}. 【N-M】 maps to rows[M] precisely.
+    def test_extracts_mcp_output_rows(self):
+        # scan 类: output.rows[M] = {company, title, summary, source.pdf_url, page_range}
         import json
         out = json.dumps({"rows": [
             {"company": "002385", "title": "商誉减值", "summary": "大北农...",
@@ -1090,11 +1042,35 @@ class Case18_ExtractSources(unittest.TestCase):
         self.assertEqual(r0["pdf_url"], "http://a.pdf")
         self.assertEqual(r0["page_range"], [10, 20])
         self.assertIn("大北农", r0["summary"])
-        self.assertEqual(s[0]["rows"][1]["m"], 1)
+
+    def test_sorted_by_index_with_gaps(self):
+        ev = [self._chunk(5, "t5", "", {}, ""), self._chunk(0, "t0", "", {}, "")]
+        out = self._fn()(ev)
+        self.assertEqual([s["index"] for s in out], [0, 5])
+
+    def test_non_tool_chunk_events_ignored(self):
+        ev = [("start_of_agent", '{"agent_name":"reporter"}'),
+              ("message", '{"delta":{"content":"x"}}')]
+        self.assertEqual(self._fn()(ev), [])
+
+    def test_empty_or_malformed_ignored(self):
+        ev = [("tool_chunk", ""), ("tool_chunk", "{not json"),
+              ("tool_chunk", '{"chunk":"not-a-dict"}'),
+              ("tool_chunk", '{"chunk":{"not-digit":{}}}')]
+        self.assertEqual(self._fn()(ev), [])
+
+    def test_nested_live_shape(self):
+        # live chat_stream wraps payload in {"data":{...}}; _event_data must unwrap.
+        import json
+        ev = [("tool_chunk", json.dumps({"data": {"chunk": {"0": {
+            "type": "search_snippet",
+            "data": {"tool_name": "t", "tool_title": "", "title": "x",
+                     "url": "http://a.pdf", "description": ""}}}}}))]
+        out = self._fn()(ev)
+        self.assertEqual(len(out), 1, "nested live shape must resolve via _event_data")
+        self.assertEqual(out[0]["url"], "http://a.pdf")
 
     def test_rows_empty_for_truncated_output(self):
-        # get_section output is truncated (115871→8046 chars) → json.loads
-        # fails → rows=[] (N-level fallback, not a crash).
         ev = [self._chunk(0, "get_section", "", {},
                           '{"stock_code":"002385","summary":"...[已截断]')]
         s = self._fn()(ev)
