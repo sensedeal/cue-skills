@@ -156,10 +156,24 @@ python3 <skill>/scripts/research_run.py \
 
 **让出前对用户说(人话):** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。" **不要把 `STARTED conv_id=` / `▶ agent=` 这些 stdout 行转给用户**(见上 ⚠️)。
 
-**起跑后立即主动跟踪(不等回叫、不等用户问):** fire-and-retrieve 的"让出回合"≠ 睡等回叫——回叫只是兜底,**你是主动方**。起跑确认 STARTED 后,立即设主动跟踪机制,全程监控进度 + 检查完成:
-- **Claude Code**: 用 `Monitor` 工具监控 stdout 文件(`tail -f <stdout文件> | grep --line-buffered "▶\|✓\|RESULT"`),每行进度出现时 agent 被通知 → 翻译报用户;`RESULT` 出现 → 交付。
-- **其他 agent**(无 Monitor): 用你的后台任务查询工具(如 TaskOutput)定期查 stdout(每 1-2 分钟读最新进度行 + 末行 RESULT),或起 background Bash `until grep -q RESULT <stdout>; do sleep 5; done` 等完成通知。**别纯等回叫**——定期主动查。
-- **绝不告诉用户"完成后会自动通知我"**——你主动查完成,不把希望寄托在回叫上(回叫机制因平台而异、并非总可靠)。
+**起跑后必须消费 research_run.py 的流式 stdout(进度 + 完成都靠它):** research_run.py 的 stdout 是**流式实时输出**(`flush=True`):`STARTED` → `▶ agent=… task=…`(研究步骤) → `✓ report finalized` → `RESULT ok|empty`。这个流是你的**进度 + 完成的唯一来源**——必须消费它,不让出后睡等回叫(回叫不可靠,.workbuddy 等平台通知常不来)。
+
+**完成检测(必须):** 起跑时把 stdout 重定向到文件,再起第二个 background Bash 流式等 RESULT(带超时,防 research_run.py 崩溃不写 RESULT 时无限等):
+```bash
+# 起跑(stdout 重定向到文件,两个 Bash 看同一文件):
+python3 <skill>/scripts/research_run.py --template-id … --query … --output … > /tmp/cue-run.log 2>&1
+# 第二个 background Bash(流式等 RESULT,61min 超时):
+timeout 3660 tail -F /tmp/cue-run.log | grep -m1 "RESULT"
+# tail -F 跟随新行(不轮询),grep -m1 匹配 RESULT 退出;timeout 3660 防 research_run.py 崩溃(OOM/SIGKILL/未捕获异常)不写 RESULT 时无限等(61min 超 60min hard timeout)
+# Bash 完成(RESULT 或超时)→ agent 被通知 → 读 /tmp/cue-run.log 末行 → RESULT ok 读 --output 交付;empty/超时 → 诊断/告诉用户失败
+```
+
+**进度展示:** 消费 stdout 进度行(`▶ agent=… task=…`)翻译研究步骤给用户:
+- Claude Code: `Monitor` 工具(`tail -F /tmp/cue-run.log | grep "▶\|✓\|RESULT"`),每行通知 → 翻译报用户。
+- 无 Monitor 的 agent(.workbuddy 等): **用户问进度时**读 `/tmp/cue-run.log` 最新行翻译(不是定期轮询——你让出后不醒,定期读不可行;background Bash 完成通知是唯一主动触发)。
+- 翻译:`▶ agent=researcher task=查…` → "研究步骤:查…";`✓ report finalized` → "报告已生成,正在取回";`RESULT` → 交付。**绝不贴原始 `▶ agent=` 行**(见上 ⚠️)。
+
+**绝不告诉用户"完成后会自动通知我"**——你消费流式 stdout 主动检测进度 + 完成,不把希望寄托在回叫上。
 
 翻译:把 `▶ agent=… task=<requirement>` 的 **task_requirement** 作为**研究步骤**告诉用户,**不贴 agent 名**(coordinator/supervisor/researcher 是内部角色,用户不关心):
 - `▶ agent=researcher task=查半导体细分景气度` → "研究步骤:查半导体细分景气度"
