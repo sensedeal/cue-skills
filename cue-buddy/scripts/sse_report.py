@@ -129,21 +129,20 @@ def extract_tool_calls(events: list[tuple[str, str]]) -> list[dict]:
 def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
     """Citation sources from tool_chunk events, for rendering 【N-M】 markers.
 
-    tool_chunk events carry the source detail (tool_call_result.tool_result
-    is empty on replay). chunk field is {序号: {type:'mcp', data:{tool_name,
-    tool_title, input, output}}}; output holds source links (e.g.
-    rows[M].source.pdf_url). 【N-M】 in the report maps N→序号, M→output row.
+    Aligns with the cubemanus product: tool_chunk entry = {type, data, chunks}.
+    - search_snippet/url class (search_tool, crawl): source metadata at
+      data.{url,title,description}; output is null. These are the dominant
+      source-bearing tools in investment-research reports.
+    - mcp class (get_eastmoney/scan): data.output holds the result;
+      scan-class output.rows kept as a compatibility path for finer
+      【N-M】→rows[M] mapping (product uses chunks[M], but scan rows give
+      company+pdf+page precision in the .md appendix).
 
-    Reads chunk through _event_data — live chat_stream payloads are nested
-    {"data":{...}} while replay is flat, and PR#40's report_finalized-break
-    makes run() complete on the live (nested) path.
+    Reads chunk through _event_data (live nested vs replay flat; PR#40's
+    report_finalized-break makes run() complete on the live path).
 
-    Returns list sorted by 序号: [{index, tool_name, tool_title, input,
-    urls, rows, output_preview}]. urls via regex (clean for JSON-string
-    output; trailing punctuation stripped, balanced parens kept). rows:
-    [{m, company, title, pdf_url, summary, page_range}] parsed from
-    output.rows when present (scan-class tools) for 【N-M】→rows[M] precise
-    mapping; [] when output is truncated/non-JSON (get_section) → N-level.
+    Returns list sorted by 序号: [{index, tool_name, tool_title, url, title,
+    description, input, chunks, rows, output_preview}].
     """
     sources: dict[str, dict] = {}
     for event, data in events:
@@ -160,27 +159,16 @@ def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
             # isascii() guards int(k): '²'.isdigit() is True but int('²') raises.
             if not (isinstance(k, str) and k.isascii() and k.isdigit()):
                 continue
+            if not isinstance(v, dict):
+                continue
             d = v.get("data", v) if isinstance(v, dict) else {}
             if not isinstance(d, dict):
                 continue
+            chunks_arr = v.get("chunks", [])
+            if not isinstance(chunks_arr, list):
+                chunks_arr = []
             out = str(d.get("output", "") or "")
-            urls = []
-            for u in re.findall(r"https?://[^\"\s\\]+", out):
-                u = u.rstrip(",;\"'")
-                # strip trailing ) ] } only when unbalanced — Wikipedia-style
-                # parenthesized paths (Foo_(bar)) legitimately end in ).
-                for closer, opener in ((")", "("), ("]", "["), ("}", "{")):
-                    while u.endswith(closer) and u.count(opener) < u.count(closer):
-                        u = u[:-1]
-                if u and u not in urls:
-                    urls.append(u)
-            # M-level: parse output rows for 【N-M】→rows[M] precise mapping.
-            # output is a JSON string (production shape); a dict-repr or
-            # truncated output (get_section 115871→8046 chars) → json.loads
-            # fails → rows=[] (N-level fallback, no crash — regex urls above
-            # still extract). Rows inner keys hardcoded (company/title/
-            # source.pdf_url/summary/page_range); format_sources_section gates
-            # on meaningful content so a schema mismatch degrades to N-level.
+            # scan-class rows (compatibility: 【N-M】→rows[M] company+pdf+page)
             rows_out = []
             try:
                 o = json.loads(out) if out.strip() else None
@@ -198,14 +186,17 @@ def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
                             "page_range": r.get("page_range", ""),
                         })
             except (json.JSONDecodeError, ValueError):
-                pass  # truncated/non-JSON output → N-level fallback
+                pass  # truncated/non-JSON output → no rows
             sources[k] = {
                 "index": int(k),
                 "tool_name": d.get("tool_name", "") or "",
                 "tool_title": d.get("tool_title", "") or "",
+                "url": d.get("url", "") or "",            # search_snippet/url class
+                "title": d.get("title", "") or "",         # source title
+                "description": d.get("description", "") or "",
                 "input": d.get("input", {}),
-                "urls": urls,
-                "rows": rows_out,
+                "chunks": [str(c) for c in chunks_arr],    # M-level (product: chunks[M])
+                "rows": rows_out,                           # scan-class rows[M] (compat)
                 "output_preview": out[:200],
             }
     return [sources[k] for k in sorted(sources, key=lambda x: int(x))]

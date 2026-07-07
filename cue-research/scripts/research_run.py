@@ -132,11 +132,9 @@ def _emit_progress(event: str, data: str) -> None:
 def format_sources_section(sources: list[dict]) -> str:
     """Format citation sources as a markdown appendix for the .md report.
 
-    Renders one ### block per source (【N】 tool_name), listing input
-    keys + source urls + output preview, so the agent/user can resolve
-    【N-M】 markers in the report body against the N-indexed source list.
-    Returns "" when no sources — keeps the report unchanged for runs
-    that produced no tool_chunk events.
+    Aligns with the product: 【N】 source = data.{url,title,description}
+    (search_snippet/url class — search_tool, crawl) or scan-class rows[M]
+    (company+pdf+page) or mcp output preview. Returns "" when no sources.
     """
     if not sources:
         return ""
@@ -148,9 +146,15 @@ def format_sources_section(sources: list[dict]) -> str:
         if isinstance(inp, dict) and inp:
             parts = [f"{k}={str(v)[:40]}" for k, v in list(inp.items())[:3]]
             lines.append(f"- input: {', '.join(parts)}")
+        # 1. search_snippet/url class: data.url/title/description (产品方式)
+        if s.get("url"):
+            lines.append(f"- 来源: {s['url']}")
+            if s.get("title"):
+                lines.append(f"- 标题: {s['title']}")
+            if s.get("description"):
+                lines.append(f"- 摘要: {s['description'][:120]}")
+        # 2. scan class: rows[M] (company+pdf+page, 兼容)
         rows = s.get("rows") or []
-        # M-level (【N-M】→rows[M]) only when rows carry content; else N-level
-        # urls (a schema mismatch would otherwise emit empty markers + drop links).
         if rows and any(r.get("pdf_url") or r.get("company") for r in rows):
             for r in rows:  # no cap — positional ref, truncating orphans citations
                 comp = f"{r['company']} " if r.get('company') else ""
@@ -159,13 +163,9 @@ def format_sources_section(sources: list[dict]) -> str:
                 page = f" p{r['page_range']}" if r.get('page_range') else ""
                 summ = f" — {r['summary'][:100]}" if r.get('summary') else ""
                 lines.append(f"- 【{s['index']}-{r['m']}】{comp}{ttl}{url}{page}{summ}")
-        else:
-            # N-level: urls + preview (truncated/non-rows/mismatched-schema output)
-            for u in s.get("urls", [])[:5]:
-                lines.append(f"- {u}")
-            preview = s.get("output_preview", "")
-            if preview:
-                lines.append(f"- preview: {preview}…")
+        # 3. mcp class fallback: output preview
+        elif not s.get("url") and s.get("output_preview"):
+            lines.append(f"- preview: {s['output_preview']}…")
         lines.append("")
     return "\n".join(lines)
 
