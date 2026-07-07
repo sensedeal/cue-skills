@@ -173,7 +173,7 @@ python3 <skill>/scripts/research_run.py \
 
 **记住 conv_id:** 起跑后从 stdout `STARTED conv_id=…` 行取 conv_id(或起跑时用 `--conversation-id <自定义>` 指定),后续检查/replay 都用它。**绝不重复起跑**:已有 conv_id 在跑/已完成时,用户问进度检查该 conv_id(stdout/replay),**不要重新 `research_run.py`**(烧新 credits + 丢上下文);只有用户要换主体/换搭子才新起跑。
 
-**主动检查完成(起跑后就要查,别等回叫/别等用户问/别等 5 分钟):** 回叫不可靠——你不是被动等通知,而是主动定期查(同上"起跑后立即主动跟踪")。查到 `RESULT ok` → 交付;没 RESULT → replay(conv_id) 取报告:
+**主动检查完成(持续定时查,别等回叫/别等用户问/别等 5 分钟):** 回叫不可靠——你不是被动等通知,而是**持续定时查 stdout 末行(每 1-2 分钟,直到 `RESULT` 出现)**(同上"起跑后立即主动跟踪"的定期查机制;不是查一次就完)。查到 `RESULT ok` → 交付;没 RESULT → replay(conv_id) 取报告:
 1. 读后台 stdout 末行。`RESULT ok` → 读 `--output` 交付;`RESULT empty` → 按诊断给下一步。
 2. stdout 没 `RESULT`(任务跑很久/回叫没来)→ **用 conv_id 主动 replay 取报告**(不耗 credits,后端若已完成必有报告):
    ```python
