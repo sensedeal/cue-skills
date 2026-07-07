@@ -160,7 +160,13 @@ python3 <skill>/scripts/research_run.py \
 - **Claude Code**: 用 `Monitor` 工具监控 stdout 文件(`tail -f <stdout文件> | grep --line-buffered "▶\|✓\|RESULT"`),每行进度出现时 agent 被通知 → 翻译报用户。
 - **其他 agent**: 定期轮询 stdout(每 1-2 分钟读最新进度行)或等价异步通知。
 
-翻译:`▶ agent=researcher task=扫描年报资产减值` → "正在扫描年报里讨论资产减值的公司";`▶ agent=reporter task=撰写资产减值报告` → "正在撰写报告";`✓ report finalized` → "报告已生成,正在取回";`RESULT ok` → 读 `--output` 报告交付。**不贴原始 `▶ agent=` 行**(见上 ⚠️)。整个进度流从 `STARTED` 到 `RESULT` 都在 stdout 一个文件里。
+翻译:把 `▶ agent=… task=<requirement>` 的 **task_requirement** 作为**研究步骤**告诉用户,**不贴 agent 名**(coordinator/supervisor/researcher 是内部角色,用户不关心):
+- `▶ agent=researcher task=查半导体细分景气度` → "研究步骤:查半导体细分景气度"
+- `▶ agent=reporter task=撰写半导体景气度报告` → "研究步骤:撰写半导体景气度报告"
+- 多个 task 整理成**步骤列表**(1. 2. 3. …),已完成的标 ✅、进行中的标 🔄、未到的标 ⏳
+- `▶ agent=coordinator/supervisor`(无 task_requirement):**跳过**,不报用户(内部协调)
+- `✓ report finalized` → "报告已生成,正在取回";`RESULT ok` → 读 `--output` 报告交付
+- **绝不贴原始 `▶ agent=` 行**(见上 ⚠️)。整个进度流从 `STARTED` 到 `RESULT` 都在 stdout 一个文件里。
 
 **⚠️ 别高频 Read stdout 轮询:** 进度是**事件驱动**的——要么用 `Monitor` 被动收推送(每行进度主动通知你),要么起一个 background Bash `until grep -q RESULT <stdout文件>; do sleep 5; done` 等 RESULT 再由完成通知触发。长间歇无输出是**正常现象**(深研某步可能跑几分钟无进度行),**不要反复 Read 同一个 stdout 文件等事件**(浪费回合 + 上下文 overflow 风险)。
 
