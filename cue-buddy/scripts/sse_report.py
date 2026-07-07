@@ -175,7 +175,12 @@ def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
                 if u and u not in urls:
                     urls.append(u)
             # M-level: parse output rows for 【N-M】→rows[M] precise mapping.
-            # get_section output is truncated (json.loads fails) → rows=[] (N-level).
+            # output is a JSON string (production shape); a dict-repr or
+            # truncated output (get_section 115871→8046 chars) → json.loads
+            # fails → rows=[] (N-level fallback, no crash — regex urls above
+            # still extract). Rows inner keys hardcoded (company/title/
+            # source.pdf_url/summary/page_range); format_sources_section gates
+            # on meaningful content so a schema mismatch degrades to N-level.
             rows_out = []
             try:
                 o = json.loads(out) if out.strip() else None

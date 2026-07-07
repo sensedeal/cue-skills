@@ -497,6 +497,32 @@ class TestResearchRunner(unittest.TestCase):
         self.assertIn("http://b.pdf", out)
         self.assertEqual(research_run.format_sources_section([]), "")
 
+    def test_format_sources_section_mismatched_schema_falls_back(self):
+        # rows present but with unrecognized keys (no pdf_url/company) → must
+        # NOT render empty 【N-M】 markers; fall back to N-level urls so the
+        # source links the regex did extract aren't suppressed (net regression
+        # vs N-only). Gates on meaningful row content.
+        import research_run
+        sources = [{"index": 0, "tool_name": "scan_x", "tool_title": "",
+                    "input": {}, "urls": ["http://real.pdf"],
+                    "output_preview": "",
+                    "rows": [{"m": 0, "company": "", "title": "",
+                              "pdf_url": "", "summary": "", "page_range": ""}]}]
+        out = research_run.format_sources_section(sources)
+        self.assertIn("http://real.pdf", out)   # N-level urls preserved
+        self.assertNotIn("【0-0】", out)          # no empty M-level marker
+
+    def test_format_sources_section_no_truncate(self):
+        # 【N-M】 is positional — truncating orphans real citations. Render all.
+        import research_run
+        rows = [{"m": m, "company": f"c{m}", "title": "",
+                 "pdf_url": f"http://x{m}.pdf", "summary": "", "page_range": ""}
+                for m in range(32)]
+        sources = [{"index": 0, "tool_name": "scan_x", "tool_title": "",
+                    "input": {}, "urls": [], "output_preview": "", "rows": rows}]
+        out = research_run.format_sources_section(sources)
+        self.assertIn("【0-31】", out)  # high-M row not orphaned
+
     def test_runner_mimic_is_freeform_only(self):
         """mimic must be refused alongside --template-id (backend lets
         template_id silently override mimic, so refuse rather than no-op)."""
