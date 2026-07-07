@@ -1106,6 +1106,39 @@ class Case18_ExtractSources(unittest.TestCase):
         self.assertEqual(s[0]["rows"], [])
 
 
+class Case19_VersionConsistent(unittest.TestCase):
+    """cue-buddy and cue-research share a unified version number. Assert all
+    5 surfaces match so drift / forget-to-bump is caught at CI time:
+    cue-buddy SKILL.md, cue-research SKILL.md, cue-research/README.md Status,
+    README.md cue-buddy row, README.md cue-research row."""
+
+    def _all_versions(self) -> dict:
+        import re
+        repo = _HERE.parent.parent  # cue-buddy/scripts → cue-skills repo root
+        cb_md = (repo / "cue-buddy" / "SKILL.md").read_text(encoding="utf-8")
+        cr_md = (repo / "cue-research" / "SKILL.md").read_text(encoding="utf-8")
+        cr_readme = (repo / "cue-research" / "README.md").read_text(encoding="utf-8")
+        root_readme = (repo / "README.md").read_text(encoding="utf-8")
+        cb_skill = re.search(r'^\s*version:\s*"([^"]+)"', cb_md, re.M).group(1)
+        cr_skill = re.search(r'^\s*version:\s*"([^"]+)"', cr_md, re.M).group(1)
+        cr_status = re.search(r'Status:\s*v(\S+)', cr_readme).group(1)
+        cb_row = re.search(r'cue-buddy.*?\| v(\d+\.\d+\.\d+) \|', root_readme).group(1)
+        cr_row = re.search(r'cue-research.*?\| v(\d+\.\d+\.\d+) \|', root_readme).group(1)
+        return {
+            "cue-buddy/SKILL.md": cb_skill,
+            "cue-research/SKILL.md": cr_skill,
+            "cue-research/README.md Status": cr_status,
+            "README cue-buddy row": cb_row,
+            "README cue-research row": cr_row,
+        }
+
+    def test_all_five_surfaces_match(self):
+        vs = self._all_versions()
+        unique = set(vs.values())
+        self.assertEqual(len(unique), 1,
+                         f"version drift across surfaces: {vs}")
+
+
 if __name__ == "__main__":
     # Unbuffered + verbose for skill author workflow.
     unittest.main(verbosity=2)
