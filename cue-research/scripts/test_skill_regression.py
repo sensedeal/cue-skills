@@ -435,12 +435,32 @@ class TestResearchRunner(unittest.TestCase):
         """report_finalized must break the live SSE loop. The stream often
         stays open after the report is done; without the break the run
         holds until the 60min timeout and the agent stays stuck at
-        '已开跑' with the report already in the DB."""
-        src = (_HERE / "research_run.py").read_text(encoding="utf-8")
-        self.assertRegex(src, r'if event == "report_finalized"')
-        # the break must be inside that branch (not falling through to timeout)
-        m = re.search(r'if event == "report_finalized".*?break', src, re.S)
-        self.assertIsNotNone(m, "report_finalized must break the live loop")
+        '已开跑' with the report already in the DB.
+
+        Pin the actual loop exit, not a source substring: monkeypatch
+        chat_stream to yield report_finalized followed by a poison event
+        whose consumption raises — run() must return the report without
+        iterating past report_finalized. (The old source-regex pin matched
+        _emit_progress's elif branch + the timeout break via re.S, so a
+        silent revert left the suite green.)"""
+        import json
+        from unittest.mock import patch
+        import research_run
+
+        def poison_stream(*a, **kw):
+            yield "start_of_agent", json.dumps({"agent_name": "reporter"})
+            yield "message", json.dumps({"delta": {"content": "报告正文"}})
+            yield "report_finalized", json.dumps({"agent_name": "reporter"})
+            yield "POISON", "should-not-be-consumed"
+            raise AssertionError("stream iterated past report_finalized")
+
+        with patch.object(research_run, "chat_stream", poison_stream):
+            report, conv_id = research_run.run(
+                query="q", template_id=None, conversation_id="c1", timeout=60.0
+            )
+        self.assertEqual(report, "报告正文",
+                         "run() should extract the report and return it")
+        self.assertEqual(conv_id, "c1")
 
     def test_runner_mimic_is_freeform_only(self):
         """mimic must be refused alongside --template-id (backend lets
