@@ -988,6 +988,90 @@ class Case17_ValidateTemplateId(unittest.TestCase):
         self.assertIn("template_id", msg)  # hints: use the template_id field
 
 
+class Case18_ExtractSources(unittest.TestCase):
+    """extract_sources pulls citation sources from tool_chunk events so the
+    agent can render 【N-M】 markers in the report. tool_call_result.tool_result
+    is empty on replay; source detail (tool_name/input/output/urls) lives in
+    tool_chunk.chunk = {序号: {type:'mcp', data:{...}}}."""
+
+    def _fn(self):
+        from sse_report import extract_sources
+        return extract_sources
+
+    def _chunk(self, idx, name, title, inp, out):
+        import json
+        return "tool_chunk", json.dumps({"chunk": {str(idx): {
+            "type": "mcp", "data": {"tool_name": name, "tool_title": title,
+                                     "input": inp, "output": out}}}})
+
+    def test_extracts_index_tool_name_urls_preview(self):
+        ev = [self._chunk(0, "scan_x", "财报检索", {"query": "资产减值"},
+                          '{"rows":[{"source":{"pdf_url":"http://a.pdf"}}]}'),
+              self._chunk(2, "get_section", "", {}, '{"stock_code":"002385"}')]
+        out = self._fn()(ev)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0]["index"], 0)
+        self.assertEqual(out[0]["tool_name"], "scan_x")
+        self.assertEqual(out[0]["tool_title"], "财报检索")
+        self.assertIn("http://a.pdf", out[0]["urls"])
+        self.assertEqual(out[1]["index"], 2)
+        self.assertEqual(out[1]["tool_name"], "get_section")
+
+    def test_sorted_by_index_with_gaps(self):
+        ev = [self._chunk(5, "t5", "", {}, ""), self._chunk(0, "t0", "", {}, "")]
+        out = self._fn()(ev)
+        self.assertEqual([s["index"] for s in out], [0, 5])
+
+    def test_non_tool_chunk_events_ignored(self):
+        ev = [("start_of_agent", '{"agent_name":"reporter"}'),
+              ("message", '{"delta":{"content":"x"}}')]
+        self.assertEqual(self._fn()(ev), [])
+
+    def test_urls_deduped_and_clean(self):
+        # output JSON has urls inside quotes; regex must stop at the closing
+        # quote so the url isn't followed by JSON noise.
+        ev = [self._chunk(0, "t", "", {},
+                          '{"a":"http://x.pdf","b":"http://x.pdf","c":"http://y.pdf"}')]
+        out = self._fn()(ev)
+        self.assertEqual(out[0]["urls"], ["http://x.pdf", "http://y.pdf"])
+
+    def test_empty_or_malformed_ignored(self):
+        ev = [("tool_chunk", ""), ("tool_chunk", "{not json"),
+              ("tool_chunk", '{"chunk":"not-a-dict"}'),
+              ("tool_chunk", '{"chunk":{"not-digit":{}}}')]
+        self.assertEqual(self._fn()(ev), [])
+
+    def test_nested_live_shape(self):
+        # live chat_stream wraps payload in {"data": {...}}; replay is flat.
+        # extract_sources must read chunk through _event_data (like all
+        # sibling extractors) or the appendix silently empties on live runs
+        # — which PR#40's report_finalized-break made the dominant path.
+        import json
+        ev = [("tool_chunk", json.dumps({"data": {"chunk": {"0": {
+            "type": "mcp", "data": {"tool_name": "t", "tool_title": "",
+            "input": {}, "output": '{"url":"http://a.pdf"}'}}}}}))]
+        out = self._fn()(ev)
+        self.assertEqual(len(out), 1, "nested live shape must resolve via _event_data")
+        self.assertEqual(out[0]["tool_name"], "t")
+        self.assertIn("http://a.pdf", out[0]["urls"])
+
+    def test_urls_strips_trailing_punctuation(self):
+        # prose output (not JSON string) leaks trailing punctuation into the
+        # regex match; rstrip cleans it so links aren't broken.
+        ev = [self._chunk(0, "t", "", {}, "see http://a.pdf, and http://b.pdf)")]
+        out = self._fn()(ev)
+        self.assertEqual(out[0]["urls"], ["http://a.pdf", "http://b.pdf"])
+
+    def test_urls_keeps_balanced_parens(self):
+        # Wikipedia-style parenthesized paths legitimately end in ) — only
+        # strip unbalanced closers, else Foo_(bar) → Foo_(bar (broken link).
+        # get_wikipedia_revision is in the tool set, so this matters.
+        ev = [self._chunk(0, "t", "", {},
+                          '{"url":"http://en.wikipedia.org/wiki/Foo_(bar)"}')]
+        out = self._fn()(ev)
+        self.assertEqual(out[0]["urls"], ["http://en.wikipedia.org/wiki/Foo_(bar)"])
+
+
 if __name__ == "__main__":
     # Unbuffered + verbose for skill author workflow.
     unittest.main(verbosity=2)
