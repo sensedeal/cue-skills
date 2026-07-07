@@ -1071,6 +1071,40 @@ class Case18_ExtractSources(unittest.TestCase):
         out = self._fn()(ev)
         self.assertEqual(out[0]["urls"], ["http://en.wikipedia.org/wiki/Foo_(bar)"])
 
+    def test_extracts_rows_from_scan_output(self):
+        # M-level: scan-class output has rows[M] = {company, title, summary,
+        # source.pdf_url, page_range}. 【N-M】 maps to rows[M] precisely.
+        import json
+        out = json.dumps({"rows": [
+            {"company": "002385", "title": "商誉减值", "summary": "大北农...",
+             "source": {"pdf_url": "http://a.pdf"}, "page_range": [10, 20]},
+            {"company": "600089", "title": "存货跌价", "summary": "特变电工...",
+             "source": {"pdf_url": "http://b.pdf"}, "page_range": [30, 40]},
+        ]})
+        ev = [self._chunk(0, "scan_x", "财报检索", {"query": "资产减值"}, out)]
+        s = self._fn()(ev)
+        self.assertEqual(len(s[0]["rows"]), 2)
+        r0 = s[0]["rows"][0]
+        self.assertEqual(r0["m"], 0)
+        self.assertEqual(r0["company"], "002385")
+        self.assertEqual(r0["pdf_url"], "http://a.pdf")
+        self.assertEqual(r0["page_range"], [10, 20])
+        self.assertIn("大北农", r0["summary"])
+        self.assertEqual(s[0]["rows"][1]["m"], 1)
+
+    def test_rows_empty_for_truncated_output(self):
+        # get_section output is truncated (115871→8046 chars) → json.loads
+        # fails → rows=[] (N-level fallback, not a crash).
+        ev = [self._chunk(0, "get_section", "", {},
+                          '{"stock_code":"002385","summary":"...[已截断]')]
+        s = self._fn()(ev)
+        self.assertEqual(s[0]["rows"], [])
+
+    def test_rows_empty_for_no_rows_output(self):
+        ev = [self._chunk(0, "yearly_income", "", {}, "No valid data loaded")]
+        s = self._fn()(ev)
+        self.assertEqual(s[0]["rows"], [])
+
 
 if __name__ == "__main__":
     # Unbuffered + verbose for skill author workflow.

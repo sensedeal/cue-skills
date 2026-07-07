@@ -139,9 +139,11 @@ def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
     makes run() complete on the live (nested) path.
 
     Returns list sorted by 序号: [{index, tool_name, tool_title, input,
-    urls, output_preview}]. urls extracted from output via regex (clean for
-    JSON-string output, the production shape; trailing punctuation stripped
-    so prose output doesn't leak broken links) and de-duped preserving order.
+    urls, rows, output_preview}]. urls via regex (clean for JSON-string
+    output; trailing punctuation stripped, balanced parens kept). rows:
+    [{m, company, title, pdf_url, summary, page_range}] parsed from
+    output.rows when present (scan-class tools) for 【N-M】→rows[M] precise
+    mapping; [] when output is truncated/non-JSON (get_section) → N-level.
     """
     sources: dict[str, dict] = {}
     for event, data in events:
@@ -172,12 +174,33 @@ def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
                         u = u[:-1]
                 if u and u not in urls:
                     urls.append(u)
+            # M-level: parse output rows for 【N-M】→rows[M] precise mapping.
+            # get_section output is truncated (json.loads fails) → rows=[] (N-level).
+            rows_out = []
+            try:
+                o = json.loads(out) if out.strip() else None
+                if isinstance(o, dict) and isinstance(o.get("rows"), list):
+                    for m, r in enumerate(o["rows"]):
+                        if not isinstance(r, dict):
+                            continue
+                        src = r.get("source") if isinstance(r.get("source"), dict) else {}
+                        rows_out.append({
+                            "m": m,
+                            "company": str(r.get("company", "") or ""),
+                            "title": str(r.get("title", "") or ""),
+                            "pdf_url": src.get("pdf_url", "") or "",
+                            "summary": str(r.get("summary", "") or ""),
+                            "page_range": r.get("page_range", ""),
+                        })
+            except (json.JSONDecodeError, ValueError):
+                pass  # truncated/non-JSON output → N-level fallback
             sources[k] = {
                 "index": int(k),
                 "tool_name": d.get("tool_name", "") or "",
                 "tool_title": d.get("tool_title", "") or "",
                 "input": d.get("input", {}),
                 "urls": urls,
+                "rows": rows_out,
                 "output_preview": out[:200],
             }
     return [sources[k] for k in sorted(sources, key=lambda x: int(x))]

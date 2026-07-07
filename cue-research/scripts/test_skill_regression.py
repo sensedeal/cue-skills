@@ -471,22 +471,30 @@ class TestResearchRunner(unittest.TestCase):
         self.assertIn("http://example.com/a.pdf", sources[0]["urls"])
 
     def test_format_sources_section(self):
-        """format_sources_section renders 【N】 tool_name + urls as a markdown
-        appendix so the agent can resolve 【N-M】 markers in the report."""
+        """format_sources_section renders 【N-M】 (M-level when rows present)
+        or 【N】 urls (N-level fallback) as a markdown appendix."""
         import research_run
         sources = [
             {"index": 0, "tool_name": "scan_x", "tool_title": "财报检索",
-             "input": {"query": "资产减值", "anchor": "impairment"},
-             "urls": ["http://example.com/a.pdf", "http://example.com/b.pdf"],
-             "output_preview": '{"rows":[...'},
+             "input": {"query": "资产减值"},
+             "urls": [], "output_preview": "",
+             "rows": [{"m": 0, "company": "002385", "title": "商誉减值",
+                       "pdf_url": "http://a.pdf", "summary": "大北农商誉减值",
+                       "page_range": [10, 20]}]},
             {"index": 1, "tool_name": "get_section", "tool_title": "",
-             "input": {}, "urls": [], "output_preview": ""},
+             "input": {}, "urls": ["http://b.pdf"], "output_preview": "",
+             "rows": []},
         ]
         out = research_run.format_sources_section(sources)
         self.assertIn("## 数据来源详情", out)
+        # M-level: 【0-0】条目 (company + pdf_url + page + summary)
         self.assertIn("### 【0】scan_x (财报检索)", out)
-        self.assertIn("http://example.com/a.pdf", out)
+        self.assertIn("【0-0】002385", out)
+        self.assertIn("http://a.pdf", out)
+        self.assertIn("大北农", out)
+        # N-level: get_section urls (rows empty → fallback)
         self.assertIn("### 【1】get_section", out)
+        self.assertIn("http://b.pdf", out)
         self.assertEqual(research_run.format_sources_section([]), "")
 
     def test_runner_mimic_is_freeform_only(self):

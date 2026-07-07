@@ -142,17 +142,28 @@ def format_sources_section(sources: list[dict]) -> str:
         return ""
     lines = ["\n\n---\n\n## 数据来源详情\n"]
     for s in sources:
-        title = f" ({s['tool_title']})" if s['tool_title'] else ""
+        title = f" ({s['tool_title']})" if s.get('tool_title') else ""
         lines.append(f"### 【{s['index']}】{s['tool_name']}{title}")
         inp = s.get("input")
         if isinstance(inp, dict) and inp:
             parts = [f"{k}={str(v)[:40]}" for k, v in list(inp.items())[:3]]
             lines.append(f"- input: {', '.join(parts)}")
-        for u in s.get("urls", [])[:5]:
-            lines.append(f"- {u}")
-        preview = s.get("output_preview", "")
-        if preview:
-            lines.append(f"- preview: {preview}…")
+        if s.get("rows"):
+            # M-level: 【N-M】→ rows[M] (company + title + pdf_url + page + summary)
+            for r in s["rows"][:30]:
+                comp = f"{r['company']} " if r.get('company') else ""
+                ttl = f"{r['title']} " if r.get('title') else ""
+                url = f" → {r['pdf_url']}" if r.get('pdf_url') else ""
+                page = f" p{r['page_range']}" if r.get('page_range') else ""
+                summ = f" — {r['summary'][:100]}" if r.get('summary') else ""
+                lines.append(f"- 【{s['index']}-{r['m']}】{comp}{ttl}{url}{page}{summ}")
+        else:
+            # N-level: urls + preview (truncated/non-rows output)
+            for u in s.get("urls", [])[:5]:
+                lines.append(f"- {u}")
+            preview = s.get("output_preview", "")
+            if preview:
+                lines.append(f"- preview: {preview}…")
         lines.append("")
     return "\n".join(lines)
 
