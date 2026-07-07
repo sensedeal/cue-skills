@@ -130,19 +130,30 @@ def _emit_progress(event: str, data: str) -> None:
 
 
 def inline_citations(report: str, sources: list[dict]) -> str:
-    """Replace 【N-M】 in the report with markdown links [N-M](url "title").
+    """Replace 【N-M】 in the report with concise markdown links.
 
-    The product renders 【N-M】 inline as clickable source cards; a .md file
-    can't do cards, but markdown links render as clickable citations in any
-    preview (GitHub/VSCode) — closer to the product's inline experience than
-    a tail appendix. Drops the ## 数据来源详情 list.
+    Link text = website short name (domain) or tool name — short, readable,
+    no long title text, no hover title attr. Consecutive citations are
+    space-separated. Drops the tail list.
 
-    - search_snippet/url class: 【N-M】→ data.url (one url per N; M ignored)
-    - scan class: 【N-M】→ rows[M].pdf_url (M = row index, company+title)
-    - mcp class (no url/rows): 【N-M】kept as text (no link)
+    - search_snippet/url class: 【N-M】→ [domain](data.url)
+    - scan class: 【N-M】→ [domain](rows[M].pdf_url)
+    - mcp class (no url/rows): 【N-M】→ tool_title (plain text, no link)
     """
     import re
+    from urllib.parse import urlparse
     by_index = {s["index"]: s for s in sources}
+
+    _TLDS = {"com", "cn", "net", "org", "edu", "gov", "co", "uk", "io", "info", "biz"}
+    def domain_short(url: str) -> str:
+        try:
+            netloc = urlparse(url).netloc.replace("www.", "")
+            parts = netloc.split(".")
+            while parts and parts[-1] in _TLDS:
+                parts.pop()
+            return parts[-1] if parts else netloc
+        except Exception:
+            return url
 
     def repl(m):
         n, mi = int(m.group(1)), int(m.group(2))
@@ -150,19 +161,19 @@ def inline_citations(report: str, sources: list[dict]) -> str:
         if not s:
             return m.group(0)
         url = s.get("url") or ""
-        title = s.get("title") or ""
         if not url:
             rows = s.get("rows") or []
             if mi < len(rows):
-                r = rows[mi]
-                url = r.get("pdf_url") or ""
-                title = f"{r.get('company', '')} {r.get('title', '')}".strip()
+                url = rows[mi].get("pdf_url") or ""
         if not url:
-            return m.group(0)  # no url → keep text marker
-        t = title.replace('"', "'")[:60] if title else ""
-        return f'[{n}-{mi}]({url} "{t}")' if t else f'[{n}-{mi}]({url})'
+            # no url: show tool_title (or tool_name) instead of bare 【N-M】
+            return s.get("tool_title") or s.get("tool_name") or m.group(0)
+        return f"[{domain_short(url)}]({url})"
 
-    return re.sub(r"【(\d+)-(\d+)】", repl, report)
+    inlined = re.sub(r"【(\d+)-(\d+)】", repl, report)
+    # space-separate consecutive citations: ](...)[ → ](...) [
+    inlined = re.sub(r'(\]\([^)]*\))(\[)', r"\1 \2", inlined)
+    return inlined
 
 
 def build_payload(

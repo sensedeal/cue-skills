@@ -471,40 +471,54 @@ class TestResearchRunner(unittest.TestCase):
         self.assertEqual(sources[0]["rows"][0]["pdf_url"], "http://example.com/a.pdf")
 
     def test_inline_citations(self):
-        """inline_citations replaces 【N-M】 with markdown links — search_snippet
-        → data.url, scan → rows[M].pdf_url, mcp (no url) → text kept."""
+        """inline_citations: link text = domain short name (no long title,
+        no hover); mcp (no url) → tool_title plain text."""
         import research_run
         sources = [
-            {"index": 0, "tool_name": "search_tool", "url": "http://a.pdf",
-             "title": "来源A", "rows": []},
+            {"index": 0, "tool_name": "search_tool",
+             "url": "https://www.21jingji.com/article/a.pdf",
+             "title": "来源A", "description": "来源A摘要", "rows": []},
             {"index": 1, "tool_name": "scan_x", "url": "", "title": "",
              "rows": [{"m": 0, "company": "002385", "title": "商誉减值",
-                       "pdf_url": "http://b.pdf", "summary": "", "page_range": ""}]},
-            {"index": 2, "tool_name": "get_section", "url": "", "title": "",
-             "rows": []},  # mcp class, no url → text kept
+                       "pdf_url": "http://static.cninfo.com.cn/finalpage/b.pdf",
+                       "summary": "大北农...", "page_range": ""}]},
+            {"index": 2, "tool_name": "get_section", "tool_title": "A股财务摘要",
+             "url": "", "title": "", "rows": []},  # mcp, no url → tool_title
         ]
         report = "引用A【0-0】; 引用B【1-0】; 引用C【2-0】; 无来源【9-9】"
         out = research_run.inline_citations(report, sources)
-        # search_snippet: [0-0](http://a.pdf "来源A")
-        self.assertIn('[0-0](http://a.pdf "来源A")', out)
-        # scan: [1-0](http://b.pdf "002385 商誉减值")
-        self.assertIn('[1-0](http://b.pdf "002385 商誉减值")', out)
-        # mcp (no url): 【2-0】 kept as text (no link)
-        self.assertIn("【2-0】", out)
+        # search_snippet: link text = domain short (21jingji), no title attr
+        self.assertIn("[21jingji](https://www.21jingji.com/article/a.pdf)", out)
+        self.assertNotIn('"0-0', out)  # no hover title
+        # scan: link text = domain short (cninfo)
+        self.assertIn("[cninfo](http://static.cninfo.com.cn/finalpage/b.pdf)", out)
+        # mcp (no url): tool_title plain text (no link)
+        self.assertIn("A股财务摘要", out)
         # unknown source: 【9-9】 kept as text
         self.assertIn("【9-9】", out)
         # no tail appendix
         self.assertNotIn("## 数据来源详情", out)
 
+    def test_inline_citations_space_separated(self):
+        # consecutive citations must be space-separated, not mashed together
+        import research_run
+        sources = [
+            {"index": 0, "url": "http://a.com/x", "title": "", "description": "", "rows": []},
+            {"index": 1, "url": "http://b.com/y", "title": "", "description": "", "rows": []},
+        ]
+        out = research_run.inline_citations("ref【0-0】【1-0】end", sources)
+        self.assertIn(") [", out)  # space between consecutive links
+        self.assertNotIn(")[", out)  # no mashup
+
     def test_inline_citations_no_truncate(self):
         # scan class: high M rows all get links (no cap, positional).
         import research_run
         rows = [{"m": m, "company": f"c{m}", "title": "",
-                 "pdf_url": f"http://x{m}.pdf", "summary": "", "page_range": ""}
+                 "pdf_url": f"http://x{m}.com/{m}", "summary": "", "page_range": ""}
                 for m in range(32)]
         sources = [{"index": 0, "url": "", "title": "", "rows": rows}]
         out = research_run.inline_citations("ref【0-31】", sources)
-        self.assertIn("[0-31](http://x31.pdf", out)
+        self.assertIn("](http://x31.com/31", out)
 
     def test_runner_mimic_is_freeform_only(self):
         """mimic must be refused alongside --template-id (backend lets
