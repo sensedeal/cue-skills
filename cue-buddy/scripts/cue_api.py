@@ -1068,6 +1068,10 @@ def _cli() -> int:
             if len(sys.argv) < 3:
                 print("usage: cue_api.py get <template_id>")
                 return 2
+            _bad = validate_template_id(sys.argv[2])
+            if _bad:
+                print(f"[cue_api] ✗ {_bad}")
+                return 2
             print(json.dumps(get_template(sys.argv[2]), ensure_ascii=False, indent=2))
             return 0
         if cmd == "capabilities":
@@ -1105,6 +1109,10 @@ def _cli() -> int:
             if len(sys.argv) < 3:
                 print("usage: cue_api.py {frequent|unfrequent} <template_id>")
                 return 2
+            _bad = validate_template_id(sys.argv[2])
+            if _bad:
+                print(f"[cue_api] ✗ {_bad}")
+                return 2
             res = set_template_frequent(sys.argv[2], is_frequent=(cmd == "frequent"))
             print(json.dumps(res, ensure_ascii=False, indent=2))
             return 0
@@ -1132,6 +1140,10 @@ def _cli() -> int:
                 print("  payload may include any subset of the 4 LLM fields + meta")
                 return 2
             template_id = sys.argv[2]
+            _bad = validate_template_id(template_id)
+            if _bad:
+                print(f"[cue_api] ✗ {_bad}")
+                return 2
             payload_path = sys.argv[3]
             payload = json.loads(Path(payload_path).read_text(encoding="utf-8"))
             res = update_template(template_id, payload)
