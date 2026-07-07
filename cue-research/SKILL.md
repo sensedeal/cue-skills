@@ -156,15 +156,21 @@ python3 <skill>/scripts/research_run.py \
 
 **让出前对用户说(人话):** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。" **不要把 `STARTED conv_id=` / `▶ agent=` 这些 stdout 行转给用户**(见上 ⚠️)。
 
-**起跑后必须设完成检测机制(不是可选):** fire-and-retrieve 的"让出回合"≠ 睡等回叫——回叫不可靠(.workbuddy 等平台通知常不来),agent 会卡在"跑完我立刻贴"但实际永远不交付。**起跑后必须立即设一个完成检测 background Bash**,用它(不是 research_run.py 的回叫)驱动交付:
+**起跑后必须消费 research_run.py 的流式 stdout(进度 + 完成都靠它):** research_run.py 的 stdout 是**流式实时输出**(`flush=True`):`STARTED` → `▶ agent=… task=…`(研究步骤) → `✓ report finalized` → `RESULT ok|empty`。这个流是你的**进度 + 完成的唯一来源**——必须消费它,不让出后睡等回叫(回叫不可靠,.workbuddy 等平台通知常不来)。
+
+**完成检测(必须):** 起跑 research_run.py 后(run_in_background:true),立即起第二个 background Bash 等 RESULT:
 ```bash
-# 起跑 research_run.py 后(run_in_background:true), 立即起第二个 background Bash 等 RESULT:
 until grep -q "RESULT" <stdout文件> 2>/dev/null; do sleep 5; done
 # 这个 background Bash 完成时(RESULT 出现) agent 被通知 → 读 stdout 末行 → 交付
 ```
-- **这个 background Bash 的完成通知是你的交付触发器**——不依赖 research_run.py 的回叫(那个可能不来)。background Bash 完成时你被通知 → 读 stdout 末行 `RESULT ok|empty` → `ok` 读 `--output` 交付;`empty` 诊断。
-- **进度监控**(可选): Claude Code 用 `Monitor` 工具(`tail -f <stdout> | grep "▶\|✓\|RESULT"`)翻译研究步骤给用户;无 Monitor 的 agent 在 background Bash 等 RESULT 期间,用户问进度时读 stdout 最新行翻译。
-- **绝不告诉用户"完成后会自动通知我"**——你用 background Bash 主动检测完成,不把希望寄托在回叫上。
+这个 background Bash 的完成通知是你的交付触发器——不依赖 research_run.py 的回叫。完成时读 stdout 末行 `RESULT ok|empty` → `ok` 读 `--output` 交付;`empty` 诊断。
+
+**进度展示(必须,不是可选):** 消费 stdout 的进度行(`▶ agent=… task=…`),翻译研究步骤给用户:
+- Claude Code: `Monitor` 工具(`tail -f <stdout> | grep "▶\|✓\|RESULT"`),每行通知 → 翻译报用户。
+- 无 Monitor 的 agent: 在 background Bash 等 RESULT 期间,定期读 stdout 最新行(用后台任务查询工具如 TaskOutput)翻译;用户问进度时也读 stdout 最新行翻译。
+- 翻译:`▶ agent=researcher task=查…` → "研究步骤:查…";`✓ report finalized` → "报告已生成,正在取回";`RESULT` → 交付。**绝不贴原始 `▶ agent=` 行**(见上 ⚠️)。
+
+**绝不告诉用户"完成后会自动通知我"**——你消费流式 stdout 主动检测进度 + 完成,不把希望寄托在回叫上。
 
 翻译:把 `▶ agent=… task=<requirement>` 的 **task_requirement** 作为**研究步骤**告诉用户,**不贴 agent 名**(coordinator/supervisor/researcher 是内部角色,用户不关心):
 - `▶ agent=researcher task=查半导体细分景气度` → "研究步骤:查半导体细分景气度"
