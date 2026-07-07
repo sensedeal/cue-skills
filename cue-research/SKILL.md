@@ -160,7 +160,22 @@ python3 <skill>/scripts/research_run.py \
 
 翻译:`▶ agent=researcher task=扫描年报资产减值` → "正在扫描年报里讨论资产减值的公司";`▶ agent=reporter task=撰写资产减值报告` → "正在撰写报告";`✓ report finalized` → "报告已生成,正在取回";`RESULT ok` → 读 `--output` 报告交付。**不贴原始 `▶ agent=` 行**(见上 ⚠️)。整个进度流从 `STARTED` 到 `RESULT` 都在 stdout 一个文件里。
 
-**完成回叫后:** 读 stdout 末行 `[cue-research] RESULT ok conv_id=… chars=… output=…`(失败是 `RESULT empty …`),`ok` 则读 `--output` 文件 → Stage 5 交付;`empty` 则按文件里/stdout 的诊断给下一步(多半去 cuecue.cn 网页端看该 conversation)。
+**记住 conv_id:** 起跑后从 stdout `STARTED conv_id=…` 行取 conv_id(或起跑时用 `--conversation-id <自定义>` 指定),后续检查/replay 都用它。**绝不重复起跑**:已有 conv_id 在跑/已完成时,用户问进度检查该 conv_id(stdout/replay),**不要重新 `research_run.py`**(烧新 credits + 丢上下文);只有用户要换主体/换搭子才新起跑。
+
+**主动检查完成(别干等回叫):** fire-and-retrieve 的"完成回叫"依赖平台后台任务通知,有的平台(非 Claude Code)通知不可靠——agent 不能干等。用户问进度、或跑了很久(>5 分钟)没回叫时,主动检查:
+1. 读后台 stdout 末行。`RESULT ok` → 读 `--output` 交付;`RESULT empty` → 按诊断给下一步。
+2. stdout 没 `RESULT`(任务跑很久/回叫没来)→ **用 conv_id 主动 replay 取报告**(不耗 credits,后端若已完成必有报告):
+   ```python
+   import sys; sys.path.insert(0, "<repo>/cue-buddy/scripts")
+   from cue_api import replay
+   from sse_report import extract_reporter_content
+   events = list(replay("<conv_id>", max_seconds=60))
+   report = extract_reporter_content(events)
+   # report 非空 → 后端已完成,落盘交付;空 → 还在跑,等一会再查
+   ```
+3. replay 有报告 → 落盘 `--output` 交付(同 research_run 的落盘格式);replay 空 → 后端还没完成,等 1-2 分钟再查(别立刻重复 replay)。
+
+**完成回叫后(或主动检查拿到 RESULT):** 读 stdout 末行 `[cue-research] RESULT ok conv_id=… chars=… output=…`(失败是 `RESULT empty …`),`ok` 则读 `--output` 文件 → Stage 5 交付;`empty` 则按文件里/stdout 的诊断给下一步(多半去 cuecue.cn 网页端看该 conversation)。
 
 **为什么这套是对的(背景,别自己重写):** `research_run.py` 是 `cue_api` + `sse_report` 共享原语的**薄编排**(不复制、不漂移),内部把 **replay 当主取报告路径**:live 客户端流长跑常在 reporter 段到达前断连(server 仍跑完写 DB),所以 `extract_reporter_content(live_events)` 返回空是**常态不是 bug**——`chat_stream` 与 `replay` SSE 解析逐字节同款、共用同一 extract,replay 读 DB 完整 `workflow_events` 几乎总能拿到。这套 L1 诊断(`diagnose_empty_report` 的三种 `kind`)+ L2 replay 的硬化逻辑与 `cue-buddy/scripts/test_template.py` 同源、已跑通 ≥9 主体。注意 `stream_cut_before_reporter` 是 `diagnose_empty_report` 返回的 **`kind` 字符串,不是可 import 的函数**。前台调试需要时(`--foreground` 语义)直接去掉 `run_in_background` 即可,但默认走后台。
 
