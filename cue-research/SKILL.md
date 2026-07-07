@@ -158,16 +158,19 @@ python3 <skill>/scripts/research_run.py \
 
 **起跑后必须消费 research_run.py 的流式 stdout(进度 + 完成都靠它):** research_run.py 的 stdout 是**流式实时输出**(`flush=True`):`STARTED` → `▶ agent=… task=…`(研究步骤) → `✓ report finalized` → `RESULT ok|empty`。这个流是你的**进度 + 完成的唯一来源**——必须消费它,不让出后睡等回叫(回叫不可靠,.workbuddy 等平台通知常不来)。
 
-**完成检测(必须):** 起跑 research_run.py 后(run_in_background:true),立即起第二个 background Bash 流式等 RESULT:
+**完成检测(必须):** 起跑时把 stdout 重定向到文件,再起第二个 background Bash 流式等 RESULT(带超时,防 research_run.py 崩溃不写 RESULT 时无限等):
 ```bash
-tail -F <stdout文件> | grep -m1 "RESULT"
-# tail -F 跟随 stdout 新行(不轮询),grep -m1 匹配到 RESULT 立即退出 → agent 被通知 → 读 stdout 末行 → 交付
+# 起跑(stdout 重定向到文件,两个 Bash 看同一文件):
+python3 <skill>/scripts/research_run.py --template-id … --query … --output … > /tmp/cue-run.log 2>&1
+# 第二个 background Bash(流式等 RESULT,61min 超时):
+timeout 3660 tail -F /tmp/cue-run.log | grep -m1 "RESULT"
+# tail -F 跟随新行(不轮询),grep -m1 匹配 RESULT 退出;timeout 3660 防 research_run.py 崩溃(OOM/SIGKILL/未捕获异常)不写 RESULT 时无限等(61min 超 60min hard timeout)
+# Bash 完成(RESULT 或超时)→ agent 被通知 → 读 /tmp/cue-run.log 末行 → RESULT ok 读 --output 交付;empty/超时 → 诊断/告诉用户失败
 ```
-这个 background Bash 的完成通知是你的交付触发器——不依赖 research_run.py 的回叫。完成时读 stdout 末行 `RESULT ok|empty` → `ok` 读 `--output` 交付;`empty` 诊断。
 
-**进度展示(必须,不是可选):** 消费 stdout 的进度行(`▶ agent=… task=…`),翻译研究步骤给用户:
-- Claude Code: `Monitor` 工具(`tail -f <stdout> | grep "▶\|✓\|RESULT"`),每行通知 → 翻译报用户。
-- 无 Monitor 的 agent: 在 background Bash 等 RESULT 期间,定期读 stdout 最新行(用后台任务查询工具如 TaskOutput)翻译;用户问进度时也读 stdout 最新行翻译。
+**进度展示:** 消费 stdout 进度行(`▶ agent=… task=…`)翻译研究步骤给用户:
+- Claude Code: `Monitor` 工具(`tail -F /tmp/cue-run.log | grep "▶\|✓\|RESULT"`),每行通知 → 翻译报用户。
+- 无 Monitor 的 agent(.workbuddy 等): **用户问进度时**读 `/tmp/cue-run.log` 最新行翻译(不是定期轮询——你让出后不醒,定期读不可行;background Bash 完成通知是唯一主动触发)。
 - 翻译:`▶ agent=researcher task=查…` → "研究步骤:查…";`✓ report finalized` → "报告已生成,正在取回";`RESULT` → 交付。**绝不贴原始 `▶ agent=` 行**(见上 ⚠️)。
 
 **绝不告诉用户"完成后会自动通知我"**——你消费流式 stdout 主动检测进度 + 完成,不把希望寄托在回叫上。
