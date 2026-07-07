@@ -259,6 +259,32 @@ def normalize_template_id(template_id: str | None) -> str | None:
     return template_id
 
 
+def validate_template_id(template_id: str | None) -> str | None:
+    """Return an error message if template_id looks implausible, else None.
+
+    Cue template_id suffixes are base62 — they ALWAYS contain letters/_/-,
+    never pure digits (verified: 0/159 buddies have a pure-digit suffix).
+    A pure-digit suffix (e.g. `142` → `template_142`) means the caller
+    grabbed the wrong field — the backend's numeric DB ``id`` (buddies carry
+    both an integer ``id`` and a string ``template_id``) or a list index —
+    instead of the ``template_id`` string (e.g. ``template_fnig0i``).
+    Catching it here fails fast with a clear message instead of burning
+    credits on a guaranteed 404. normalize_template_id has already prepended
+    the prefix, so the suffix is whatever follows ``template_``.
+    """
+    if not template_id:
+        return None
+    suffix = template_id[len("template_"):] if template_id.startswith("template_") else template_id
+    if suffix.isdigit():
+        return (
+            f"template_id={template_id}: 纯数字后缀不是 Cue id。"
+            f"Cue id 形如 template_<base62> (如 template_fnig0i), "
+            f"从搭子的 template_id 字段取——你传的可能是数字 DB id 或列表序号 "
+            f"(搭子同时有数字 id 和字符串 template_id 两字段,易混)。"
+        )
+    return None
+
+
 def get_template(template_id: str) -> dict:
     """Fetch one full template."""
     template_id = normalize_template_id(template_id)

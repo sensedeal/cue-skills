@@ -53,13 +53,20 @@ from cue_api import (  # noqa: E402
     upload_file,
     upload_material,
 )
-try:  # noqa: E402 — cue-buddy v0.2.1+ exposes this; fall back for older siblings
-    from cue_api import normalize_template_id
+try:  # noqa: E402 — cue-buddy v0.2.2+ exposes these; fall back for older siblings
+    from cue_api import normalize_template_id, validate_template_id
 except ImportError:
     def normalize_template_id(template_id: str | None) -> str | None:
         if template_id and not template_id.startswith("template_"):
             return "template_" + template_id
         return template_id
+    def validate_template_id(template_id: str | None) -> str | None:
+        if not template_id:
+            return None
+        suffix = template_id[len("template_"):] if template_id.startswith("template_") else template_id
+        if suffix.isdigit():
+            return f"template_id={template_id}: 纯数字后缀不是 Cue id (用 template_id 字段,非数字 id)"
+        return None
 from sse_report import (  # noqa: E402
     _agent_name,
     _event_data,
@@ -307,6 +314,14 @@ def main(argv: list[str] | None = None) -> int:
     # Tolerate a bare `<id>` for --template-id (prepend `template_` if missing),
     # so logs, payload, and the empty-run stub all use the resolved id.
     args.template_id = normalize_template_id(args.template_id)
+    # Fail fast on a pure-digit suffix (e.g. `142` → `template_142`): the agent
+    # grabbed the buddy's numeric DB `id` or a list index, not the template_id
+    # string. Cue suffixes are base62 — never pure digits — so this is a
+    # guaranteed 404. Don't burn credits on it.
+    _bad_id = validate_template_id(args.template_id)
+    if _bad_id:
+        print(f"[cue-research] ✗ {_bad_id}", flush=True)
+        return 2
 
     # Mimic constraints (Phase 1 scope): one-shot, free-form only.
     if args.mimic_url and args.mimic_file:

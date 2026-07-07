@@ -49,6 +49,7 @@ from cue_api import (  # noqa: E402
     load_config,
     normalize_template_id,
     replay,
+    validate_template_id,
 )
 from validate_template import (  # noqa: E402
     FORBIDDEN_VERDICT_PHRASES,
@@ -395,6 +396,10 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     # type=normalize_template_id covers build_chat_payload, which puts the id
     # straight into the chat payload bypassing the cue_api function layer.
+    _bad_id = validate_template_id(args.template_id)
+    if _bad_id:
+        print(f"[+test] ✗ {_bad_id}", flush=True)
+        return 2
 
     try:
         load_config()

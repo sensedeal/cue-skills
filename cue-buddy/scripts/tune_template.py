@@ -43,6 +43,7 @@ from cue_api import (  # noqa: E402
     load_config,
     normalize_template_id,
     update_template,
+    validate_template_id,
 )
 from validate_template import validate  # noqa: E402
 
@@ -317,6 +318,10 @@ def main(argv: list[str] | None = None) -> int:
         "中文数字章节、章节编号不连续、`可提供:` 段缺失等机械格式问题）",
     )
     args = p.parse_args(argv)
+    _bad_id = validate_template_id(args.template_id)
+    if _bad_id:
+        print(f"[+tune] ✗ {_bad_id}", flush=True)
+        return 2
 
     try:
         load_config()

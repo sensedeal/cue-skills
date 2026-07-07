@@ -79,7 +79,7 @@ while True:
     page += 1
 ```
 
-每个模板带 `title / primary_category / secondary_category / goal` 字段。agent 按 **`secondary_category`** 分组扫读(`深度核查` / `投资研究` / `信贷尽调` / `市值管理` / `财富投顾` / `私募尽调` / `融资融券` / `法律与行研` / `资本运作` / `行业研究` / `商机挖掘` / `保险营销` ...top 12 个 secondary cat 覆盖 ~80% 模板),拿 query 跟每个候选的 `goal` 做语义匹配,挑出最相关的 **≤2 个**候选。
+每个模板带 `template_id / title / primary_category / secondary_category / goal` 字段。**`template_id` 是字符串 `template_<base62后缀>`(如 `template_fnig0i`),Stage 4 跑搭子用它——必须取这个字段的值,绝不是数字 `id` 字段(搭子同时有数字 DB `id` 和字符串 `template_id`,易混)或列表序号;裸数字如 `142` 不是有效 id。** agent 按 **`secondary_category`** 分组扫读(`深度核查` / `投资研究` / `信贷尽调` / `市值管理` / `财富投顾` / `私募尽调` / `融资融券` / `法律与行研` / `资本运作` / `行业研究` / `商机挖掘` / `保险营销` ...top 12 个 secondary cat 覆盖 ~80% 模板),拿 query 跟每个候选的 `goal` 做语义匹配,挑出最相关的 **≤2 个**候选。
 
 **关键原则——主体 vs 意图分离:**
 
@@ -137,6 +137,8 @@ while True:
 **别在 agent 回合里死守一小时的 live 流。** 深研单次 3-15 分钟(服务端 60min 硬超时),同步阻塞既浪费回合又脆弱(live 流常丢 reporter 段)。改用 **fire-and-retrieve**:`research_run.py` 在**后台**跑完整流程(发起 chat_stream → live 取报告 → 空则 replay 兜底 → 落盘),agent 回合立即让出;后台任务完成后 agent 被回叫,再读 `--output` 文件交付。
 
 **起跑(Bash,`run_in_background: true`):**
+
+`--template-id` 取 Stage 2 候选搭子的 `template_id` 字段值(形如 `template_fnig0i`)。**别传数字 `id` 或序号**——runner 会对纯数字后缀(如 `142`→`template_142`)fail-fast 拒绝(不烧 credits),因 Cue id 后缀从不纯数字。
 
 ```bash
 python3 <skill>/scripts/research_run.py \
