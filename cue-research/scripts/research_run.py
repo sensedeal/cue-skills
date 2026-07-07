@@ -130,15 +130,14 @@ def _emit_progress(event: str, data: str) -> None:
 
 
 def inline_citations(report: str, sources: list[dict]) -> str:
-    """Replace 【N-M】 in the report with markdown links [N-M](url "title").
+    """Replace 【N-M】 in the report with readable markdown links.
 
-    The product renders 【N-M】 inline as clickable source cards; a .md file
-    can't do cards, but markdown links render as clickable citations in any
-    preview (GitHub/VSCode) — closer to the product's inline experience than
-    a tail appendix. Drops the ## 数据来源详情 list.
+    Link text = source title (not bare number) so the reader sees what the
+    source is; title attr = "N-M: summary" for hover. Consecutive citations
+    are space-separated (avoid "119-0119-4" mashups). Drops the tail list.
 
-    - search_snippet/url class: 【N-M】→ data.url (one url per N; M ignored)
-    - scan class: 【N-M】→ rows[M].pdf_url (M = row index, company+title)
+    - search_snippet/url class: 【N-M】→ [data.title](data.url "N-M: desc")
+    - scan class: 【N-M】→ [company title](rows[M].pdf_url "N-M: summary")
     - mcp class (no url/rows): 【N-M】kept as text (no link)
     """
     import re
@@ -151,18 +150,26 @@ def inline_citations(report: str, sources: list[dict]) -> str:
             return m.group(0)
         url = s.get("url") or ""
         title = s.get("title") or ""
+        desc = s.get("description") or ""
         if not url:
             rows = s.get("rows") or []
             if mi < len(rows):
                 r = rows[mi]
                 url = r.get("pdf_url") or ""
                 title = f"{r.get('company', '')} {r.get('title', '')}".strip()
+                desc = r.get("summary") or ""
         if not url:
             return m.group(0)  # no url → keep text marker
-        t = title.replace('"', "'")[:60] if title else ""
-        return f'[{n}-{mi}]({url} "{t}")' if t else f'[{n}-{mi}]({url})'
+        # link text: source title (readable, truncate 30); fallback to N-M
+        text = (title[:30] if title else f"{n}-{mi}").replace("[", "").replace("]", "")
+        # title attr: "N-M: summary" for hover
+        hover = f"{n}-{mi}: {desc[:60]}".replace('"', "'") if desc else f"{n}-{mi}"
+        return f'[{text}]({url} "{hover}")'
 
-    return re.sub(r"【(\d+)-(\d+)】", repl, report)
+    inlined = re.sub(r"【(\d+)-(\d+)】", repl, report)
+    # space-separate consecutive citations: ](...)[ → ](...) [
+    inlined = re.sub(r'(\]\([^)]*\))(\[)', r"\1 \2", inlined)
+    return inlined
 
 
 def build_payload(
