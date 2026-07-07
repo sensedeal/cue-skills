@@ -154,7 +154,11 @@ python3 <skill>/scripts/research_run.py \
 
 **让出前对用户说(人话):** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。" **不要把 `STARTED conv_id=` / `▶ agent=` 这些 stdout 行转给用户**(见上 ⚠️)。
 
-**中途查进度(用户问时):** 用户问"跑到哪了"时,读后台 stdout 最新进度行,**翻译成人话**告诉用户——`▶ agent=researcher task=扫描年报资产减值` → "正在扫描年报里讨论资产减值的公司";`▶ agent=reporter task=撰写资产减值报告` → "正在撰写报告";`✓ report finalized` → "报告已生成,正在取回"。**不要直接贴 `▶ agent=` 行**(见上 ⚠️)。整个进度流从 `STARTED` 到 `RESULT` 都在 stdout 一个文件里,随时可读。
+**主动监控进度(不等用户问):** 起跑后主动跟踪 stdout 进度,进度变化时**主动翻译人话报用户**(不等用户问)——
+- **Claude Code**: 用 `Monitor` 工具监控 stdout 文件(`tail -f <stdout文件> | grep --line-buffered "▶\|✓\|RESULT"`),每行进度出现时 agent 被通知 → 翻译报用户。
+- **其他 agent**: 定期轮询 stdout(每 1-2 分钟读最新进度行)或等价异步通知。
+
+翻译:`▶ agent=researcher task=扫描年报资产减值` → "正在扫描年报里讨论资产减值的公司";`▶ agent=reporter task=撰写资产减值报告` → "正在撰写报告";`✓ report finalized` → "报告已生成,正在取回";`RESULT ok` → 读 `--output` 报告交付。**不贴原始 `▶ agent=` 行**(见上 ⚠️)。整个进度流从 `STARTED` 到 `RESULT` 都在 stdout 一个文件里。
 
 **完成回叫后:** 读 stdout 末行 `[cue-research] RESULT ok conv_id=… chars=… output=…`(失败是 `RESULT empty …`),`ok` 则读 `--output` 文件 → Stage 5 交付;`empty` 则按文件里/stdout 的诊断给下一步(多半去 cuecue.cn 网页端看该 conversation)。
 
