@@ -134,7 +134,7 @@ while True:
 
 ### Stage 4a: 用户选 1/2 — 跑搭子(后台跑 + 落盘,跑完再取)
 
-**别在 agent 回合里死守一小时的 live 流。** 深研单次 3-15 分钟(服务端 60min 硬超时),同步阻塞既浪费回合又脆弱(live 流常丢 reporter 段)。改用 **fire-and-retrieve**:`research_run.py` 在**后台**跑完整流程(发起 chat_stream → live 取报告 → 空则 replay 兜底 → 落盘),agent 回合立即让出;后台任务完成后 agent 被回叫,再读 `--output` 文件交付。
+**别在 agent 回合里死守一小时的 live 流。** 深研单次 3-15 分钟(服务端 60min 硬超时),同步阻塞既浪费回合又脆弱(live 流常丢 reporter 段)。改用 **fire-and-retrieve**:`research_run.py` 在**后台**跑完整流程(发起 chat_stream → live 取报告 → 空则 replay 兜底 → 落盘),agent 回合立即让出;后台任务完成后 agent 被回叫(**回叫机制因平台而异、并非总可靠——别干等,见下"主动检查完成"**),再读 `--output` 文件交付。**对用户别说"完成后自动通知我"**——主动检查完成,别把希望寄托在回叫上。
 
 **⚠️ stdout 是 agent 内部信号,不转用户:** `research_run.py` 的 `[cue-research] …` 行(`STARTED conv_id=` / `▶ agent=…` / `🔧 tool=…` / `✓ report finalized` / `RESULT`)是给 **agent 内部判断**启动/进度/完成用的,**绝不直接贴给用户**。agent 对用户说人话(起跑确认 / 进度翻译 / 完成交付);用户不该看到 conv_id / agent= / tool= 这些技术行。
 
@@ -149,6 +149,8 @@ python3 <skill>/scripts/research_run.py \
   --output ~/cue-reports/$(date +%Y-%m-%d-%H%M)-<主体slug>.md
 # 续跑(Stage 5 不满意补充澄清时复用上下文,省 credits):再加 --conversation-id <上次的 conv_id>
 ```
+
+**⚠️ --output 路径必须可写:** 默认 `~/cue-reports/`。沙箱/受限环境若写不了(常见卡点:runner `mkdir -p` 父目录或写文件被权限拒),换 agent 可写目录(如 `/tmp/`、`~/.cue/reports/`、agent 工作目录)。起跑前先确认目录可写(如 `mkdir -p ~/cue-reports && touch ~/cue-reports/.wtest && rm ~/cue-reports/.wtest`),别等落盘失败才发现——落盘失败会丢报告,只剩 stdout 的 RESULT 行。
 
 **起跑后确认启动(不等结果,只等启动信号):** 后台 stdout 出现 `[cue-research] STARTED conv_id=…`(通常 2-5 秒内,第一个 SSE 事件到达=后端已接受)再让出回合。若出现 `[cue-research] chat_stream failed`(启动失败,参数/鉴权问题),立即按诊断处理,不对用户说"已开跑"。
 
