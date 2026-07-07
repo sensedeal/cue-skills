@@ -488,10 +488,10 @@ class TestResearchRunner(unittest.TestCase):
         report = "引用A【0-0】; 引用B【1-0】; 引用C【2-0】; 无来源【9-9】"
         out = research_run.inline_citations(report, sources)
         # search_snippet: link text = domain short (21jingji), no title attr
-        self.assertIn("[21jingji](https://www.21jingji.com/article/a.pdf)", out)
+        self.assertIn("[21jingji](<https://www.21jingji.com/article/a.pdf>)", out)
         self.assertNotIn('"0-0', out)  # no hover title
         # scan: link text = domain short (cninfo)
-        self.assertIn("[cninfo](http://static.cninfo.com.cn/finalpage/b.pdf)", out)
+        self.assertIn("[cninfo](<http://static.cninfo.com.cn/finalpage/b.pdf>)", out)
         # mcp (no url): tool_title plain text (no link)
         self.assertIn("A股财务摘要", out)
         # unknown source: 【9-9】 kept as text
@@ -500,15 +500,26 @@ class TestResearchRunner(unittest.TestCase):
         self.assertNotIn("## 数据来源详情", out)
 
     def test_inline_citations_space_separated(self):
-        # consecutive citations must be space-separated, not mashed together
+        # consecutive citations must be space-separated at the marker level
+        # (before rendering), so urls/summaries with ) don't break the regex.
         import research_run
         sources = [
-            {"index": 0, "url": "http://a.com/x", "title": "", "description": "", "rows": []},
+            {"index": 0, "url": "http://en.wikipedia.org/wiki/Foo_(bar)",
+             "title": "", "description": "", "rows": []},
             {"index": 1, "url": "http://b.com/y", "title": "", "description": "", "rows": []},
         ]
         out = research_run.inline_citations("ref【0-0】【1-0】end", sources)
         self.assertIn(") [", out)  # space between consecutive links
-        self.assertNotIn(")[", out)  # no mashup
+        self.assertNotIn(")[", out)  # no mashup even with ) in url
+
+    def test_inline_citations_url_with_paren(self):
+        # url containing ) (Wikipedia Foo_(bar)) must render as a working link
+        # — <...> wrapping keeps the destination intact under CommonMark.
+        import research_run
+        sources = [{"index": 0, "url": "http://en.wikipedia.org/wiki/Foo_(bar)",
+                    "title": "", "rows": []}]
+        out = research_run.inline_citations("ref【0-0】", sources)
+        self.assertIn("](<http://en.wikipedia.org/wiki/Foo_(bar)>)", out)
 
     def test_inline_citations_no_truncate(self):
         # scan class: high M rows all get links (no cap, positional).
@@ -518,7 +529,7 @@ class TestResearchRunner(unittest.TestCase):
                 for m in range(32)]
         sources = [{"index": 0, "url": "", "title": "", "rows": rows}]
         out = research_run.inline_citations("ref【0-31】", sources)
-        self.assertIn("](http://x31.com/31", out)
+        self.assertIn("](<http://x31.com/31>)", out)
 
     def test_runner_mimic_is_freeform_only(self):
         """mimic must be refused alongside --template-id (backend lets

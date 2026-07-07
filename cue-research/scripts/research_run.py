@@ -168,12 +168,13 @@ def inline_citations(report: str, sources: list[dict]) -> str:
         if not url:
             # no url: show tool_title (or tool_name) instead of bare 【N-M】
             return s.get("tool_title") or s.get("tool_name") or m.group(0)
-        return f"[{domain_short(url)}]({url})"
+        return f"[{domain_short(url)}](<{url}>)"
 
-    inlined = re.sub(r"【(\d+)-(\d+)】", repl, report)
-    # space-separate consecutive citations: ](...)[ → ](...) [
-    inlined = re.sub(r'(\]\([^)]*\))(\[)', r"\1 \2", inlined)
-    return inlined
+    # space-separate consecutive 【N-M】 markers BEFORE rendering (escaping-proof —
+    # operates on 】【 adjacency, not on rendered link internals which may contain )
+    # in urls like Wikipedia Foo_(bar), breaking the old ]([^)]*)[ regex).
+    report = re.sub(r"(】)(?=【)", r"\1 ", report)
+    return re.sub(r"【(\d+)-(\d+)】", repl, report)
 
 
 def build_payload(
