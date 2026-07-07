@@ -9,6 +9,7 @@ regression suite (test_skill_regression.py) is the contract.
 from __future__ import annotations
 
 import json
+import re
 
 
 def _agent_name(payload: dict) -> str:
@@ -123,6 +124,48 @@ def extract_tool_calls(events: list[tuple[str, str]]) -> list[dict]:
             if tid in calls:
                 calls[tid]["result"] = d.get("tool_result", "")
     return [calls[tid] for tid in order]
+
+
+def extract_sources(events: list[tuple[str, str]]) -> list[dict]:
+    """Citation sources from tool_chunk events, for rendering 【N-M】 markers.
+
+    tool_chunk events carry the source detail (tool_call_result.tool_result
+    is empty on replay). chunk field is {序号: {type:'mcp', data:{tool_name,
+    tool_title, input, output}}}; output holds source links (e.g.
+    rows[M].source.pdf_url). 【N-M】 in the report maps N→序号, M→output row.
+
+    Returns list sorted by 序号: [{index, tool_name, tool_title, input,
+    urls, output_preview}]. urls extracted from output via regex (generic,
+    doesn't assume output JSON structure) and de-duped preserving order.
+    """
+    sources: dict[str, dict] = {}
+    for event, data in events:
+        if event != "tool_chunk" or not data:
+            continue
+        try:
+            payload = json.loads(data)
+        except json.JSONDecodeError:
+            continue
+        chunk = payload.get("chunk", {})
+        if not isinstance(chunk, dict):
+            continue
+        for k, v in chunk.items():
+            if not (isinstance(k, str) and k.isdigit()):
+                continue
+            d = v.get("data", v) if isinstance(v, dict) else {}
+            if not isinstance(d, dict):
+                continue
+            out = str(d.get("output", "") or "")
+            urls = list(dict.fromkeys(re.findall(r"https?://[^\"\s\\]+", out)))
+            sources[k] = {
+                "index": int(k),
+                "tool_name": d.get("tool_name", "") or "",
+                "tool_title": d.get("tool_title", "") or "",
+                "input": d.get("input", {}),
+                "urls": urls,
+                "output_preview": out[:200],
+            }
+    return [sources[k] for k in sorted(sources, key=lambda x: int(x))]
 
 
 def extract_agent_timeline(events: list[tuple[str, str]]) -> list[dict]:

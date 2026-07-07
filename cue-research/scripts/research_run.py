@@ -71,6 +71,7 @@ from sse_report import (  # noqa: E402
     _agent_name,
     _event_data,
     extract_reporter_content,
+    extract_sources,
     diagnose_empty_report,
 )
 
@@ -126,6 +127,34 @@ def _emit_progress(event: str, data: str) -> None:
             print(f"[cue-research] 🔧 tool={name}", flush=True)
     elif event == "report_finalized":
         print("[cue-research] ✓ report finalized", flush=True)
+
+
+def format_sources_section(sources: list[dict]) -> str:
+    """Format citation sources as a markdown appendix for the .md report.
+
+    Renders one ### block per source (【N】 tool_name), listing input
+    keys + source urls + output preview, so the agent/user can resolve
+    【N-M】 markers in the report body against the N-indexed source list.
+    Returns "" when no sources — keeps the report unchanged for runs
+    that produced no tool_chunk events.
+    """
+    if not sources:
+        return ""
+    lines = ["\n\n---\n\n## 数据来源详情\n"]
+    for s in sources:
+        title = f" ({s['tool_title']})" if s['tool_title'] else ""
+        lines.append(f"### 【{s['index']}】{s['tool_name']}{title}")
+        inp = s.get("input")
+        if isinstance(inp, dict) and inp:
+            parts = [f"{k}={str(v)[:40]}" for k, v in list(inp.items())[:3]]
+            lines.append(f"- input: {', '.join(parts)}")
+        for u in s.get("urls", [])[:5]:
+            lines.append(f"- {u}")
+        preview = s.get("output_preview", "")
+        if preview:
+            lines.append(f"- preview: {preview[:150]}…")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def build_payload(
@@ -211,7 +240,7 @@ def run(
         # (SKILL.md tells it to watch stdout for chat_stream failed).
         print(f"[cue-research] chat_stream failed: {e}", flush=True)
         print(f"[cue-research] → {e.user_hint()}", flush=True)
-        return "", conv_id
+        return "", [], conv_id
     except (OSError, ValueError) as e:
         # Network blip / SSE parse error: keep the partial events and let the
         # diagnose+replay path below still try to recover.
@@ -226,7 +255,7 @@ def run(
 
     report = extract_reporter_content(events)
     if report:
-        return report, conv_id
+        return report, extract_sources(events), conv_id
 
     # Empty live report — the long-run NORM. Diagnose, then replay-primary.
     diag = diagnose_empty_report(events, elapsed, timeout)
@@ -251,11 +280,11 @@ def run(
                 f"cue_api.py replay {conv_id}",
                 flush=True,
             )
-            return "", conv_id
+            return "", [], conv_id
         report = extract_reporter_content(replay_events)
         if report:
             print(f"[cue-research] ✓ recovered via replay: {len(report)} chars", flush=True)
-            return report, conv_id
+            return report, extract_sources(replay_events), conv_id
         print(
             "[cue-research] replay also empty — server-side reporter likely "
             "failed (started but persisted no text). Check cuecue.cn web for "
@@ -268,7 +297,7 @@ def run(
             "problem (not a long-stream issue). Check args + key.",
             flush=True,
         )
-    return "", conv_id
+    return "", [], conv_id
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -402,7 +431,7 @@ def main(argv: list[str] | None = None) -> int:
         out_path = Path.home() / "cue-reports" / f"{time.strftime('%Y-%m-%d-%H%M')}-{slug}.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    report, conv_id = run(
+    report, sources, conv_id = run(
         args.query,
         args.template_id,
         conv_id,
@@ -433,7 +462,7 @@ def main(argv: list[str] | None = None) -> int:
         f"{'template=' + args.template_id if args.template_id else 'free-form'}"
         f"{mimic_note}{material_note} | {time.strftime('%Y-%m-%d %H:%M')} -->\n\n"
     )
-    out_path.write_text(header + report, encoding="utf-8")
+    out_path.write_text(header + report + format_sources_section(sources), encoding="utf-8")
     print(
         f"[cue-research] ✓ report {len(report)} chars → {out_path}", flush=True
     )

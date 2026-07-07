@@ -448,6 +448,11 @@ class TestResearchRunner(unittest.TestCase):
         import research_run
 
         def poison_stream(*a, **kw):
+            yield "tool_chunk", json.dumps({"chunk": {"0": {"type": "mcp", "data": {
+                "tool_name": "scan_x", "tool_title": "财报检索",
+                "input": {"query": "资产减值"},
+                "output": '{"rows":[{"source":{"pdf_url":"http://example.com/a.pdf"}}]}',
+            }}}})
             yield "start_of_agent", json.dumps({"agent_name": "reporter"})
             yield "message", json.dumps({"delta": {"content": "报告正文"}})
             yield "report_finalized", json.dumps({"agent_name": "reporter"})
@@ -455,12 +460,34 @@ class TestResearchRunner(unittest.TestCase):
             raise AssertionError("stream iterated past report_finalized")
 
         with patch.object(research_run, "chat_stream", poison_stream):
-            report, conv_id = research_run.run(
+            report, sources, conv_id = research_run.run(
                 query="q", template_id=None, conversation_id="c1", timeout=60.0
             )
         self.assertEqual(report, "报告正文",
                          "run() should extract the report and return it")
         self.assertEqual(conv_id, "c1")
+        self.assertEqual(len(sources), 1, "run() should return the tool_chunk source")
+        self.assertEqual(sources[0]["tool_name"], "scan_x")
+        self.assertIn("http://example.com/a.pdf", sources[0]["urls"])
+
+    def test_format_sources_section(self):
+        """format_sources_section renders 【N】 tool_name + urls as a markdown
+        appendix so the agent can resolve 【N-M】 markers in the report."""
+        import research_run
+        sources = [
+            {"index": 0, "tool_name": "scan_x", "tool_title": "财报检索",
+             "input": {"query": "资产减值", "anchor": "impairment"},
+             "urls": ["http://example.com/a.pdf", "http://example.com/b.pdf"],
+             "output_preview": '{"rows":[...'},
+            {"index": 1, "tool_name": "get_section", "tool_title": "",
+             "input": {}, "urls": [], "output_preview": ""},
+        ]
+        out = research_run.format_sources_section(sources)
+        self.assertIn("## 数据来源详情", out)
+        self.assertIn("### 【0】scan_x (财报检索)", out)
+        self.assertIn("http://example.com/a.pdf", out)
+        self.assertIn("### 【1】get_section", out)
+        self.assertEqual(research_run.format_sources_section([]), "")
 
     def test_runner_mimic_is_freeform_only(self):
         """mimic must be refused alongside --template-id (backend lets
@@ -507,7 +534,7 @@ class TestResearchRunner(unittest.TestCase):
                      mimic=None, conversation_file_ids=None):
             captured["template_id"] = template_id
             captured["cfids"] = conversation_file_ids
-            return "REPORT", conv
+            return "REPORT", [], conv
 
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tf:
             tf.write(b"hi")
