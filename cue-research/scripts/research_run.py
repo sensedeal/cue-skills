@@ -442,7 +442,20 @@ def main(argv: list[str] | None = None) -> int:
             ch for ch in args.query[:24] if ch.isalnum() or ch in " -_一-鿿"
         ).strip().replace(" ", "-") or "research"
         out_path = Path.home() / "cue-reports" / f"{time.strftime('%Y-%m-%d-%H%M')}-{slug}.md"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        # probe writability — mkdir can succeed on a read-only-mounted parent
+        # in some sandboxes, only write fails. Fail fast before burning credits.
+        (out_path.parent / ".wtest").write_text("x", encoding="utf-8")
+        (out_path.parent / ".wtest").unlink()
+    except (PermissionError, OSError) as e:
+        print(
+            f"[cue-research] ✗ 输出路径不可写: {out_path.parent} ({type(e).__name__}: {e})。\n"
+            f"[cue-research]   换可写目录(--output /tmp/<name>.md 或 ~/.cue/reports/...),"
+            f"别等跑完才发现落盘失败。",
+            flush=True,
+        )
+        return 2
 
     report, sources, conv_id = run(
         args.query,

@@ -134,7 +134,9 @@ while True:
 
 ### Stage 4a: 用户选 1/2 — 跑搭子(后台跑 + 落盘,跑完再取)
 
-**别在 agent 回合里死守一小时的 live 流。** 深研单次 3-15 分钟(服务端 60min 硬超时),同步阻塞既浪费回合又脆弱(live 流常丢 reporter 段)。改用 **fire-and-retrieve**:`research_run.py` 在**后台**跑完整流程(发起 chat_stream → live 取报告 → 空则 replay 兜底 → 落盘),agent 回合立即让出;后台任务完成后 agent 被回叫,再读 `--output` 文件交付。
+**别在 agent 回合里死守一小时的 live 流。** 深研单次 3-15 分钟(服务端 60min 硬超时),同步阻塞既浪费回合又脆弱(live 流常丢 reporter 段)。改用 **fire-and-retrieve**:`research_run.py` 在**后台**跑完整流程(发起 chat_stream → live 取报告 → 空则 replay 兜底 → 落盘),agent 回合立即让出;后台任务完成后 agent 被回叫(**回叫机制因平台而异、并非总可靠——别干等,见下"主动检查完成"**),再读 `--output` 文件交付。**对用户别说"完成后自动通知我"**——主动检查完成,别把希望寄托在回叫上。
+
+**⚠️ stdout 是 agent 内部信号,不转用户:** `research_run.py` 的 `[cue-research] …` 行(`STARTED conv_id=` / `▶ agent=…` / `🔧 tool=…` / `✓ report finalized` / `RESULT`)是给 **agent 内部判断**启动/进度/完成用的,**绝不直接贴给用户**。agent 对用户说人话(起跑确认 / 进度翻译 / 完成交付);用户不该看到 conv_id / agent= / tool= 这些技术行。
 
 **起跑(Bash,`run_in_background: true`):**
 
@@ -148,13 +150,42 @@ python3 <skill>/scripts/research_run.py \
 # 续跑(Stage 5 不满意补充澄清时复用上下文,省 credits):再加 --conversation-id <上次的 conv_id>
 ```
 
+**⚠️ --output 路径必须可写:** 默认 `~/cue-reports/`。沙箱/受限环境若写不了(常见卡点:runner `mkdir -p` 父目录或写文件被权限拒),换 agent 可写目录(如 `/tmp/`、`~/.cue/reports/`、agent 工作目录)。起跑前先确认目录可写(如 `mkdir -p ~/cue-reports && touch ~/cue-reports/.wtest && rm ~/cue-reports/.wtest`),别等落盘失败才发现——落盘失败会丢报告,只剩 stdout 的 RESULT 行。
+
 **起跑后确认启动(不等结果,只等启动信号):** 后台 stdout 出现 `[cue-research] STARTED conv_id=…`(通常 2-5 秒内,第一个 SSE 事件到达=后端已接受)再让出回合。若出现 `[cue-research] chat_stream failed`(启动失败,参数/鉴权问题),立即按诊断处理,不对用户说"已开跑"。
 
-**让出前对用户说:** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。"
+**让出前对用户说(人话):** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。" **不要把 `STARTED conv_id=` / `▶ agent=` 这些 stdout 行转给用户**(见上 ⚠️)。
 
-**中途查进度(可选):** 让出回合后,若用户问"跑到哪了"或 agent 想确认进展,读后台 stdout 文件看进度行——`▶ agent=… task=…`(研究步骤,如 `agent=researcher task=扫描年报资产减值`)/ `🔧 tool=…`(工具调用)/ `✓ report finalized`(报告定稿)。整个进度流从起跑的 `STARTED` 到完成的 `RESULT` 都在 stdout 一个文件里,随时可读。
+**主动监控进度(不等用户问):** 起跑后主动跟踪 stdout 进度,进度变化时**主动翻译人话报用户**(不等用户问)——
+- **Claude Code**: 用 `Monitor` 工具监控 stdout 文件(`tail -f <stdout文件> | grep --line-buffered "▶\|✓\|RESULT"`),每行进度出现时 agent 被通知 → 翻译报用户。
+- **其他 agent**: 定期轮询 stdout(每 1-2 分钟读最新进度行)或等价异步通知。
 
-**完成回叫后:** 读 stdout 末行 `[cue-research] RESULT ok conv_id=… chars=… output=…`(失败是 `RESULT empty …`),`ok` 则读 `--output` 文件 → Stage 5 交付;`empty` 则按文件里/stdout 的诊断给下一步(多半去 cuecue.cn 网页端看该 conversation)。
+翻译:把 `▶ agent=… task=<requirement>` 的 **task_requirement** 作为**研究步骤**告诉用户,**不贴 agent 名**(coordinator/supervisor/researcher 是内部角色,用户不关心):
+- `▶ agent=researcher task=查半导体细分景气度` → "研究步骤:查半导体细分景气度"
+- `▶ agent=reporter task=撰写半导体景气度报告` → "研究步骤:撰写半导体景气度报告"
+- 多个 task 整理成**步骤列表**(1. 2. 3. …),已完成的标 ✅、进行中的标 🔄、未到的标 ⏳
+- `▶ agent=coordinator/supervisor`(无 task_requirement):**跳过**,不报用户(内部协调)
+- `✓ report finalized` → "报告已生成,正在取回";`RESULT ok` → 读 `--output` 报告交付
+- **绝不贴原始 `▶ agent=` 行**(见上 ⚠️)。整个进度流从 `STARTED` 到 `RESULT` 都在 stdout 一个文件里。
+
+**⚠️ 别高频 Read stdout 轮询:** 进度是**事件驱动**的——要么用 `Monitor` 被动收推送(每行进度主动通知你),要么起一个 background Bash `until grep -q RESULT <stdout文件>; do sleep 5; done` 等 RESULT 再由完成通知触发。长间歇无输出是**正常现象**(深研某步可能跑几分钟无进度行),**不要反复 Read 同一个 stdout 文件等事件**(浪费回合 + 上下文 overflow 风险)。
+
+**记住 conv_id:** 起跑后从 stdout `STARTED conv_id=…` 行取 conv_id(或起跑时用 `--conversation-id <自定义>` 指定),后续检查/replay 都用它。**绝不重复起跑**:已有 conv_id 在跑/已完成时,用户问进度检查该 conv_id(stdout/replay),**不要重新 `research_run.py`**(烧新 credits + 丢上下文);只有用户要换主体/换搭子才新起跑。
+
+**主动检查完成(别干等回叫):** fire-and-retrieve 的"完成回叫"依赖平台后台任务通知,有的平台(非 Claude Code)通知不可靠——agent 不能干等。用户问进度、或跑了很久(>5 分钟)没回叫时,主动检查:
+1. 读后台 stdout 末行。`RESULT ok` → 读 `--output` 交付;`RESULT empty` → 按诊断给下一步。
+2. stdout 没 `RESULT`(任务跑很久/回叫没来)→ **用 conv_id 主动 replay 取报告**(不耗 credits,后端若已完成必有报告):
+   ```python
+   import sys; sys.path.insert(0, "<repo>/cue-buddy/scripts")
+   from cue_api import replay
+   from sse_report import extract_reporter_content
+   events = list(replay("<conv_id>", max_seconds=60))
+   report = extract_reporter_content(events)
+   # report 非空 → 后端已完成,落盘交付;空 → 还在跑,等一会再查
+   ```
+3. replay 有报告 → 落盘 `--output` 交付(同 research_run 的落盘格式);replay 空 → 后端还没完成,等 1-2 分钟再查(别立刻重复 replay)。
+
+**完成回叫后(或主动检查拿到 RESULT):** 读 stdout 末行 `[cue-research] RESULT ok conv_id=… chars=… output=…`(失败是 `RESULT empty …`),`ok` 则读 `--output` 文件 → Stage 5 交付;`empty` 则按文件里/stdout 的诊断给下一步(多半去 cuecue.cn 网页端看该 conversation)。
 
 **为什么这套是对的(背景,别自己重写):** `research_run.py` 是 `cue_api` + `sse_report` 共享原语的**薄编排**(不复制、不漂移),内部把 **replay 当主取报告路径**:live 客户端流长跑常在 reporter 段到达前断连(server 仍跑完写 DB),所以 `extract_reporter_content(live_events)` 返回空是**常态不是 bug**——`chat_stream` 与 `replay` SSE 解析逐字节同款、共用同一 extract,replay 读 DB 完整 `workflow_events` 几乎总能拿到。这套 L1 诊断(`diagnose_empty_report` 的三种 `kind`)+ L2 replay 的硬化逻辑与 `cue-buddy/scripts/test_template.py` 同源、已跑通 ≥9 主体。注意 `stream_cut_before_reporter` 是 `diagnose_empty_report` 返回的 **`kind` 字符串,不是可 import 的函数**。前台调试需要时(`--foreground` 语义)直接去掉 `run_in_background` 即可,但默认走后台。
 
