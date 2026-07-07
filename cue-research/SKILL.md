@@ -158,10 +158,10 @@ python3 <skill>/scripts/research_run.py \
 
 **起跑后必须消费 research_run.py 的流式 stdout(进度 + 完成都靠它):** research_run.py 的 stdout 是**流式实时输出**(`flush=True`):`STARTED` → `▶ agent=… task=…`(研究步骤) → `✓ report finalized` → `RESULT ok|empty`。这个流是你的**进度 + 完成的唯一来源**——必须消费它,不让出后睡等回叫(回叫不可靠,.workbuddy 等平台通知常不来)。
 
-**完成检测(必须):** 起跑 research_run.py 后(run_in_background:true),立即起第二个 background Bash 等 RESULT:
+**完成检测(必须):** 起跑 research_run.py 后(run_in_background:true),立即起第二个 background Bash 流式等 RESULT:
 ```bash
-until grep -q "RESULT" <stdout文件> 2>/dev/null; do sleep 5; done
-# 这个 background Bash 完成时(RESULT 出现) agent 被通知 → 读 stdout 末行 → 交付
+tail -F <stdout文件> | grep -m1 "RESULT"
+# tail -F 跟随 stdout 新行(不轮询),grep -m1 匹配到 RESULT 立即退出 → agent 被通知 → 读 stdout 末行 → 交付
 ```
 这个 background Bash 的完成通知是你的交付触发器——不依赖 research_run.py 的回叫。完成时读 stdout 末行 `RESULT ok|empty` → `ok` 读 `--output` 交付;`empty` 诊断。
 
