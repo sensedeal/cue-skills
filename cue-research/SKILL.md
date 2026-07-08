@@ -63,23 +63,20 @@ agent 从用户提问里抽：
 
 ### Stage 2: 匹配候选搭子(单阶段,看完整目录直接选)
 
-agent **一次性拉取所有可见模板**(用户自建 + 系统公开搭子),按 `secondary_category` 在心里分组,然后**用自己的语义理解直接挑 top ≤2 个**——**不走后端关键词搜索**。后端 search 只匹配 title + primary/secondary category 字面,中文不分词,把「投资价值」/「业绩超预期」/「兆易创新」等都打回 0 命中(实测验证);agent LLM 的语义理解远强于这种字面匹配。
+agent **一次性拉取公开 playbook 目录**(`/api/playbook` 只返回已公开浮现的搭子,不含未公开的),按 `secondary_category` 在心里分组,然后**用自己的语义理解直接挑 top ≤2 个**——**不走后端关键词搜索**。后端 search 只匹配 title + primary/secondary category 字面,中文不分词,把「投资价值」/「业绩超预期」/「兆易创新」等都打回 0 命中(实测验证);agent LLM 的语义理解远强于这种字面匹配。
 
 **实现:**
 
 ```python
-from cue_api import search_templates
-# 拉全集:keyword=" " + include_system=True,分页直到拿完(后端 page_size 上限 100)
-pool, page = [], 1
-while True:
-    batch = search_templates(keyword=" ", include_system=True, page=page, page_size=100)
-    if not batch: break
-    pool.extend(batch)
-    if len(batch) < 100: break
-    page += 1
+import sys
+sys.path.insert(0, "<repo>/cue-buddy/scripts")
+from cue_api import _request
+pb = _request("GET", "/playbook")              # 只返回公开浮现的搭子(不含未公开的)
+scenes = pb.get("data", pb).get("scenes", [])  # 按 secondary_category 分组
+# 每个 scene: secondary_category + buddies[{template_id, title, goal, replayable, ...}]
 ```
 
-每个模板带 `template_id / title / primary_category / secondary_category / goal` 字段。**`template_id` 是字符串 `template_<base62后缀>`(如 `template_fnig0i`),Stage 4 跑搭子用它——必须取这个字段的值,绝不是数字 `id` 字段(搭子同时有数字 DB `id` 和字符串 `template_id`,易混)或列表序号;裸数字如 `142` 不是有效 id。** agent 按 **`secondary_category`** 分组扫读(`深度核查` / `投资研究` / `信贷尽调` / `市值管理` / `财富投顾` / `私募尽调` / `融资融券` / `法律与行研` / `资本运作` / `行业研究` / `商机挖掘` / `保险营销` ...top 12 个 secondary cat 覆盖 ~80% 模板),拿 query 跟每个候选的 `goal` 做语义匹配,挑出最相关的 **≤2 个**候选。
+每个搭子带 `template_id / title / primary_category / secondary_category / goal / replayable` 字段。**`template_id` 是字符串 `template_<base62后缀>`(如 `template_fnig0i`),Stage 4 跑搭子用它——必须取这个字段的值,绝不是数字 `id` 字段(搭子同时有数字 DB `id` 和字符串 `template_id`,易混)或列表序号;裸数字如 `142` 不是有效 id。** agent 按 **`secondary_category`** 分组扫读(`深度核查` / `投资研究` / `信贷尽调` / `市值管理` / `财富投顾` / `私募尽调` / `融资融券` / `法律与行研` / `资本运作` / `行业研究` / `商机挖掘` / `保险营销` ...top 12 个 secondary cat 覆盖 ~80% 模板),拿 query 跟每个候选的 `goal` 做语义匹配,挑出最相关的 **≤2 个**候选。
 
 **关键原则——主体 vs 意图分离:**
 
@@ -300,8 +297,8 @@ Stage 5 满意且是 4b 自由式跑时,问用户(**对外文案不出现 verb �
 
 | Verb | 走哪条路径 | 用到的脚本/函数 |
 |---|---|---|
-| `+ask` (主入口) | Stage 1-5 编排 | Stage 2-3 匹配:`cue_api.search_templates`;Stage 4 跑+取报告:**`scripts/research_run.py`**(后台跑,落盘);Stage 4b 先 `cue_api.rewrite` |
-| `+match` | 只跑 Stage 2-3 | `cue_api.search_templates` |
+| `+ask` (主入口) | Stage 1-5 编排 | Stage 2-3 匹配:`_request("GET", "/playbook")`;Stage 4 跑+取报告:**`scripts/research_run.py`**(后台跑,落盘);Stage 4b 先 `cue_api.rewrite` |
+| `+match` | 只跑 Stage 2-3 | `_request("GET", "/playbook")` |
 | `+rewrite` | 只跑 /api/rewrite | `cue_api.rewrite` |
 | `+save` | Stage 6 handoff | 交给 cue-buddy 的 `generate_template` + `validate_template` + `cue_api.create_template` |
 | `+upgrade` | 升级 skill 自身 | `python3 ../cue-buddy/scripts/update_skill.py --skill cue-research`(交互式) / 加 `--silent-check`(session 启动轻量版) |
@@ -318,7 +315,7 @@ from pathlib import Path
 # cue-research/<...>  →  cue-skills/cue-buddy/scripts
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cue-buddy" / "scripts"))
 
-from cue_api import search_templates, rewrite     # Stage 2-3 匹配 / Stage 4b 自由式前的 rewrite
+from cue_api import _request, rewrite     # Stage 2-3 匹配(/api/playbook) / Stage 4b 自由式前的 rewrite
 ```
 
 如果是 agent 直接通过 Bash 跑 `python3 -c "..."`,改成绝对路径:`sys.path.insert(0, "<repo>/cue-buddy/scripts")`。规避点:不要在 cue-research/ 下复制粘贴 `cue_api.py`——会跟 cue-buddy 的版本漂移。
