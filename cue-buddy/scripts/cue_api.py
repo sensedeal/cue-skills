@@ -7,8 +7,15 @@ general-purpose SDK.
 
 Reads credentials from (in order):
   1. CUE_API_KEY env var
-  2. ~/.cue/config.json   {"api_key": "sk...", "base": "https://..."}
+  2. $CUE_HOME/config.json (if CUE_HOME set), else ~/.cue/config.json
+     {"api_key": "sk...", "base": "https://..."}; legacy ~/.cue/config.json
+     is always searched too so relocating never hides an existing key
   3. CUE_API_BASE env var overrides the base if set
+
+Runtime files (reports/logs/runs/backups/proposals) land under a single
+resolved root - see `python3 cue_api.py root` and sibling paths.py. Config
+and best-effort cooldowns stay in the deterministic config dir
+($CUE_HOME or ~/.cue), not the writability-resolved root.
 
 Public functions:
   - load_config()                      : (api_key, base) or raises
@@ -29,6 +36,7 @@ Public functions:
   - replay(conv_id, on_event)          : reads /api/replay/<id> SSE stream
 
 CLI usage (smoke test from a shell):
+    python3 cue_api.py root               # print resolved writable root
     python3 cue_api.py whoami
     python3 cue_api.py list
     python3 cue_api.py get <template_id>
@@ -50,8 +58,18 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
+# Single writable-root resolver (sibling module). cue_api needs two things
+# from it: cue_config_dir() - where config.json lives (deterministic, NOT
+# writability-fallback, so an existing key is never hidden) - and cue_root()
+# for the `root` CLI subcommand that lets the agent discover the write root
+# before launching a background run.
+from paths import cue_config_dir, cue_root, CueNoWritableRootError  # noqa: E402
 
-CONFIG_PATH = Path.home() / ".cue" / "config.json"
+
+# config.json lives under the deterministic config home ($CUE_HOME or ~/.cue),
+# resolved dynamically by _config_candidates() (not an import-time constant, so
+# CUE_HOME changes after import are honored). load_config() also searches the
+# legacy ~/.cue/config.json so setting CUE_HOME doesn't hide an existing key.
 DEFAULT_BASE = "https://cuecue.cn/api"
 API_KEY_PAGE = "https://cuecue.cn/api-key"
 
@@ -125,18 +143,45 @@ class CueAPIError(Exception):
 # ---------------------------------------------------------------------------
 
 
+def _config_candidates() -> list[Path]:
+    """Where to look for config.json, in order.
+
+    $CUE_HOME/config.json first (if CUE_HOME set), then the legacy
+    ~/.cue/config.json. Setting CUE_HOME to relocate runtime files must not
+    hide an API key the user already wrote to ~/.cue during setup.
+    """
+    seen: set[str] = set()
+    out: list[Path] = []
+    for c in (cue_config_dir() / "config.json", Path.home() / ".cue" / "config.json"):
+        if str(c) not in seen:
+            seen.add(str(c))
+            out.append(c)
+    return out
+
+
 def load_config() -> tuple[str, str]:
     """Return (api_key, base_url) or raise SystemExit with a helpful hint."""
     api_key = os.environ.get("CUE_API_KEY", "").strip()
     base = os.environ.get("CUE_API_BASE", "").strip()
 
-    if not api_key and CONFIG_PATH.exists():
-        try:
-            blob = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-            api_key = api_key or blob.get("api_key", "").strip()
-            base = base or blob.get("base", "").strip()
-        except Exception:
-            pass
+    if not api_key:
+        # Atomic per-file selection: the file that supplies the key ALSO
+        # supplies base. Never mix key from one file with base from another
+        # (credential boundary - a key must go to the server its file names).
+        # Env CUE_API_KEY / CUE_API_BASE still win over any file.
+        for cand in _config_candidates():
+            if not cand.exists():
+                continue
+            try:
+                blob = json.loads(cand.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            fkey = blob.get("api_key", "").strip()
+            if fkey:
+                api_key = fkey
+                if not base:
+                    base = blob.get("base", "").strip()
+                break
 
     base = base or DEFAULT_BASE
 
@@ -144,7 +189,7 @@ def load_config() -> tuple[str, str]:
         sys.stderr.write(
             "\n[cue-buddy] 缺少 API key。\n"
             f"  → 去 {API_KEY_PAGE} 创建一个 sk-prefixed key\n"
-            "  → 然后 export CUE_API_KEY=sk... (或写入 ~/.cue/config.json)\n\n"
+            f"  → 然后 export CUE_API_KEY=sk... (或写入 {cue_config_dir() / 'config.json'})\n\n"
         )
         raise SystemExit(2)
 
@@ -1053,6 +1098,20 @@ def _cli() -> int:
         return 0
     cmd = sys.argv[1]
     try:
+        if cmd == "root":
+            # Print the resolved writable root (one line, exit 0). Lets the
+            # agent discover where reports/logs/runs will land BEFORE
+            # launching a background run, so the runner and the completion-
+            # detection tail watch the same file. Also a writability precheck:
+            # cue_root() probes candidates; if NOTHING is writable it raises
+            # CueNoWritableRootError -> we exit 2 (not 0 with a fake path) so
+            # the agent doesn't proceed into a guaranteed-failure run.
+            try:
+                print(cue_root())
+                return 0
+            except CueNoWritableRootError as e:
+                sys.stderr.write(f"[cue_api] ✗ {e}\n")
+                return 2
         if cmd == "whoami":
             key, base = load_config()
             print(f"base: {base}")

@@ -65,6 +65,7 @@ from sse_report import (  # noqa: E402
     summarize_tool_input as _summarize_tool_input,
     preview_tool_result as _preview_tool_result,
 )
+from paths import cue_subdir  # noqa: E402 - sibling; default save path under <root>/runs
 
 
 # ---------------------------------------------------------------------------
@@ -372,14 +373,14 @@ def main(argv: list[str] | None = None) -> int:
         "--save",
         metavar="PATH",
         help=(
-            "保存 Markdown 运行记录的路径（默认 ./buddy-run-<ts>.md）。"
+            "保存 Markdown 运行记录的路径（默认 <root>/runs/buddy-run-<ts>.md）。"
             "失败时也保存，方便事后排查。"
         ),
     )
     p.add_argument(
         "--no-save",
         action="store_true",
-        help="不保存运行记录（默认会保存到 ./buddy-run-<ts>.md）",
+        help="不保存运行记录（默认会保存到 <root>/runs/buddy-run-<ts>.md）",
     )
     p.add_argument(
         "--yes",
@@ -550,7 +551,10 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_save:
         save_path = (
             args.save
-            or f"./buddy-run-{args.template_id[-8:]}-{time.strftime('%Y%m%d-%H%M%S')}.md"
+            or str(
+                cue_subdir("runs")
+                / f"buddy-run-{args.template_id[-8:]}-{time.strftime('%Y%m%d-%H%M%S')}.md"
+            )
         )
         Path(save_path).write_text(md, encoding="utf-8")
         print(f"[+test] saved run report → {save_path}")

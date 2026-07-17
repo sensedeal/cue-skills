@@ -654,6 +654,28 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
         from update_skill import parse_version_from_md
         self.assertIsNone(parse_version_from_md("# just a body\nfoo\n"))
 
+    def test_load_cooldown_merges_legacy_taking_max(self) -> None:
+        """A CUE_HOME relocate must not reset the 24h timer. When the primary
+        (relocated) file has a stale expired timestamp and the legacy ~/.cue
+        file has a newer still-cooling one, _load_cooldown must take the MAX
+        (newer) - not primary-wins via setdefault - so the skill stays gated.
+        (codex round-2 finding: setdefault kept the expired primary value.)"""
+        import json
+        import tempfile
+        from unittest import mock
+        from update_skill import _load_cooldown, _cooldown_expired
+        with tempfile.TemporaryDirectory() as d:
+            primary = Path(d) / "last-update-check.json"
+            legacy = Path(d) / "legacy.json"
+            primary.write_text(json.dumps({"cue-buddy": 1000}), encoding="utf-8")   # expired
+            legacy.write_text(json.dumps({"cue-buddy": 90000}), encoding="utf-8")   # still cooling
+            with mock.patch("update_skill._LEGACY_COOLDOWN_PATH", legacy):
+                data = _load_cooldown(primary)
+                # max wins: 90000, not the primary's stale 1000
+                self.assertEqual(data.get("cue-buddy"), 90000)
+                # now=91000 -> 91000-90000=1000s < 86400s -> still cooling
+                self.assertFalse(_cooldown_expired("cue-buddy", 91000, path=primary))
+
     def test_detect_install_mode_git_when_dotgit_in_ancestor(self) -> None:
         import tempfile
         from update_skill import detect_install_mode

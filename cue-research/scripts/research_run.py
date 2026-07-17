@@ -26,7 +26,9 @@ rewritten mandate as --query with no --template-id.
 Usage:
     python3 research_run.py --query "<question or rewritten mandate>" \
         [--template-id ID] [--conversation-id ID] \
-        --output ~/cue-reports/2026-06-08-foo.md [--timeout 3600]
+        --output <root>/reports/foo.md [--log <root>/logs/cue-run-<conv_id>.log] [--timeout 3600]
+    (<root> = `python3 ../cue-buddy/scripts/cue_api.py root`; default ~/.cue.
+     --output/--log may be omitted - runner defaults to <root>/reports|logs/.)
 
 Exit codes: 0 = report retrieved + saved; 1 = empty/failed (diagnosis printed).
 """
@@ -74,6 +76,37 @@ from sse_report import (  # noqa: E402
     extract_sources,
     diagnose_empty_report,
 )
+from paths import cue_root, cue_subdir, probe_writable, CueNoWritableRootError  # noqa: E402 - sibling of cue_api
+
+
+class _Tee:
+    """Write to several streams at once (stdout + a log file).
+
+    Used so the runner can keep its own log at a stable, resolver-chosen path
+    (default <root>/logs/cue-run-<conv_id>.log, unique per run) instead of relying on the agent's shell
+    ``>`` redirect - which was fragile because two separate Bash calls (run +
+    completion-tail) had to agree on the same hardcoded path. With --log the
+    runner owns the path; the agent tails that one file.
+    """
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for s in self.streams:
+            try:
+                s.write(data)
+                s.flush()
+            except Exception:
+                pass  # one dead stream (e.g. closed stdout) must not kill the run
+        return len(data) if data else 0
+
+    def flush(self):
+        for s in self.streams:
+            try:
+                s.flush()
+            except Exception:
+                pass
 
 
 # Empty-live-report diagnoses where the report may still exist in the DB, so a
@@ -340,7 +373,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--output",
         default=None,
-        help="报告落盘路径(Markdown)。留空默认 ~/cue-reports/<date>-<slug>.md",
+        help="报告落盘路径(Markdown)。留空默认 <root>/reports/<date>-<slug>.md"
+        "(<root> 由 cue_api.py root 解析,默认 ~/.cue)",
+    )
+    p.add_argument(
+        "--log",
+        default=None,
+        help="进度日志路径(tee stdout+stderr)。留空默认 <root>/logs/cue-run-<conv_id>.log(每 run 唯一,防 stale/miss RESULT 竞态)。"
+        "agent 用 cue_api.py root 取根后,两端(Bash 跑 + Bash tail RESULT)用同一"
+        "<root>/logs/cue-run-<conv_id>.log(每 run 唯一),不再依赖 shell 重定向。",
     )
     p.add_argument(
         "--timeout",
@@ -378,6 +419,62 @@ def main(argv: list[str] | None = None) -> int:
     if _bad_id:
         print(f"[cue-research] ✗ {_bad_id}", flush=True)
         return 2
+
+    # Resolve conversation id early (before log setup) so the per-run log
+    # file name can embed it. A UNIQUE log per run kills both the stale-
+    # RESULT race (new file has no old content) and the miss race (tail -F
+    # reads the new file's content even if RESULT was written before the
+    # watcher attached; `tail -n 0` would miss a fast RESULT).
+    if args.conversation_id:
+        conv_id = args.conversation_id
+    else:
+        import uuid
+        conv_id = f"cue-research-{uuid.uuid4().hex[:12]}"
+
+    # Set up the progress log EARLY so config/credential/upload errors get
+    # captured too. Default path is <root>/logs/cue-run-<conv_id>.log (unique per run)
+    # (created by cue_subdir); --log overrides. Tee stdout+stderr to it so the
+    # agent can tail one stable file for the RESULT line instead of relying on
+    # a shell `>` redirect whose path had to match across two Bash calls (the
+    # old ./cue-run.log fragility). Truncate per run so `grep -m1 RESULT` never
+    # matches a stale line from a previous run.
+    explicit_log = bool(args.log)
+    _log_fh = None
+    try:
+        if args.log:
+            log_path = Path(args.log).expanduser()
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            log_path = cue_subdir("logs") / f"cue-run-{conv_id}.log"  # unique per run; raises if no writable root
+        _log_fh = log_path.open("w", encoding="utf-8")
+        sys.stdout = _Tee(sys.__stdout__, _log_fh)
+        sys.stderr = _Tee(sys.__stderr__, _log_fh)
+        # Close the log handle at exit so long-lived test processes don't leak
+        # it (and so the final RESULT line is flushed before the process ends).
+        import atexit
+        atexit.register(lambda fh=_log_fh: fh.close() if fh and not fh.closed else None)
+    except CueNoWritableRootError as e:
+        # No writable root at all -> can't write the report either. Fail fast
+        # before burning credits.
+        print(f"[cue-research] ✗ {e}", flush=True)
+        return 2
+    except OSError as e:
+        if explicit_log:
+            # Explicit --log that can't be opened = user asked for a dead path.
+            # Fail fast BEFORE burning credits; the watcher would otherwise tail
+            # a non-existent file for the full 61min timeout.
+            print(
+                f"[cue-research] ✗ 指定的 --log 不可写 {log_path} ({e});"
+                f"换可写路径或设 CUE_HOME。",
+                flush=True,
+            )
+            return 2
+        # Default log unwritable (shouldn't happen - cue_subdir just probed).
+        # Degrade to stdout-only so the run can still proceed + print RESULT.
+        sys.stderr.write(
+            f"[cue-research] ⚠️ 日志不可写 {log_path} ({e}); 仅 stdout,不落日志\n"
+        )
+    print(f"[cue-research] log={log_path}", flush=True)
 
     # Mimic constraints (Phase 1 scope): one-shot, free-form only.
     if args.mimic_url and args.mimic_file:
@@ -434,32 +531,24 @@ def main(argv: list[str] | None = None) -> int:
             material_file_ids.append(fid)
             print(f"[cue-research] ✓ 素材已就绪 file_id={fid}", flush=True)
 
-    if args.conversation_id:
-        conv_id = args.conversation_id
-    else:
-        import uuid
-
-        conv_id = f"cue-research-{uuid.uuid4().hex[:12]}"
-
-    # Resolve --output (date-stamped default under ~/cue-reports/).
+    # Resolve --output (date-stamped default under <root>/reports/).
     if args.output:
         out_path = Path(args.output).expanduser()
+        out_dir = out_path.parent
     else:
         slug = "".join(
             ch for ch in args.query[:24] if ch.isalnum() or ch in " -_一-鿿"
         ).strip().replace(" ", "-") or "research"
-        out_path = Path.home() / "cue-reports" / f"{time.strftime('%Y-%m-%d-%H%M')}-{slug}.md"
-    try:
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        # probe writability — mkdir can succeed on a read-only-mounted parent
-        # in some sandboxes, only write fails. Fail fast before burning credits.
-        (out_path.parent / ".wtest").write_text("x", encoding="utf-8")
-        (out_path.parent / ".wtest").unlink()
-    except (PermissionError, OSError) as e:
+        out_path = cue_subdir("reports") / f"{time.strftime('%Y-%m-%d-%H%M')}-{slug}.md"
+        out_dir = out_path.parent  # already created + probed by cue_subdir
+    # Ensure the output dir is writable. The default is already probed via
+    # cue_subdir; a user-supplied --output may point anywhere, so re-check
+    # (mkdir + write + unlink). Fail fast before burning credits.
+    if not probe_writable(out_dir):
         print(
-            f"[cue-research] ✗ 输出路径不可写: {out_path.parent} ({type(e).__name__}: {e})。\n"
-            f"[cue-research]   换可写目录(--output /tmp/<name>.md 或 ~/.cue/reports/...),"
-            f"别等跑完才发现落盘失败。",
+            f"[cue-research] ✗ 输出路径不可写: {out_dir}。\n"
+            f"[cue-research]   换可写目录(--output <path>),或设 CUE_HOME 指向可写根"
+            f"(当前根见 cue_api.py root)。",
             flush=True,
         )
         return 2

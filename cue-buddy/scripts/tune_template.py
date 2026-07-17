@@ -46,6 +46,7 @@ from cue_api import (  # noqa: E402
     validate_template_id,
 )
 from validate_template import validate  # noqa: E402
+from paths import cue_subdir  # noqa: E402 - proposal/backup paths under <root>
 
 
 LLM_FIELDS = ("input_form_spec", "goal", "search_plan", "report_format")
@@ -400,10 +401,13 @@ def main(argv: list[str] | None = None) -> int:
         print(render_diff(field, old, new) or "(structurally identical)")
 
     if err:
-        # Save proposal to /tmp so user can inspect & manually fix without
-        # the JSON cluttering the terminal.
-        proposal_path = Path(
-            f"/tmp/cue-buddy-proposal-{args.template_id[-8:]}-"
+        # Save proposal under the resolved root's proposals/ dir so the user
+        # can inspect & manually fix without the JSON cluttering the terminal.
+        # (Was /tmp/ - broke on Windows which has no /tmp; <root>/proposals is
+        # portable and co-located with backups.)
+        proposal_path = (
+            cue_subdir("proposals")
+            / f"cue-buddy-proposal-{args.template_id[-8:]}-"
             f"{time.strftime('%Y%m%d-%H%M%S')}.json"
         )
         proposal_path.write_text(
@@ -451,10 +455,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _backup_before_put(template_id: str, current: dict) -> Path:
-    """Save current template snapshot to ~/.cue/backups/ — gives the user
+    """Save current template snapshot under <root>/backups/ — gives the user
     an undo path since PUT overwrites without server-side history."""
-    backups_dir = Path.home() / ".cue" / "backups"
-    backups_dir.mkdir(parents=True, exist_ok=True)
+    backups_dir = cue_subdir("backups")
     ts = time.strftime("%Y%m%d-%H%M%S")
     safe_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in template_id)
     path = backups_dir / f"{safe_id}.{ts}.json"
