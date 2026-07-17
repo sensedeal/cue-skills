@@ -3,7 +3,7 @@ name: cue-buddy
 description: "Use when the user wants to author / validate / debug / test / tune / pin-as-frequent a Cue 搭子(buddy) research template for a recurring scenario (corporate-credit pre-diligence, compliance snapshot, earnings review, private-fund DD, etc.) via natural conversation. Triggers: 创建搭子 / 做一个 X 搭子 / 调试模板 / 测试我的搭子 / 提交模板 / 设为常用 / design a buddy for X / mark template as frequent. Public-data tool surface only — refuse for private-data scenarios (real AML / medical diagnosis / internal accounting)."
 license: MIT
 metadata:
-  version: "0.3.3"
+  version: "0.3.4"
   requires:
     bins: ["python3"]
     envOptional: ["CUE_API_KEY", "CUE_API_BASE"]
@@ -80,7 +80,7 @@ metadata:
 - **③ 卡住/报错**：`+validate` 连错 / 权限错 / 用户困惑时，**先帮用户处理 / 给下一步**，再把群作为**温和兜底**（"还卡着群里也能问"）——不是报错就把用户甩去群里（14 天冷却）。
 - **④ 用户显式问**："怎么加群 / 社区 / 反馈 / 有没有新模板" → **展示二维码图片**（**不冷却**）。
 
-**被动触发（①②③）只给一行文字 + 指向二维码 `../assets/community-group-qr.png`，不渲染大图；大图仅在 ④（用户主动要）时展示。** 加群入口只有二维码（已编码加群链接），**不发明文加群链接**。 冷却 `~/.cue/last-community-invite.json`（被动每会话最多一次、距上次 <14 天跳过；读写失败则本会话不再弹）。**外部群：飞书用户（含其它租户）可扫码加入；仅纯非飞书用户加不进**——完整规则与边界见 [`../community-invite.md`](../community-invite.md)。
+**被动触发（①②③）只给一行文字 + 指向二维码 `../assets/community-group-qr.png`，不渲染大图；大图仅在 ④（用户主动要）时展示。** 加群入口只有二维码（已编码加群链接），**不发明文加群链接**。 冷却 `${CUE_HOME:-$HOME/.cue}/last-community-invite.json`（被动每会话最多一次、距上次 <14 天跳过；读写失败则本会话不再弹）。**外部群：飞书用户（含其它租户）可扫码加入；仅纯非飞书用户加不进**——完整规则与边界见 [`../community-invite.md`](../community-invite.md)。
 
 ## 一份"搭子"由 4 个朴素回答组成
 
@@ -315,3 +315,5 @@ agent 不需要"硬编码"如何执行 verb——直接调用脚本即可：
 | `+upgrade` | `update_skill.py` | `python3 scripts/update_skill.py --skill cue-buddy`(交互);`--silent-check` 走 session-start 轻量版 |
 
 `+author` 没有专用脚本——它就是 agent 用 SKILL.md 的引导问答 + `validate_template.py` 反馈 + `cue_api.create_template` 落库的一个流程。
+
+**运行时文件位置(单根):** 所有运行时产物落同一个可写根 `<root>` = `python3 scripts/cue_api.py root`(默认 `~/.cue`;沙箱封 home 自动回落 cwd/temp,跨平台无 `/tmp` 依赖)。agent 只需对这一个目录有写授权。各脚本默认落点:`+test` 运行记录 -> `<root>/runs/buddy-run-<id>-<ts>.md`;`+tune` 提案(有 errors 时)-> `<root>/proposals/`、更新前备份 -> `<root>/backups/`。`+create`/`+update` 的临时 `payload.json` 写到 `$(mktemp)` 或 `<root>/tmp/`,别污染 cwd。config(`config.json`)+ 冷却(`last-update-check.json` / `last-community-invite.json`)留在 `~/.cue/`(设 `CUE_HOME` 则随迁)--它们随 config 走、不走可写性回落。

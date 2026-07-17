@@ -55,6 +55,8 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent.parent
+sys.path.insert(0, str(_HERE))
+from paths import cue_config_dir  # noqa: E402 - sibling; cooldown lives in config dir
 _KNOWN_SKILLS = ("cue-buddy", "cue-research")
 _DEFAULT_BRANCH = "main"
 _RAW_SKILL_URL = (
@@ -64,8 +66,13 @@ _RAW_SKILL_URL = (
 _GITHUB_REPO_URL = "https://github.com/sensedeal/cue-skills"
 
 # Cooldown file: stores per-skill timestamp of last silent-check (seconds since
-# epoch). Lives next to the API config so housekeeping is one dir.
-_COOLDOWN_PATH = Path.home() / ".cue" / "last-update-check.json"
+# epoch). Lives in the config dir ($CUE_HOME or ~/.cue) - deterministic, no
+# writability probe at import, and honors an existing cooldown file so a
+# relocate via CUE_HOME doesn't reset the 24h timer. Writes are best-effort.
+_COOLDOWN_PATH = cue_config_dir() / "last-update-check.json"
+# Legacy location (pre-CUE_HOME). Consulted on read so a relocate via CUE_HOME
+# doesn't reset the 24h timer for a skill whose timestamp still lives here.
+_LEGACY_COOLDOWN_PATH = Path.home() / ".cue" / "last-update-check.json"
 _COOLDOWN_SECONDS = 24 * 3600  # 24h between silent checks
 
 
@@ -164,10 +171,26 @@ def fetch_remote_version(
 
 def _load_cooldown(path: Path = _COOLDOWN_PATH) -> dict:
     """Read the cooldown JSON. Missing/corrupt → empty dict (never raise)."""
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    def _read(p: Path) -> dict:
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+    data = _read(path)
+    # If `path` is the relocated ($CUE_HOME) cooldown, also consult the legacy
+    # ~/.cue cooldown so a relocate doesn't reset the 24h timer for a skill
+    # whose timestamp still lives at the legacy path (honors existing). Take
+    # the MAX timestamp per skill (not primary-wins): the later of the two is
+    # the truth - a stale expired entry in one file must not override a newer
+    # still-cooling entry in the other.
+    if path != _LEGACY_COOLDOWN_PATH:
+        for k, v in _read(_LEGACY_COOLDOWN_PATH).items():
+            if not isinstance(v, (int, float)):
+                continue
+            cur = data.get(k)
+            if not isinstance(cur, (int, float)) or v > cur:
+                data[k] = v
+    return data
 
 
 def _save_cooldown(data: dict, path: Path = _COOLDOWN_PATH) -> None:
@@ -493,10 +516,11 @@ def run_upgrade(
     print(
         f"""
   # 方式 A — 重新 clone 整个 repo,先 diff 备份再覆盖
-  git clone --depth=1 {_GITHUB_REPO_URL}.git /tmp/cue-skills
-  diff -ru {skill_dir} /tmp/cue-skills/{skill}/ > /tmp/{skill}.local-diff || true
+  tmp=$(mktemp -d)   # portable (Linux/macOS/git-bash); avoids Windows-less /tmp
+  git clone --depth=1 {_GITHUB_REPO_URL}.git "$tmp/cue-skills"
+  diff -ru {skill_dir} "$tmp/cue-skills/{skill}/" > "$tmp/{skill}.local-diff" || true
   # ⬇️ 这一步覆盖(可改成 `cp -R -i` 加交互确认,或先看上面 diff):
-  cp -R /tmp/cue-skills/{skill}/* {skill_dir}/
+  cp -R "$tmp/cue-skills/{skill}/"* {skill_dir}/
 
   # 方式 B — 下载最新 SKILL.md 单文件(只更新单个文件,不动 scripts/)
   curl -L {_RAW_SKILL_URL.format(branch=branch, skill=skill)} -o {skill_md}

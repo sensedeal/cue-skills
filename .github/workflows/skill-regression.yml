@@ -102,6 +102,28 @@ jobs:
           echo "$out" | grep -q "usage: cue_api.py replay"
           test "$ec" -eq 2
 
+      - name: (cue-buddy) CLI smoke - cue_api.py root subcommand
+        if: matrix.skill == 'cue-buddy'
+        # v0.3.4 path consolidation: `cue_api.py root` prints the single
+        # writable root the agent writes all runtime files to. Must exit 0 and
+        # print exactly one path line (no API key needed - pure path resolve).
+        run: |
+          set +e
+          out=$(python3 ${{ matrix.skill }}/scripts/cue_api.py root 2>/dev/null)
+          ec=$?
+          set -e
+          echo "$out"
+          test "$ec" -eq 0
+          # exactly one non-empty line, looks like an absolute path
+          test "$(echo "$out" | wc -l)" -eq 1
+          echo "$out" | grep -qE '^/.+'
+
+      - name: (cue-buddy) paths.py resolver tests
+        if: matrix.skill == 'cue-buddy'
+        # v0.3.4: single writable-root resolver (CUE_HOME override, fallback
+        # chain, caching, cue_subdir laziness, cue_config_dir determinism).
+        run: python3 ${{ matrix.skill }}/scripts/test_paths.py
+
       - name: (cue-buddy) Validator self-check (regex 5-family coverage)
         if: matrix.skill == 'cue-buddy'
         # codex r3 r1 Block A: TOOL_NAME_LEAK_RE 应覆盖 get_*/list_*/find_*/

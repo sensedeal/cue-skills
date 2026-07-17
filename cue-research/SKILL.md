@@ -3,7 +3,7 @@ name: cue-research
 description: "Use when the user asks a research question they want Cue to run — against a saved 搭子(buddy) template or as free-form deep research. Triggers: 帮我查/调研/研究 + 主体或话题; ask Cue about X; 用 Cue 跑一下 Y; 看看哪个搭子能查 X; 把刚才那次调研存成搭子. Public-data scope only — refuse for private-data scenarios (real AML / medical / internal accounting)."
 license: MIT
 metadata:
-  version: "0.3.3"
+  version: "0.3.4"
   requires:
     bins: ["python3"]
     envOptional: ["CUE_API_KEY", "CUE_API_BASE"]
@@ -145,33 +145,35 @@ while True:
 ```bash
 python3 <skill>/scripts/research_run.py \
   --template-id <选中的 template_id> \
-  --query "<原问题或澄清后问题>" \
-  --output ~/cue-reports/$(date +%Y-%m-%d-%H%M)-<主体slug>.md
-# 续跑(Stage 5 不满意补充澄清时复用上下文,省 credits):再加 --conversation-id <上次的 conv_id>
+  --query "<原问题或澄清后问题>"
+# --output/--log 留空 -> runner 用默认唯一日志/报告路径;起跑后 log= 行打日志路径、RESULT 行打报告路径(都是绝对路径字面值,见下"完成检测")
 ```
 
-**⚠️ --output 路径必须可写:** 默认 `~/cue-reports/`。沙箱/受限环境若写不了(常见卡点:runner `mkdir -p` 父目录或写文件被权限拒),换 agent 可写目录(如 `/tmp/`、`~/.cue/reports/`、agent 工作目录)。起跑前先确认目录可写(如 `mkdir -p ~/cue-reports && touch ~/cue-reports/.wtest && rm ~/cue-reports/.wtest`),别等落盘失败才发现——落盘失败会丢报告,只剩 stdout 的 RESULT 行。
+**⚠️ 路径可写性:** `cue_api.py root` 已探测可写根并建好 `reports/` `logs/`(`~/.cue` 不可写时自动回落到 agent cwd 或 temp,跨平台无 `/tmp` 依赖)。**别再自己 `mkdir` 或 `touch .wtest`**--runner 起跑时 `cue_root()` 会再探一次,不可写直接早失败(烧 credits 前)。`--output` 指别处时 runner 也会探该目录。
 
 **起跑后确认启动(不等结果,只等启动信号):** 后台 stdout 出现 `[cue-research] STARTED conv_id=…`(通常 2-5 秒内,第一个 SSE 事件到达=后端已接受)再让出回合。若出现 `[cue-research] chat_stream failed`(启动失败,参数/鉴权问题),立即按诊断处理,不对用户说"已开跑"。
 
-**让出前对用户说(人话):** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到 `~/cue-reports/…`。" **不要把 `STARTED conv_id=` / `▶ agent=` 这些 stdout 行转给用户**(见上 ⚠️)。
+**让出前对用户说(人话):** "已成功开跑(约 3-15 分钟),跑完我直接把报告贴出来,并存到你的 cue 目录下(跑完会给全路径)。" **不要把 `STARTED conv_id=` / `▶ agent=` 这些 stdout 行转给用户**(见上 ⚠️)。
 
 **起跑后必须消费 research_run.py 的流式 stdout(进度 + 完成都靠它):** research_run.py 的 stdout 是**流式实时输出**(`flush=True`):`STARTED` → `▶ agent=… task=…`(研究步骤) → `✓ report finalized` → `RESULT ok|empty`。这个流是你的**进度 + 完成的唯一来源**——必须消费它,不让出后睡等回叫(回叫不可靠,.workbuddy 等平台通知常不来)。
 
-**完成检测(必须):** 起跑时把 stdout 重定向到文件,再起第二个 background Bash 流式等 RESULT(带超时,防 research_run.py 崩溃不写 RESULT 时无限等):
+**完成检测(必须):** runner 自带 `--log`(默认 `<root>/logs/cue-run-<conv_id>.log`,**每 run 唯一**),把进度**同时** tee 到该文件与 stdout--**不用再 shell `>` 重定向**(老 `./cue-run.log` 那套的坑:两个 Bash 得共用同一写死路径,沙箱/Windows 一变就失配)。**唯一日志名消两类竞态**:stale RESULT(新文件无旧内容,`tail -F` 不会匹上次结果)+ miss RESULT(`tail -F` 读新文件已有内容,即使 RESULT 在 watcher attach 前已写;`tail -n 0` 会漏掉秒级失败的 RESULT,watcher 干等 61min)。
+
+⚠️ **跨 Bash 不共享 shell 变量**:起跑(Bash1)和等 RESULT(Bash2)是两个独立 Bash 调用,`$root`/`$log` 不会带过去。**别**用变量,用**字面绝对路径**--runner 起跑后第一行打 `[cue-research] log=<绝对路径>`,agent 本来就要读 Bash1 stdout 确认 `STARTED`,顺手记下这行的路径字面值给 Bash2 用:
 ```bash
-# 起跑(stdout 重定向到文件,两个 Bash 看同一文件):
-# ⚠️ 用 ./cue-run.log(agent 工作目录,跨平台+沙箱可写);别用 /tmp/(Windows 不存在)也别用 ~/（home 根,沙箱拦截）→ 文件不一致 → background Bash 等 RESULT 永不匹配 → agent 卡
-python3 <skill>/scripts/research_run.py --template-id … --query … --output … > ./cue-run.log 2>&1
-# 第二个 background Bash(流式等 RESULT,61min 超时):
-timeout 3660 tail -F ./cue-run.log | grep -m1 "RESULT"
-# tail -F 跟随新行(不轮询),grep -m1 匹配 RESULT 退出;timeout 3660 防 research_run.py 崩溃(OOM/SIGKILL/未捕获异常)不写 RESULT 时无限等(61min 超 60min hard timeout)
-# Bash 完成(RESULT 或超时)→ agent 被通知 → 读 ./cue-run.log 末行 → RESULT ok 读 --output 交付;empty/超时 → 诊断/告诉用户失败
+# Bash1 起跑(run_in_background;--output/--log 都留空,runner 用默认唯一日志,RESULT 行会打 output 全路径):
+python3 <skill>/scripts/research_run.py --template-id … --query …
+# -> 首行 [cue-research] log=<root>/logs/cue-run-<conv_id>.log  <- 记下这个绝对路径
+# -> STARTED conv_id=… ;进度行 ;末行 RESULT ok|empty output=<报告绝对路径>
+# Bash2 第二个 background Bash(tail -F 读新文件内容,不漏 RESULT;用上面记下的 log 字面路径):
+timeout 3660 tail -F "<Bash1 打的 log 绝对路径>" | grep -m1 "RESULT"
+# grep -m1 匹配 RESULT 退出;timeout 3660 防 runner 崩溃(OOM/SIGKILL/未捕获异常)不写 RESULT 时无限等(61min 超 60min hard timeout)
+# Bash 完成 -> 读 RESULT 行:ok 读其 output=<路径> 报告交付;empty/超时 -> 诊断/告诉用户失败
 ```
 
 **进度展示:** 消费 stdout 进度行(`▶ agent=… task=…`)翻译研究步骤给用户:
-- Claude Code: `Monitor` 工具(`tail -F ./cue-run.log | grep "▶\|✓\|RESULT"`),每行通知 → 翻译报用户。
-- 无 Monitor 的 agent(.workbuddy 等): **用户问进度时**读 `./cue-run.log` 最新行翻译(不是定期轮询——你让出后不醒,定期读不可行;background Bash 完成通知是唯一主动触发)。
+- Claude Code: `Monitor` 工具(`tail -F <Bash1 打的 log 绝对路径> | grep "▶\|✓\|RESULT"`),每行通知 → 翻译报用户。
+- 无 Monitor 的 agent(.workbuddy 等): **用户问进度时**读 `<Bash1 打的 log 绝对路径>` 最新行翻译(不是定期轮询——你让出后不醒,定期读不可行;background Bash 完成通知是唯一主动触发)。
 - 翻译:`▶ agent=researcher task=查…` → "研究步骤:查…";`✓ report finalized` → "报告已生成,正在取回";`RESULT` → 交付。**绝不贴原始 `▶ agent=` 行**(见上 ⚠️)。
 
 **绝不告诉用户"完成后会自动通知我"**——你消费流式 stdout 主动检测进度 + 完成,不把希望寄托在回叫上。
@@ -184,7 +186,7 @@ timeout 3660 tail -F ./cue-run.log | grep -m1 "RESULT"
 - `✓ report finalized` → "报告已生成,正在取回";`RESULT ok` → 读 `--output` 报告交付
 - **绝不贴原始 `▶ agent=` 行**(见上 ⚠️)。整个进度流从 `STARTED` 到 `RESULT` 都在 stdout 一个文件里。
 
-**⚠️ 别高频 Read stdout 轮询:** 进度是**事件驱动**的——要么用 `Monitor` 被动收推送(每行进度主动通知你),要么起一个 background Bash `until grep -q RESULT <stdout文件>; do sleep 5; done` 等 RESULT 再由完成通知触发。长间歇无输出是**正常现象**(深研某步可能跑几分钟无进度行),**不要反复 Read 同一个 stdout 文件等事件**(浪费回合 + 上下文 overflow 风险)。
+**⚠️ 别高频 Read stdout 轮询:** 进度是**事件驱动**的——要么用 `Monitor` 被动收推送(每行进度主动通知你),要么起一个 background Bash `tail -F <Bash1 打的 log 绝对路径> | grep -m1 "RESULT"` 等 RESULT 再由完成通知触发。长间歇无输出是**正常现象**(深研某步可能跑几分钟无进度行),**不要反复 Read 同一个 stdout 文件等事件**(浪费回合 + 上下文 overflow 风险)。
 
 **记住 conv_id:** 起跑后从 stdout `STARTED conv_id=…` 行取 conv_id(或起跑时用 `--conversation-id <自定义>` 指定),后续检查/replay 都用它。**绝不重复起跑**:已有 conv_id 在跑/已完成时,用户问进度检查该 conv_id(stdout/replay),**不要重新 `research_run.py`**(烧新 credits + 丢上下文);只有用户要换主体/换搭子才新起跑。
 
@@ -217,8 +219,7 @@ timeout 3660 tail -F ./cue-run.log | grep -m1 "RESULT"
 
 ```bash
 python3 <skill>/scripts/research_run.py \
-  --query "<rewrite_result['rewritten_mandate']>" \
-  --output ~/cue-reports/$(date +%Y-%m-%d-%H%M)-<主体slug>.md
+  --query "<rewrite_result['rewritten_mandate']>"
 # 不传 --template-id = 自由式深研。同样 run_in_background:true(起跑后等 STARTED 信号确认启动 + 中途可读 stdout 查进度,见 Stage 4a),完成回叫后读 --output。
 ```
 
@@ -242,8 +243,7 @@ python3 <skill>/scripts/research_run.py \
 ```bash
 python3 <skill>/scripts/research_run.py \
   --query "<问题;明确要求基于上传素材调研>" \
-  --material "~/Downloads/某公司年报.pdf" \
-  --output ~/cue-reports/$(date +%Y-%m-%d-%H%M)-<slug>.md
+  --material "~/Downloads/某公司年报.pdf"
 # 自由式带素材如上(仍先 rewrite);搭子带素材则再加 --template-id <id>。同样 run_in_background:true。
 ```
 
@@ -281,7 +281,7 @@ Stage 5 满意且是 4b 自由式跑时,问用户(**对外文案不出现 verb �
 - **③ 卡住/报错**：匹配不到搭子 / 权限错 / 用户困惑时，**先帮用户处理 / 给下一步**，再把群作为**温和兜底**——不是报错就甩去群里（14 天冷却）。
 - **④ 用户显式问**："怎么加群 / 社区 / 反馈 / 有没有新模板" → **展示二维码图片**（**不冷却**）。
 
-**被动触发（①②③）只给一行文字 + 指向二维码 `../assets/community-group-qr.png`，不渲染大图；大图仅在 ④（用户主动要）时展示。** 加群入口只有二维码（已编码加群链接），**不发明文加群链接**。 冷却 `~/.cue/last-community-invite.json`（被动每会话最多一次、距上次 <14 天跳过；读写失败则本会话不再弹）。**外部群：飞书用户（含其它租户）可扫码加入；仅纯非飞书用户加不进**——完整规则与边界见 [`../community-invite.md`](../community-invite.md)。
+**被动触发（①②③）只给一行文字 + 指向二维码 `../assets/community-group-qr.png`，不渲染大图；大图仅在 ④（用户主动要）时展示。** 加群入口只有二维码（已编码加群链接），**不发明文加群链接**。 冷却 `${CUE_HOME:-$HOME/.cue}/last-community-invite.json`(与 config 同目录;设 CUE_HOME 则随迁)（被动每会话最多一次、距上次 <14 天跳过；读写失败则本会话不再弹）。**外部群：飞书用户（含其它租户）可扫码加入；仅纯非飞书用户加不进**——完整规则与边界见 [`../community-invite.md`](../community-invite.md)。
 
 ## Hard rules(铁律)
 

@@ -30,9 +30,9 @@
 
 ## 冷却机制
 
-时间戳文件 `~/.cue/last-community-invite.json`：`{"onboarded": true, "last_passive_shown": <epoch_seconds>}`。
+时间戳文件 `${CUE_HOME:-$HOME/.cue}/last-community-invite.json`（默认 `~/.cue/`；设 `CUE_HOME` 则随迁到 `$CUE_HOME/`，与 `config.json` 同目录）：`{"onboarded": true, "last_passive_shown": <epoch_seconds>}`。
 
-- **被动触发（②③）前先读**：距 `last_passive_shown` < 14 天（1209600s）则**跳过**；展示后写回当前时间戳（必要时先 `mkdir -p ~/.cue`）。
+- **被动触发（②③）前先读**：距 `last_passive_shown` < 14 天（1209600s）则**跳过**；展示后写回当前时间戳（必要时先 `mkdir -p "${CUE_HOME:-$HOME/.cue}"`）。
 - **每会话被动邀请最多一次**——这是**首要约束**：即使文件读/写失败，也**按"本会话已展示"处理，本会话内不再弹**（失败时**默认不弹**被动邀请，宁可漏不可扰），不报错打断主任务。
 - **① 首次**：`onboarded` 为假才显示，显示后置 `true`（全局一次：用户在任一 skill onboarding 过，另一个不再重复）。
 - **④ 用户显式问**：永远响应，**不受冷却**、不更新被动时间戳。

@@ -389,6 +389,30 @@ class TestResearchRunner(unittest.TestCase):
     + replay-as-primary + file output) instead of hand-writing the stream loop
     in prose, which was the original phantom-import / empty-report root cause."""
 
+    def setUp(self):
+        # main() now defaults its progress log to <root>/logs/cue-run.log via
+        # the paths resolver. Pin CUE_HOME to a temp dir + reset the resolver
+        # cache so tests never write logs/reports into the real ~/.cue, and
+        # snapshot stdout/stderr (main() tees them) to restore after each test.
+        import paths
+        import shutil
+        self._shutil = shutil
+        self._tmp = tempfile.mkdtemp()
+        self._prev_home = os.environ.get("CUE_HOME")
+        os.environ["CUE_HOME"] = self._tmp
+        paths._reset_cache()
+        self._prev_stdout, self._prev_stderr = sys.stdout, sys.stderr
+
+    def tearDown(self):
+        import paths
+        paths._reset_cache()
+        sys.stdout, sys.stderr = self._prev_stdout, self._prev_stderr
+        if self._prev_home is None:
+            os.environ.pop("CUE_HOME", None)
+        else:
+            os.environ["CUE_HOME"] = self._prev_home
+        self._shutil.rmtree(self._tmp, ignore_errors=True)
+
     def test_runner_exists_and_parses(self):
         import ast
         runner = _HERE / "research_run.py"
@@ -420,6 +444,10 @@ class TestResearchRunner(unittest.TestCase):
         # background execution + file output are the borrowed patterns
         self.assertRegex(md, r"run_in_background", )
         self.assertRegex(md, r"--output|cue-reports")
+        # v0.3.4 path consolidation: single writable root via `cue_api.py root`,
+        # runner tees its own --log (no shell-redirect ./cue-run.log fragility).
+        self.assertRegex(md, r"cue_api\.py root")
+        self.assertIn("--log", md)
 
     def test_runner_exposes_mimic_flags(self):
         """Phase 1 + sample-document mimic: URL and local-file mimic flags,
