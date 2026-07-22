@@ -237,7 +237,7 @@ python3 <skill>/scripts/research_run.py \
 
 - 加 `--material "<本地路径>"`,**可重复**多个文件:`--material a.pdf --material b.docx`。runner 先把每个文件上传(SSE 走完 `…→completed` 才拿到 `file_id`),再随 `conversation_file_ids` 绑进这次跑。
 - **要先经用户确认再上传**(见安全规则:默认不上传本地材料)。问一句:"要把这份文档作为调研素材上传吗?它会用于检索,会占用本次 credits。"
-- 类型/大小(均为**服务端**约束,runner 不在本地预检大小):支持类型以 `/api/file_server/accept_type` 为准,**单文件约 ≤50MB**(超限/不支持类型由服务端拒绝并报错);file_id **单次绑定**(后端行为:一个 file_id 只能用于一次会话,续跑/换会话需重传)。据后端:上传只校验余额、**不单独扣费**,**跑** chat 才扣 credits。
+- 类型/大小(均为**服务端**约束,runner 不在本地预检大小):支持类型与精确上限以 `/api/file_server/accept_type` 为准,**单文件最大 256 MiB**(超限/不支持类型由服务端拒绝并报错);file_id **单次绑定**(后端行为:一个 file_id 只能用于一次会话,续跑/换会话需重传)。据后端:上传只校验余额、**不单独扣费**,**跑** chat 才扣 credits。
 - query 写法上**明确请 agent 检索上传的文档**(如"请基于我上传的素材回答…"),让它真去调 `file_retrieval`;别写"不要检索/只读"之类把工具禁掉的话。
 
 ```bash
