@@ -130,6 +130,11 @@ class TestSkillMd(unittest.TestCase):
             "SKILL.md hard rules must mention credit confirmation",
         )
 
+    def test_material_upload_uses_server_capability_limit(self):
+        self.assertIn("/api/file_server/accept_type", self.md)
+        self.assertIn("单文件最大 256 MiB", self.md)
+        self.assertNotIn("50MB", self.md)
+
     def test_stage2_uses_full_list_semantic_picking(self):
         """Stage 2 must use single-stage full-list + agent semantic picking,
         NOT the old keyword-search-variants approach. Empirically verified
