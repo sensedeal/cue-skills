@@ -171,7 +171,7 @@ def inline_citations(report: str, sources: list[dict]) -> str:
 
     - search_snippet/url class: 【N-M】→ [domain](data.url)
     - scan class: 【N-M】→ [domain](rows[M].pdf_url)
-    - mcp class (no url/rows): 【N-M】→ tool_title (plain text, no link)
+    - mcp class (no url/rows): 【N-M】→ （tool_title）lightweight parenthetical
     """
     import re
     from urllib.parse import urlparse
@@ -199,8 +199,16 @@ def inline_citations(report: str, sources: list[dict]) -> str:
             if mi < len(rows):
                 url = rows[mi].get("pdf_url") or ""
         if not url:
-            # no url: show tool_title (or tool_name) instead of bare 【N-M】
-            return s.get("tool_title") or s.get("tool_name") or m.group(0)
+            # MCP tool (no URL / rows): parenthetical — lightweight inline
+            # citation for non-verifiable sources. Linked [domain](url) are
+            # for independently-verifiable web sources and carry more weight;
+            # MCP工具名（数据终端/API）不可供读者点击验证,用弱括号注记。
+            tt = s.get("tool_title") or s.get("tool_name") or ""
+            if tt:
+                return f"*（{tt}）*"
+            # Truly no label — keep original marker so the reader at least sees
+            # something that looks like a citation reference.
+            return m.group(0)
         return f"[{domain_short(url)}](<{url}>)"
 
     # space-separate consecutive 【N-M】 markers BEFORE rendering (escaping-proof —
