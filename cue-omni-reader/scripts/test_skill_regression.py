@@ -16,6 +16,7 @@ _SETUP_MD = _SKILL_DIR / "references" / "setup.md"
 _COMPAT_MD = _SKILL_DIR / "references" / "compatibility.md"
 _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
+_CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
     r"(?P<balance_key_quote>[\"']?)"
@@ -417,7 +418,7 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.1\.0"$', re.M),
+            re.compile(r'^\s*version:\s*"0\.1\.1"$', re.M),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
@@ -529,6 +530,48 @@ class TestSkillMd(unittest.TestCase):
             re.compile(r"claim deletion only after.*confirmed", re.I | re.S),
         )
 
+    def test_content_only_fallback_preserves_state_and_document_bytes(self) -> None:
+        self.assertRegex(
+            self.md,
+            re.compile(
+                r"structuredContent.*when available.*content\[\]\.text",
+                re.I | re.S,
+            ),
+        )
+        self.assertRegex(
+            self.md,
+            re.compile(
+                r"completed inline.*exact Markdown.*non-inline.*compact JSON",
+                re.I | re.S,
+            ),
+        )
+        self.assertRegex(
+            self.md,
+            re.compile(r"append only.*`result\.text`", re.I | re.S),
+        )
+        self.assertRegex(
+            self.md,
+            re.compile(r"never append.*JSON wrapper", re.I | re.S),
+        )
+        self.assertRegex(
+            self.md,
+            re.compile(r"generic success.*not.*completed result", re.I | re.S),
+        )
+
+    def test_summary_uses_the_complete_assembled_result(self) -> None:
+        self.assertRegex(
+            self.md,
+            re.compile(r"summary.*assemble.*complete result.*first", re.I | re.S),
+        )
+        self.assertRegex(
+            self.md,
+            re.compile(r"parse only.*complete Markdown.*offer.*summary", re.I | re.S),
+        )
+        self.assertRegex(
+            self.md,
+            re.compile(r"do not truncate", re.I),
+        )
+
     def test_billing_errors_and_original_task_remain_truthful(self) -> None:
         self.assertRegex(self.md, re.compile(r"Report.*billing facts", re.I))
         self.assertRegex(
@@ -544,12 +587,12 @@ class TestReferences(unittest.TestCase):
         self.compat = _required_text(self, _COMPAT_MD)
 
     def test_setup_pins_the_audited_bridge_and_node(self) -> None:
-        self.assertIn("@cueai/omni-reader-mcp@1.1.2", self.setup)
+        self.assertIn("@cueai/omni-reader-mcp@1.1.3", self.setup)
         self.assertIn("Node.js 20.12", self.setup)
-        self.assertIn("npx -y @cueai/omni-reader-mcp@1.1.2 setup", self.setup)
-        self.assertIn("npx -y @cueai/omni-reader-mcp@1.1.2 doctor --json", self.setup)
+        self.assertIn("npx -y @cueai/omni-reader-mcp@1.1.3 setup", self.setup)
+        self.assertIn("npx -y @cueai/omni-reader-mcp@1.1.3 doctor --json", self.setup)
         self.assertIn(
-            "npx -y @cueai/omni-reader-mcp@1.1.2 uninstall --yes --json",
+            "npx -y @cueai/omni-reader-mcp@1.1.3 uninstall --yes --json",
             self.setup,
         )
         self.assertRegex(
@@ -575,7 +618,9 @@ class TestReferences(unittest.TestCase):
 
     def test_bridge_cli_claims_have_package_source_evidence(self) -> None:
         audit = _required_text(self, _BRIDGE_AUDIT_MD)
+        compat = _required_text(self, _CONTENT_ONLY_REPORT_MD)
         self.assertIn("2026-08-08-bridge-cli-audit.md", self.setup)
+        self.assertIn("2026-08-11-content-only-compat.md", self.setup)
         self.assertIn("package-source", audit)
         self.assertIn("@cueai/omni-reader-mcp@1.1.2", audit)
         self.assertRegex(
@@ -589,6 +634,13 @@ class TestReferences(unittest.TestCase):
         self.assertRegex(
             audit,
             re.compile(r"no live.*configuration write.*Omni", re.I | re.S),
+        )
+        self.assertIn("@cueai/omni-reader-mcp@1.1.3", compat)
+        self.assertIn("content[].text", compat)
+        self.assertIn("291", compat)
+        self.assertRegex(
+            compat,
+            re.compile(r"no production parse.*no Omni credits", re.I | re.S),
         )
 
     def test_versions_match_across_skill_setup_and_current_reports(self) -> None:
@@ -614,11 +666,7 @@ class TestReferences(unittest.TestCase):
             "2026-08-08-workbuddy.md",
         ):
             report = _required_text(self, _REPORTS_DIR / name)
-            self.assertIn(
-                f"v{skill_version}",
-                report,
-                f"skill version drift in {name}",
-            )
+            self.assertIn("v0.1.0", report, f"historical skill version changed in {name}")
 
         for name in (
             "2026-08-08-bridge-cli-audit.md",
@@ -629,16 +677,16 @@ class TestReferences(unittest.TestCase):
             "2026-08-08-skill-pressure.md",
         ):
             report = _required_text(self, _REPORTS_DIR / name)
-            self.assertIn(
-                bridge_version,
-                report,
-                f"Bridge version drift in {name}",
-            )
+            self.assertIn("1.1.2", report, f"historical Bridge version changed in {name}")
+
+        current = _required_text(self, _CONTENT_ONLY_REPORT_MD)
+        self.assertIn(f"v{skill_version}", current)
+        self.assertIn(bridge_version, current)
 
     def test_compatibility_is_versioned_and_evidence_scoped(self) -> None:
-        self.assertIn("Skill version: `0.1.0`", self.compat)
-        self.assertIn("Bridge version: `1.1.2`", self.compat)
-        self.assertIn("Evidence date: 2026-08-08", self.compat)
+        self.assertIn("Skill version: `0.1.1`", self.compat)
+        self.assertIn("Bridge version: `1.1.3`", self.compat)
+        self.assertIn("Evidence date: 2026-08-11", self.compat)
         for client in (
             "Claude Code",
             "Codex CLI",
@@ -1305,6 +1353,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-08-08-hermes.md",
             "docs/verification-reports/2026-08-08-skill-pressure.md",
             "docs/verification-reports/2026-08-08-workbuddy.md",
+            "docs/verification-reports/2026-08-11-content-only-compat.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
