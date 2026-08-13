@@ -27,7 +27,7 @@ npx -y @cueai/omni-reader-mcp@1.1.3 setup
 
 The interactive setup supports native configuration for Hermes, Cursor, and Claude Desktop. Choose **Other** for another client. Generic setup prints a reviewed stdio entry; apply it through that client's documented MCP configuration mechanism. Do not invent a configuration path or claim a client adapter is supported when it has not been verified.
 
-The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the historical [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md). Candidate 1.1.3 keeps that CLI contract and adds the traditional-text result channel covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md). No live client configuration write was performed for this skill release.
+The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the historical [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md). Bridge 1.1.3 keeps that CLI contract and adds the traditional-text result channel covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md). 1.1.3 is published and `latest` on npm ([publication confirmation](../docs/verification-reports/2026-08-13-bridge-1.1.3-published.md)). No live client configuration write was performed for this skill release.
 
 Supported non-interactive native-adapter examples:
 

@@ -1354,6 +1354,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-08-08-skill-pressure.md",
             "docs/verification-reports/2026-08-08-workbuddy.md",
             "docs/verification-reports/2026-08-11-content-only-compat.md",
+            "docs/verification-reports/2026-08-13-bridge-1.1.3-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
