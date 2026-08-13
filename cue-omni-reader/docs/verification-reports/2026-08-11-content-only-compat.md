@@ -1,5 +1,7 @@
 # Content-only MCP compatibility — 2026-08-11
 
+> **Resolution (2026-08-13):** Bridge 1.1.3 was published on 2026-08-11 and is the npm `latest` dist-tag; it is live on the IIIS/TEST Omni Hub. See the [publication confirmation](2026-08-13-bridge-1.1.3-published.md). The "candidate" wording below reflects the pre-publication state on the day this report was written and is retained for history.
+
 - **Skill candidate:** `cue-omni-reader` v0.1.1
 - **Bridge candidate:** `@cueai/omni-reader-mcp@1.1.3`
 - **Mode:** local regression and simulated client-channel verification
@@ -37,4 +39,4 @@ These checks were local and simulated. They do not establish npm publication, de
 
 ## Remaining release gates
 
-The candidate still requires independent exact-head review, a public review note, repository CI, publication and deployment authorization, and separately authorized live acceptance before any live compatibility claim can be made.
+Resolved by the [2026-08-13 publication confirmation](2026-08-13-bridge-1.1.3-published.md): npm publication (2026-08-11, `latest`) and IIIS/TEST Hub live state are confirmed. WorkBuddy exact native loading and live acceptance remain unverified as of 2026-08-13.
