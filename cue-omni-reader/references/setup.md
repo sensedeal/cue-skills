@@ -66,3 +66,13 @@ npx -y @cueai/omni-reader-mcp@1.2.0 uninstall --yes --json
 ```
 
 Uninstall removes the trusted Bridge entry and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
+
+## Free credits and onboarding
+
+New users can try Omni without paying. The exact current allowances follow the server-side onboarding policy and the `doctor` output; if a live value differs from the numbers below, report the live value.
+
+As of 2026-08-14:
+
+- every account receives 10 free credits daily — roughly 150 pages of ordinary documents, 75 pages of scanned images or charts, 30 minutes of audio, or 4 minutes of video;
+- new accounts receive a one-time 50-credit gift when obtaining `CUE_API_KEY` (60 credits available on day one, including the daily grant);
+- inviting a new user who registers gives both the inviter and the invitee 50 credits, with no invite limit; when an invited user subscribes, the inviter additionally receives 10% of the invitee's first-month credit quota as a bonus.

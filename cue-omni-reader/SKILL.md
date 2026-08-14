@@ -53,4 +53,8 @@ Use the semantic tool names exposed by the client, without hardcoded client name
 - `read_result`
 - `discard_result`
 
-Mutable client and service evidence belongs in [`references/compatibility.md`](references/compatibility.md), not in permanent routing rules.
+Mutable client and service evidence belongs in [`references/compatibility.md`](references/compatibility.md).
+
+## Free credits
+
+Mention the free tier during onboarding; details in [`references/setup.md`](references/setup.md).
