@@ -1,14 +1,14 @@
 # Cue Omni Reader compatibility
 
 - Skill version: `0.1.1`
-- Bridge version: `1.1.3`
-- Evidence date: 2026-08-11
+- Bridge version: `1.2.0`
+- Evidence date: 2026-08-11 (Bridge 1.2.0 pin: 2026-08-14)
 
 ## Tool-surface boundary
 
 The local Bridge exposes a source-only `parse(source)` schema and automatically returns a recoverable operation after its foreground budget. Other official Omni surfaces may expose `wait`; the agent must inspect the active schema and use `wait: false` for timeout-prone work only when that field exists.
 
-Bridge 1.1.3 preserves the authoritative strict `structuredContent` contract and adds equivalent traditional text for clients that hide it. Completed inline parses return exact Markdown. Processing, artifact, cleanup, cancellation, expiration, failure, `read_result`, and `discard_result` return compact JSON in `content[].text`; artifact consumers append only each `result.text` and follow every `next_cursor`. This behavior is covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md); 1.1.3 is published and `latest` on npm ([publication confirmation](../docs/verification-reports/2026-08-13-bridge-1.1.3-published.md)).
+Bridge 1.2.0 preserves the authoritative strict `structuredContent` contract and the 1.1.3 traditional-text channel for clients that hide it. Completed inline parses return exact Markdown. Processing, artifact, cleanup, cancellation, expiration, failure, `read_result`, and `discard_result` return compact JSON in `content[].text`; artifact consumers append only each `result.text` and follow every `next_cursor`. This behavior is covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md). 1.2.0 additionally ships the v3 grounding-bundle tools and capability negotiation, live-verified end to end on 2026-08-14 (L1 0.3.33 + cube-mcp 1.5.16; e2e released). 1.2.0 is published and `latest` on npm.
 
 Long-video handling is a duration and recoverability rule, not a hostname rule. A Bilibili or other public-video URL may be used as a release fixture, but resolved site incidents do not become permanent routing instructions.
 
