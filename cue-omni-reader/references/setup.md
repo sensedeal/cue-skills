@@ -2,7 +2,7 @@
 
 - **Audited package:** `@cueai/omni-reader-mcp@1.2.0`
 - **Runtime:** Node.js 20.12 or newer
-- **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/api-key>
+- **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/hub/api-key>
 
 Use an existing official Omni MCP connection when it already supports the requested source. A URL does not require local Bridge installation. Install the Bridge only when a local source requires it or the user explicitly wants the unified local facade.
 
@@ -75,4 +75,6 @@ As of 2026-08-14:
 
 - every account receives 10 free credits daily — roughly 150 pages of ordinary documents, 75 pages of scanned images or charts, 30 minutes of audio, or 4 minutes of video;
 - new accounts receive a one-time 50-credit gift when obtaining `CUE_API_KEY` (60 credits available on day one, including the daily grant);
+
+When the user has no `CUE_API_KEY` yet, direct them to <https://cuecue.cn/hub/api-key> to register and get the key (one-time 50-credit gift plus the daily grant). Never obtain, store, or transmit the key yourself; the user configures it in their own secret facility.
 - inviting a new user who registers gives both the inviter and the invitee 50 credits, with no invite limit; when an invited user subscribes, the inviter additionally receives 10% of the invitee's first-month credit quota as a bonus.
