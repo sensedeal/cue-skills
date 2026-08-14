@@ -1,6 +1,6 @@
 # Omni Reader setup reference
 
-- **Audited package:** `@cueai/omni-reader-mcp@1.1.3`
+- **Audited package:** `@cueai/omni-reader-mcp@1.2.0`
 - **Runtime:** Node.js 20.12 or newer
 - **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/api-key>
 
@@ -22,19 +22,19 @@ Do not paste an API key into chat, command arguments, skill files, logs, or gene
 Never use an implicit `latest`:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.1.3 setup
+npx -y @cueai/omni-reader-mcp@1.2.0 setup
 ```
 
 The interactive setup supports native configuration for Hermes, Cursor, and Claude Desktop. Choose **Other** for another client. Generic setup prints a reviewed stdio entry; apply it through that client's documented MCP configuration mechanism. Do not invent a configuration path or claim a client adapter is supported when it has not been verified.
 
-The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the historical [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md). Bridge 1.1.3 keeps that CLI contract and adds the traditional-text result channel covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md). 1.1.3 is published and `latest` on npm ([publication confirmation](../docs/verification-reports/2026-08-13-bridge-1.1.3-published.md)). No live client configuration write was performed for this skill release.
+The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the historical [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md). Bridge 1.2.0 keeps that CLI contract and the 1.1.3 traditional-text result channel covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md), and adds the v3 grounding-bundle tools and capability negotiation (live-verified end to end on 2026-08-14). 1.2.0 is published and `latest` on npm. No live client configuration write was performed for this skill release.
 
 Supported non-interactive native-adapter examples:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.1.3 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.1.3 setup --client cursor --add-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.1.3 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.2.0 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.2.0 setup --client cursor --add-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.2.0 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
 ```
 
 Use `--allowed-root` to replace the explicit additional-root set with one minimum directory. Use `--add-root` to append one minimum directory to roots already configured for that client. Both require an absolute path and cannot be combined.
@@ -52,7 +52,7 @@ After changing roots, reload or restart the MCP client so it receives the new en
 Run:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.1.3 doctor --json
+npx -y @cueai/omni-reader-mcp@1.2.0 doctor --json
 ```
 
 Verify package version, key presence, root safety, endpoint compatibility, cache/artifact mode, and the client reload instruction. Reload or restart the client, then verify these tools are visible: `parse`, `get_parse_status`, `cancel_parse`, `read_result`, and `discard_result`.
@@ -62,7 +62,7 @@ Verify package version, key presence, root safety, endpoint compatibility, cache
 ## Roll back
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.1.3 uninstall --yes --json
+npx -y @cueai/omni-reader-mcp@1.2.0 uninstall --yes --json
 ```
 
 Uninstall removes the trusted Bridge entry and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
