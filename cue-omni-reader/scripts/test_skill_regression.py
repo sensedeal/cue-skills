@@ -418,7 +418,7 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.1\.1"$', re.M),
+            re.compile(r'^\s*version:\s*"0\.2\.0"$', re.M),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
@@ -430,6 +430,7 @@ class TestSkillMd(unittest.TestCase):
             "`get_parse_status`",
             "`cancel_parse`",
             "`read_result`",
+            "`read_outline`",
             "`discard_result`",
         ):
             self.assertIn(tool, self.md)
@@ -587,12 +588,12 @@ class TestReferences(unittest.TestCase):
         self.compat = _required_text(self, _COMPAT_MD)
 
     def test_setup_pins_the_audited_bridge_and_node(self) -> None:
-        self.assertIn("@cueai/omni-reader-mcp@1.2.2", self.setup)
+        self.assertIn("@cueai/omni-reader-mcp@1.3.0", self.setup)
         self.assertIn("Node.js 20.12", self.setup)
-        self.assertIn("npx -y @cueai/omni-reader-mcp@1.2.2 setup", self.setup)
-        self.assertIn("npx -y @cueai/omni-reader-mcp@1.2.2 doctor --json", self.setup)
+        self.assertIn("npx -y @cueai/omni-reader-mcp@1.3.0 setup", self.setup)
+        self.assertIn("npx -y @cueai/omni-reader-mcp@1.3.0 doctor --json", self.setup)
         self.assertIn(
-            "npx -y @cueai/omni-reader-mcp@1.2.2 uninstall --yes --json",
+            "npx -y @cueai/omni-reader-mcp@1.3.0 uninstall --yes --json",
             self.setup,
         )
         self.assertRegex(
@@ -679,13 +680,13 @@ class TestReferences(unittest.TestCase):
             report = _required_text(self, _REPORTS_DIR / name)
             self.assertIn("1.1.2", report, f"historical Bridge version changed in {name}")
 
-        current = _required_text(self, _REPORTS_DIR / "2026-08-15-bridge-1.2.2-published.md")
+        current = _required_text(self, _REPORTS_DIR / "2026-08-17-bridge-1.3.0-published.md")
         self.assertIn(f"v{skill_version}", current)
         self.assertIn(bridge_version, current)
 
     def test_compatibility_is_versioned_and_evidence_scoped(self) -> None:
-        self.assertIn("Skill version: `0.1.1`", self.compat)
-        self.assertIn("Bridge version: `1.2.2`", self.compat)
+        self.assertIn("Skill version: `0.2.0`", self.compat)
+        self.assertIn("Bridge version: `1.3.0`", self.compat)
         self.assertIn("Evidence date: 2026-08-11", self.compat)
         for client in (
             "Claude Code",
@@ -1358,6 +1359,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-08-14-bridge-1.2.0-published.md",
             "docs/verification-reports/2026-08-14-bridge-1.2.1-published.md",
             "docs/verification-reports/2026-08-15-bridge-1.2.2-published.md",
+            "docs/verification-reports/2026-08-17-bridge-1.3.0-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
