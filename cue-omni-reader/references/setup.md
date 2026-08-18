@@ -4,7 +4,7 @@
 - **Runtime:** Node.js 20.12 or newer
 - **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/hub/api-key>
 
-Use an existing official Omni MCP connection when it already supports the requested source. A URL does not require local Bridge installation. Install the Bridge only when a local source requires it or the user explicitly wants the unified local facade.
+Omni is one logical provider: the same `parse(source)` surface covers URLs and authorized local paths, and the agent never presents them to the user as two different connectors or products. An existing remote Omni connection already covers URLs with no local installation. The Bridge is the same provider installed locally; install it only when a local source requires it.
 
 ## Consent and credential rules
 
