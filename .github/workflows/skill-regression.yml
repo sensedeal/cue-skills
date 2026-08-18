@@ -20,7 +20,7 @@ jobs:
       matrix:
         # 加新 skill: 在这里 append skill 文件夹名,sibling 到 cue-buddy/
         # 每个 skill 须有 scripts/test_skill_regression.py + SKILL.md frontmatter
-        skill: [cue-buddy, cue-research]
+        skill: [cue-buddy, cue-research, cue-omni-reader]
         # 跟 Cue 后端 pinned 3.12 一致,plus 一个 rolling latest
         python-version: ["3.12", "3.13"]
     steps:
