@@ -289,11 +289,56 @@ class Case6_TaskInputClientSideFastFail(unittest.TestCase):
             _normalize_template_payload({"task_input": "[目标_授信_企业]"})
         self.assertIn("占位", str(cm.exception))
 
+    def test_internal_orchestration_raises(self) -> None:
+        from cue_api import _normalize_template_payload
+
+        for value in (
+            "Researcher先检索再交Reporter",
+            "调用file_retrieval",
+            "至少8次读取材料",
+        ):
+            with self.subTest(value=value), self.assertRaises(ValueError) as cm:
+                _normalize_template_payload({"task_input": value})
+            self.assertIn("R9", str(cm.exception))
+
     def test_concrete_subject_passes(self) -> None:
         from cue_api import _normalize_template_payload
 
-        out = _normalize_template_payload({"task_input": "宁德时代"})
-        self.assertEqual(out["task_input"], "宁德时代")
+        for value in ("宁德时代", "今日盘后分析", "欧盟医疗器械准入"):
+            with self.subTest(value=value):
+                out = _normalize_template_payload({"task_input": value})
+                self.assertEqual(out["task_input"], value)
+
+
+class Case6b_TaskInputValidatorRejectsInternalOrchestration(unittest.TestCase):
+    """R9 validator mirrors the API client fast-fail for direct validation."""
+
+    def test_internal_terms_and_call_counts_are_errors(self) -> None:
+        from validate_template import _check_task_input
+
+        for value in (
+            "coordinator分配任务",
+            "先content_digest再汇总",
+            "读取至少8次材料",
+        ):
+            with self.subTest(value=value):
+                findings = []
+                _check_task_input({"task_input": value}, findings)
+                errors = [f for f in findings if f.severity == "error"]
+                self.assertTrue(errors, f"internal orchestration leaked: {value!r}")
+                self.assertTrue(
+                    any("内部编排" in f.message for f in errors),
+                    f"wrong error for {value!r}: {[str(f) for f in errors]}",
+                )
+
+    def test_natural_inputs_still_pass(self) -> None:
+        from validate_template import _check_task_input
+
+        for value in ("宁德时代", "今日盘后分析", "欧盟医疗器械准入"):
+            with self.subTest(value=value):
+                findings = []
+                _check_task_input({"task_input": value}, findings)
+                self.assertEqual(findings, [])
 
 
 class Case7_DimRegexCoversNonChineseLabels(unittest.TestCase):

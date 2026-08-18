@@ -384,7 +384,9 @@ _SCHEDULE_KEYS_TO_STRIP = ("task_cron_expressions", "task_configs")
 # 在 import 失败时(脚本单独 invoke 不带 sys.path)用本地副本兜底。
 try:
     from validate_template import (  # type: ignore[import-not-found]
+        _TASK_INPUT_CALL_COUNT_RE,
         _TASK_INPUT_GUIDE_TOKENS,
+        _TASK_INPUT_INTERNAL_TOKENS,
         _TASK_INPUT_PLACEHOLDER_RE,
     )
 except ImportError:  # pragma: no cover - guard against partial install
@@ -395,6 +397,14 @@ except ImportError:  # pragma: no cover - guard against partial install
         "默认:", "默认：", "企业名称", "公司名称", "主体名称",
         "统一社会信用代码", "示例", "例如", "如:", "如：",
         "占位", "placeholder",
+    )
+    _TASK_INPUT_INTERNAL_TOKENS = (
+        "researcher", "reporter", "coordinator", "supervisor",
+        "file_retrieval", "content_digest", "agent=", "tool=",
+    )
+    _TASK_INPUT_CALL_COUNT_RE = _re.compile(
+        r"(?:调用|检索|读取|摘要|提炼)\s*(?:至少|不少于|不低于)?\s*\d+\s*次"
+        r"|(?:至少|不少于|不低于)\s*\d+\s*次(?:调用|检索|读取|摘要|提炼)"
     )
     _TASK_INPUT_PLACEHOLDER_RE = _re.compile(
         r"[\[<][^\]\n>]*(?:[一-鿿]_[一-鿿]|名称|主体|代码|变量|占位|placeholder|请)[^\]\n>]*[\]>]"
@@ -421,8 +431,8 @@ def _normalize_template_payload(payload: dict) -> dict:
        ``task_cron_expressions`` / ``task_configs`` (DB-column shape,
        not API contract).
     4. **task_input safety**: collect *all* R9 violations (引导词 + 占位
-       variable) and raise once with the full list — short-circuit would
-       force buddy authors to fix-and-retry one error at a time.
+       variable + 内部编排泄漏) and raise once with the full list —
+       short-circuit would force buddy authors to fix-and-retry one error at a time.
 
     Returns a *new* dict; ``payload`` is not mutated.
     """
@@ -480,13 +490,20 @@ def _normalize_template_payload(payload: dict) -> dict:
         hits = [tok for tok in _TASK_INPUT_GUIDE_TOKENS if tok in task_input]
         if hits:
             violations.append(f"含 R9 引导词 {hits}")
+        lowered = task_input.lower()
+        internal_hits = [tok for tok in _TASK_INPUT_INTERNAL_TOKENS if tok in lowered]
+        if internal_hits:
+            violations.append(f"含 R9 内部编排词 {internal_hits}")
+        if _TASK_INPUT_CALL_COUNT_RE.search(task_input):
+            violations.append("含 R9 内部调用次数")
         if _TASK_INPUT_PLACEHOLDER_RE.search(task_input):
             violations.append("含 `<...>` / `[...]` 形式占位变量")
         if violations:
             raise ValueError(
                 f"task_input 违反 R9「可执行」({'; '.join(violations)}) — "
-                f"task_input 必须是已 resolve 的具体值(如企业名/主体名)。"
-                f"引导文案应放 input_form_spec;参见 references/hard-rules.md#r9。"
+                f"task_input 必须是已 resolve 的真实用户输入(如企业名/主体名)。"
+                f"引导文案应放 input_form_spec，内部节点/工具/次数应放模板、runtime 或验收层;"
+                f"参见 references/hard-rules.md#r9。"
                 f"当前值: {task_input!r}"
             )
 

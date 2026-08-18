@@ -135,6 +135,33 @@ class TestSkillMd(unittest.TestCase):
         self.assertIn("单文件最大 256 MiB", self.md)
         self.assertNotIn("50MB", self.md)
 
+    def test_query_keeps_internal_orchestration_out_of_user_language(self):
+        """The agent may inspect internal progress, but must not manufacture a
+        demo/user query that names nodes, tools, call counts, or execution order.
+        Those constraints belong to runtime/template/verification layers."""
+        self.assertIn("用户问题与内部执行必须分层", self.md)
+        self.assertRegex(self.md, r"不得(?:自行|额外)(?:向 query )?(?:注入|加入)")
+        material_example = re.search(
+            r'query 用正常业务语言.*?例如:"([^"]+)"', self.md
+        )
+        self.assertIsNotNone(material_example, "missing natural material-query example")
+        query = material_example.group(1)
+        for forbidden in (
+            "Researcher",
+            "Reporter",
+            "coordinator",
+            "file_retrieval",
+            "content_digest",
+            "调用次数",
+        ):
+            self.assertNotIn(
+                forbidden,
+                query,
+                f"user-facing material query leaks internal detail: {forbidden}",
+            )
+        self.assertIn("上传的材料", query)
+        self.assertIn("标注出处", query)
+
     def test_stage2_uses_full_list_semantic_picking(self):
         """Stage 2 must use single-stage full-list + agent semantic picking,
         NOT the old keyword-search-variants approach. Empirically verified

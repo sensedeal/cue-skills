@@ -3,7 +3,7 @@ name: cue-research
 description: "Use when the user asks a research question they want Cue to run — against a saved 搭子(buddy) template or as free-form deep research. Triggers: 帮我查/调研/研究 + 主体或话题; ask Cue about X; 用 Cue 跑一下 Y; 看看哪个搭子能查 X; 把刚才那次调研存成搭子. Public-data scope only — refuse for private-data scenarios (real AML / medical / internal accounting)."
 license: MIT
 metadata:
-  version: "0.3.4"
+  version: "0.3.5"
   requires:
     bins: ["python3"]
     envOptional: ["CUE_API_KEY", "CUE_API_BASE"]
@@ -134,6 +134,8 @@ while True:
 
 ### Stage 4a: 用户选 1/2 — 跑搭子(后台跑 + 落盘,跑完再取)
 
+**用户问题与内部执行分层(所有运行路径都适用):** `--query` 使用用户原话或业务化澄清后的问题,只补主体、范围、时间、交付物、信源偏好和「无法确认时如实说明」等用户能理解的要求。agent **不得自行注入**内部节点/工具名/调用次数/执行顺序(例如「先 Researcher 再 Reporter」「调用 file_retrieval N 次」);这些执行约束应留在模板、runtime 策略、监控和事后验收里。若技术词本来就是用户要研究的对象,保留原意——本规则禁止的是 agent 额外塞编排话术,不是机械删改用户输入。带素材时用「请基于我上传的材料回答并标注出处」这类自然问法即可。
+
 **别在 agent 回合里死守一小时的 live 流。** 深研单次 3-15 分钟(服务端 60min 硬超时),同步阻塞既浪费回合又脆弱(live 流常丢 reporter 段)。改用 **fire-and-retrieve**:`research_run.py` 在**后台**跑完整流程(发起 chat_stream → live 取报告 → 空则 replay 兜底 → 落盘),agent 回合立即让出;后台任务完成后 agent 被回叫(**回叫机制因平台而异、并非总可靠——别干等,见下"主动检查完成"**),再读 `--output` 文件交付。**对用户别说"完成后自动通知我"**——主动检查完成,别把希望寄托在回叫上。
 
 **⚠️ stdout 是 agent 内部信号,不转用户:** `research_run.py` 的 `[cue-research] …` 行(`STARTED conv_id=` / `▶ agent=…` / `🔧 tool=…` / `✓ report finalized` / `RESULT`)是给 **agent 内部判断**启动/进度/完成用的,**绝不直接贴给用户**。agent 对用户说人话(起跑确认 / 进度翻译 / 完成交付);用户不该看到 conv_id / agent= / tool= 这些技术行。
@@ -233,12 +235,12 @@ python3 <skill>/scripts/research_run.py \
 - **仅自由式**:`--mimic-*` **不可**与 `--template-id` 同用(搭子已有 report_format,后端会让 template_id 压过 mimic → 静默失效,runner 直接拒绝)。两个 mimic 参数也互斥。
 - **一次跑完、不中途确认**(`need_confirm=False`):后端按样本自动生成风格模板并直接往下跑,**不**为「审模板」停下来等输入——这是为了不破坏后台一次跑完。代价:你没机会在烧 credits 前先看那个自动模板;若风格推歪了就重给样本再跑。(交互式审模板是 Phase 2,暂未做。)
 
-**可选——文档接地(素材,搭子与自由式都可用)。** 当用户想让调研**基于自己的文档**(合同/年报/PDF/会议纪要…)而不只是公开信源时,把文档作为**素材**传进去:研究 agent 会用内置 `file_retrieval` 工具对其做**全文语义检索**(真 RAG,不是只看开头预览)。与 `mimic`(仿风格)正交、也能与 `--template-id` 同用。
+**可选——文档接地(素材,搭子与自由式都可用)。** 当用户想让调研**基于自己的文档**(合同/年报/PDF/会议纪要…)而不只是公开信源时,把文档作为**素材**传进去:后端会对全文做语义检索(真 RAG,不是只看开头预览)。与 `mimic`(仿风格)正交、也能与 `--template-id` 同用。
 
 - 加 `--material "<本地路径>"`,**可重复**多个文件:`--material a.pdf --material b.docx`。runner 先把每个文件上传(SSE 走完 `…→completed` 才拿到 `file_id`),再随 `conversation_file_ids` 绑进这次跑。
 - **要先经用户确认再上传**(见安全规则:默认不上传本地材料)。问一句:"要把这份文档作为调研素材上传吗?它会用于检索,会占用本次 credits。"
 - 类型/大小(均为**服务端**约束,runner 不在本地预检大小):支持类型与精确上限以 `/api/file_server/accept_type` 为准,**单文件最大 256 MiB**(超限/不支持类型由服务端拒绝并报错);file_id **单次绑定**(后端行为:一个 file_id 只能用于一次会话,续跑/换会话需重传)。据后端:上传只校验余额、**不单独扣费**,**跑** chat 才扣 credits。
-- query 写法上**明确请 agent 检索上传的文档**(如"请基于我上传的素材回答…"),让它真去调 `file_retrieval`;别写"不要检索/只读"之类把工具禁掉的话。
+- query 用正常业务语言明确材料边界,例如:"请基于我上传的材料回答,逐项标注出处;材料无法确认的事项请明确说明。" **不要**把内部节点、工具名、调用次数或执行顺序写进 query。是否真实读取全文由运行日志/回放证据验收,不能靠在用户问题里堆编排术语。
 
 ```bash
 python3 <skill>/scripts/research_run.py \
@@ -291,6 +293,7 @@ Stage 5 满意且是 4b 自由式跑时,问用户(**对外文案不出现 verb �
 4. **不在 agent 侧重写后端的 rewrite 逻辑**。要 rewrite 就调 /api/rewrite，要澄清 ≤1 句就好。
 5. **不实现 `+delete`**(防误删；删搭子去网页工作台)。
 6. **主体名(具体公司/人物/产品/事件名)只能进 `task_input`,绝不进模板匹配的任何环节**。模板是通用调研框架,title/category/goal 永远不含具体主体名——混进去会让 agent 把不该匹的硬匹上(或干脆无所适从)。匹配靠 agent 语义理解 query 的「意图」维度(投资/合规/财报/竞品...),主体名留给 Stage 4 跑搭子时填 task_input。这条规则与具体匹配机制无关,无论今天的全单选还是未来切两阶段都成立。详见 Stage 2。
+7. **用户问题与内部执行必须分层**。传给 `--query` 的内容保持用户原话/业务语言；agent 不得额外加入 Researcher/Reporter/coordinator、工具名、调用次数或节点顺序。内部约束放模板/runtime/监控/验收；素材问法只需说「基于上传材料并标注出处」。
 
 ## 安全规则
 
