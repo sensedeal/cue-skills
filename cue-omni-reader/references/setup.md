@@ -1,6 +1,6 @@
 # Omni Reader setup reference
 
-- **Audited package:** `@cueai/omni-reader-mcp@1.3.0`
+- **Audited package:** `@cueai/omni-reader-mcp@1.3.1`
 - **Runtime:** Node.js 20.12 or newer
 - **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/hub/api-key>
 
@@ -22,19 +22,19 @@ Do not paste an API key into chat, command arguments, skill files, logs, or gene
 Never use an implicit `latest`:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.3.0 setup
+npx -y @cueai/omni-reader-mcp@1.3.1 setup
 ```
 
 The interactive setup supports native configuration for Hermes, Cursor, and Claude Desktop. Choose **Other** for another client. Generic setup prints a reviewed stdio entry; apply it through that client's documented MCP configuration mechanism. Do not invent a configuration path or claim a client adapter is supported when it has not been verified.
 
-The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the historical [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md). Bridge 1.3.0 keeps the 1.2.2 wire/tool-surface contract for the five existing tools and the 1.1.3 traditional-text result channel covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md), adds the `read_outline` tool (the result's heading tree; with `node_id`, a `read_result`-compatible cursor anchored at that heading for jumping into a long result instead of reading sequentially from the start), and adds URL-result local hydration so a URL parse result can be re-read locally like a file result. It is a trusted-predecessor upgrade from an existing 1.2.2 install. Published and `latest` on npm. No live client configuration write was performed for this skill release.
+The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the historical [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md). Bridge 1.3.1 is a hotfix on the 1.3.0 surface with no tool-surface change (still six public tools). The audited surface: 1.3.0 keeps the 1.2.2 wire/tool-surface contract for the five existing tools and the 1.1.3 traditional-text result channel covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md), adds the `read_outline` tool (the result's heading tree; with `node_id`, a `read_result`-compatible cursor anchored at that heading for jumping into a long result instead of reading sequentially from the start), and adds URL-result local hydration so a URL parse result can be re-read locally like a file result. The 1.3.1 hotfix makes the legacy grant response schema accept `omni.parse_grant.v2` — cube-mcp's v2 metering writer emits v2 grants for unprofiled local-file requests, which 1.3.0 rejected with `CUBE_PROTOCOL_ERROR`. It is a trusted-predecessor upgrade from an existing 1.2.2 install. Published and `latest` on npm. No live client configuration write was performed for this skill release.
 
 Supported non-interactive native-adapter examples:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.3.0 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.3.0 setup --client cursor --add-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.3.0 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.3.1 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.3.1 setup --client cursor --add-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.3.1 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
 ```
 
 Use `--allowed-root` to replace the explicit additional-root set with one minimum directory. Use `--add-root` to append one minimum directory to roots already configured for that client. Both require an absolute path and cannot be combined.
@@ -52,7 +52,7 @@ After changing roots, reload or restart the MCP client so it receives the new en
 Run:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.3.0 doctor --json
+npx -y @cueai/omni-reader-mcp@1.3.1 doctor --json
 ```
 
 Verify package version, key presence, root safety, endpoint compatibility, cache/artifact mode, and the client reload instruction. Reload or restart the client, then verify these tools are visible: `parse`, `get_parse_status`, `cancel_parse`, `read_result`, `read_outline`, and `discard_result`.
@@ -62,10 +62,10 @@ Verify package version, key presence, root safety, endpoint compatibility, cache
 ## Roll back
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.3.0 uninstall --yes --json
+npx -y @cueai/omni-reader-mcp@1.3.1 uninstall --yes --json
 ```
 
-Uninstall removes a trusted 1.2.2 or 1.3.0 Bridge entry and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
+Uninstall removes a trusted 1.3.0 or 1.3.1 Bridge entry and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
 
 ## Free credits and onboarding
 

@@ -11,17 +11,17 @@ metadata:
 
 # Cue Omni Reader
 
-Use the official Omni MCP surface to turn a URL or authorized local file into content, then complete the user's requested summary, extraction, comparison, or question-answering task. The MCP package and active tool schemas are authoritative; this skill never implements a parser, upload client, or MCP driver.
+Use the official Omni MCP surface to turn a URL or authorized local file into content, then complete the user's requested task. The MCP package and active tool schemas are authoritative; this skill never implements a parser, upload client, or MCP driver.
 
 ## Core flow
 
 1. **Preserve the source.** Only HTTP(S) strings are URLs. Pass the user's source string directly to `parse`. Do not pre-read, attach, base64-encode, or paste local source content into the conversation. Do not fall back to `file://`, localhost, or a public temporary upload service.
-2. **One provider, both sources.** Omni is a single logical provider: the unified facade accepts an HTTP(S) URL or an authorized local path through the same `parse(source)` call, and the agent never distinguishes "local vs remote" to the user. When only a remote Omni connection is available, URLs work with no local installation; local sources additionally require the official Bridge (a local installation of the same provider) with an allowed root. Never present these as two separate products or two connectors to the user.
-3. **Bootstrap only with consent.** Before installing the Bridge or expanding an allowed root, obtain user confirmation and add only the minimum required directory. Read [`references/setup.md`](references/setup.md), use the exact audited version, run `doctor`, follow its reload/restart instruction, and verify the six public tools are visible. Never ask the user to paste an API key into chat. If the requested file is already inside an allowed root, the explicit request to parse it is authorization; do not ask for another confirmation.
+2. **One provider, both sources.** Omni is one logical provider: the same `parse(source)` call covers an HTTP(S) URL or an authorized local path; the Bridge is the same provider installed locally, never a second product or connector. A remote-only connection already covers URLs; local sources require the Bridge with an allowed root.
+3. **Bootstrap only with consent.** Before installing the Bridge or expanding an allowed root, obtain user confirmation and add only the minimum required directory. Read [`references/setup.md`](references/setup.md), use the exact audited version, run `doctor`, and follow its reload/restart instruction. Never ask the user to paste an API key into chat. If the requested file is already inside an allowed root, the explicit request to parse it is authorization; do not ask for another confirmation.
 4. **Call the schema you actually have.** Obey the active `parse` schema and never invent arguments. Use its default path for short work. For long media or a large document, if the schema exposes `wait`, use `wait: false`; with the source-only Bridge, call `parse(source)` and accept its recoverable operation.
 5. **Read either response channel.** Prefer `structuredContent` when available. If the client exposes only `content[].text`, parse it as compact JSON first. A completed inline result may instead be the exact Markdown; every non-inline state is compact JSON equivalent to structured. A generic success string is not a completed result: never invent a handle or resubmit from it.
 6. **Preserve one operation.** On `processing`, save the `operation_id` and use `get_parse_status` with the returned poll timing or `wait_ms`. Recover the existing operation before resubmitting. Do not race synchronous and asynchronous submissions. After an ambiguous timeout with no recoverable operation, explain possible duplicate work or billing and obtain confirmation before a replacement.
-7. **Consume the complete result.** Inline content can be used directly. For `result.kind=artifact`, retain the result ID, call `read_result`, and follow every `next_cursor` until absent. In a text-only JSON fallback, append only `result.text`; never append the JSON wrapper. A preview or first chunk is not the complete result. For a long result, `read_outline` gives the heading tree and a jump cursor instead of reading from the start.
+7. **Consume the complete result.** Inline content can be used directly. For `result.kind=artifact`, retain the result ID, call `read_result`, and follow every `next_cursor` until absent. In a text-only JSON fallback, append only `result.text`; never append the JSON wrapper. A preview or first chunk is not the complete result. For a long result, `read_outline` gives the heading tree and a jump cursor.
 8. **Finish and clean up.** Continue the user's original task after parsing. For a summary, assemble the complete result first; do not truncate it. For parse only, return the complete Markdown or file and optionally offer a summary. Keep an artifact until the task is complete, then call `discard_result` unless the user asked to retain it. Claim deletion only after discard or cleanup is confirmed.
 
 ## Operation states
@@ -35,7 +35,7 @@ Use the official Omni MCP surface to turn a URL or authorized local file into co
 | `canceled` | Report confirmed cancellation, billing, and cleanup facts. |
 | `expired` | Explain expiration and obtain confirmation before starting new work. |
 
-For any state not recognized here, preserve the existing operation and follow the active schema and structured response. Do not resubmit or claim completion, cancellation, billing, or cleanup.
+For any state not recognized, preserve the operation and follow the active schema. Do not resubmit or claim completion, cancellation, billing, or cleanup.
 
 If the user asks to stop an active operation, call `cancel_parse` with the saved ID. Do not discard a result as a substitute for cancellation, and you cannot promise that cancellation avoided charges.
 
@@ -45,7 +45,7 @@ A tool-level error is not an MCP disconnection. Preserve structured authenticati
 
 ## Public tools
 
-Use the semantic tool names exposed by the client, without hardcoded client namespaces:
+Use the client's semantic tool names, without hardcoded namespaces:
 
 - `parse`
 - `get_parse_status`
@@ -54,8 +54,8 @@ Use the semantic tool names exposed by the client, without hardcoded client name
 - `read_outline`
 - `discard_result`
 
-Mutable client and service evidence belongs in [`references/compatibility.md`](references/compatibility.md).
+Client and service evidence belongs in [`references/compatibility.md`](references/compatibility.md).
 
 ## Free credits
 
-Mention the free tier during onboarding; details in [`references/setup.md`](references/setup.md).
+Mention the free tier; details: [`references/setup.md`](references/setup.md).
