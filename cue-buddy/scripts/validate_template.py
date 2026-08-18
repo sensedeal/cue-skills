@@ -470,6 +470,23 @@ _TASK_INPUT_GUIDE_TOKENS = (
     "placeholder",
 )
 
+# task_input 会原样展示并提交给 agent，不能拿它承载内部编排说明。
+# 精确词避免误伤正常业务语言；英文比较时统一 lower-case。
+_TASK_INPUT_INTERNAL_TOKENS = (
+    "researcher",
+    "reporter",
+    "coordinator",
+    "supervisor",
+    "file_retrieval",
+    "content_digest",
+    "agent=",
+    "tool=",
+)
+_TASK_INPUT_CALL_COUNT_RE = re.compile(
+    r"(?:调用|检索|读取|摘要|提炼)\s*(?:至少|不少于|不低于)?\s*\d+\s*次"
+    r"|(?:至少|不少于|不低于)\s*\d+\s*次(?:调用|检索|读取|摘要|提炼)"
+)
+
 # 占位变量形态 `<目标_X_主体>` / `[属性_主体_类型]` / `<请填写...>`
 # 等显式 placeholder syntax,与 input_form_spec 三段式变量同样禁止
 # 出现在 task_input(task_input 是要直接 submit 的具体值,变量在前端无渲染)
@@ -487,6 +504,7 @@ def _check_task_input(payload: dict, out: list[Finding]) -> None:
 
     Severity (与 R9 doc 对齐):
     - 「可执行」违规 (引导词 / 占位 / 多行 / 长度 / 空白) = error
+    - 「用户语言」违规 (内部节点/工具/调用次数) = error
     - 「代表性」属设计审视, doc 强调, 本 lint 不机检
     """
     v = payload.get("task_input")
@@ -523,6 +541,20 @@ def _check_task_input(payload: dict, out: list[Finding]) -> None:
                 "task_input",
                 f"含引导词 {hits} — task_input 必须是「可直接执行的具体值」"
                 f"（如 buddy author 选定的代表性主体），引导文案应放 input_form_spec",
+            )
+        )
+    lowered = v.lower()
+    internal_hits = [tok for tok in _TASK_INPUT_INTERNAL_TOKENS if tok in lowered]
+    if internal_hits or _TASK_INPUT_CALL_COUNT_RE.search(v):
+        detail = list(internal_hits)
+        if _TASK_INPUT_CALL_COUNT_RE.search(v):
+            detail.append("内部调用次数")
+        out.append(
+            Finding(
+                "error",
+                "task_input",
+                f"含内部编排说明 {detail} — task_input 会直接展示并提交，"
+                "必须保持真实用户语言；节点/工具/次数/顺序应放模板、runtime 或验收层",
             )
         )
     if _TASK_INPUT_PLACEHOLDER_RE.search(v):
