@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.2.1"
+  version: "0.3.0"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -53,6 +53,7 @@ Use the client's semantic tool names, without hardcoded namespaces:
 - `read_result`
 - `read_outline`
 - `discard_result`
+- `save_result`
 
 Client and service evidence belongs in [`references/compatibility.md`](references/compatibility.md).
 

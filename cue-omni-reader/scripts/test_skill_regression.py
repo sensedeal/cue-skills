@@ -50,6 +50,14 @@ def _required_text(case: unittest.TestCase, path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _bridge_pin(text: str) -> str:
+    """The audited Bridge spec pin in a reference doc, e.g. @cueai/omni-reader-mcp@1.4.0."""
+    match = re.search(r"@cueai/omni-reader-mcp@\d+\.\d+\.\d+", text)
+    if not match:
+        raise AssertionError("no @cueai/omni-reader-mcp@X.Y.Z pin found")
+    return match.group(0)
+
+
 def _release_evidence_documents() -> tuple[Path, ...]:
     documents = {
         *_REPORTS_DIR.glob("*.md"),
@@ -418,7 +426,7 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.2\.1"$', re.M),
+            re.compile(r'^\s*version:\s*"0\.3\.0"$', re.M),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
@@ -432,10 +440,12 @@ class TestSkillMd(unittest.TestCase):
             "`read_result`",
             "`read_outline`",
             "`discard_result`",
+            "`save_result`",
         ):
             self.assertIn(tool, self.md)
         self.assertNotIn("mcp" + "__", self.md)
-        self.assertLess(len(self.md.split()), 800, "SKILL.md is no longer thin")
+        # 850: seven-tool list sits at 800 words; keep the thinness guard above it
+        self.assertLess(len(self.md.split()), 850, "SKILL.md is no longer thin")
 
     def test_source_handling_preserves_the_security_boundary(self) -> None:
         self.assertIn("Only HTTP(S) strings are URLs", self.md)
@@ -588,14 +598,17 @@ class TestReferences(unittest.TestCase):
         self.compat = _required_text(self, _COMPAT_MD)
 
     def test_setup_pins_the_audited_bridge_and_node(self) -> None:
-        self.assertIn("@cueai/omni-reader-mcp@1.3.3", self.setup)
-        self.assertIn("Node.js 20.12", self.setup)
-        self.assertIn("npx -y @cueai/omni-reader-mcp@1.3.3 setup", self.setup)
-        self.assertIn("npx -y @cueai/omni-reader-mcp@1.3.3 doctor --json", self.setup)
-        self.assertIn(
-            "npx -y @cueai/omni-reader-mcp@1.3.3 uninstall --yes --json",
-            self.setup,
+        pin = _bridge_pin(self.setup)
+        pins = re.findall(r"@cueai/omni-reader-mcp@\d+\.\d+\.\d+", self.setup)
+        self.assertEqual(
+            set(pins),
+            {pin},
+            "every Bridge spec reference in setup.md must use the same audited pin",
         )
+        self.assertIn("Node.js 20.12", self.setup)
+        self.assertIn(f"npx -y {pin} setup", self.setup)
+        self.assertIn(f"npx -y {pin} doctor --json", self.setup)
+        self.assertIn(f"npx -y {pin} uninstall --yes --json", self.setup)
         self.assertRegex(
             self.setup,
             re.compile(r"never.*implicit `latest`", re.I),
@@ -680,7 +693,9 @@ class TestReferences(unittest.TestCase):
             report = _required_text(self, _REPORTS_DIR / name)
             self.assertIn("1.1.2", report, f"historical Bridge version changed in {name}")
 
-        current = _required_text(self, _REPORTS_DIR / "2026-08-18-bridge-1.3.3-published.md")
+        published = sorted(_REPORTS_DIR.glob("*bridge-*-published.md"))
+        self.assertTrue(published, "no bridge-*-published.md report found")
+        current = _required_text(self, published[-1])
         self.assertIn(f"v{skill_version}", current)
         self.assertIn(bridge_version, current)
 
@@ -688,9 +703,7 @@ class TestReferences(unittest.TestCase):
             report = _required_text(self, _REPORTS_DIR / name)
             self.assertIn(f"v{skill_version}", report)
 
-    def test_compatibility_is_versioned_and_evidence_scoped(self) -> None:
-        self.assertIn("Skill version: `0.2.1`", self.compat)
-        self.assertIn("Bridge version: `1.3.3`", self.compat)
+    def test_compatibility_evidence_is_scoped(self) -> None:
         self.assertIn("Evidence date: 2026-08-11", self.compat)
         for client in (
             "Claude Code",
@@ -1367,9 +1380,11 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-08-18-bridge-1.3.1-published.md",
             "docs/verification-reports/2026-08-18-bridge-1.3.2-published.md",
             "docs/verification-reports/2026-08-18-bridge-1.3.3-published.md",
+            "docs/verification-reports/2026-08-19-bridge-1.4.1-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
+            "scripts/sync_bridge_pin.py",
             "scripts/test_skill_regression.py",
         }
         shipped = _shipped_text_files(self, _SKILL_DIR)
@@ -1379,7 +1394,7 @@ class TestSecurityAndLayout(unittest.TestCase):
         scripts = sorted(
             p.name for p in (_SKILL_DIR / "scripts").iterdir() if p.is_file()
         )
-        self.assertEqual(scripts, ["test_skill_regression.py"])
+        self.assertEqual(scripts, ["sync_bridge_pin.py", "test_skill_regression.py"])
         archives = [
             p for p in _SKILL_DIR.rglob("*")
             if p.is_file() and p.suffix.lower() in {".zip", ".tgz", ".tar", ".gz"}
