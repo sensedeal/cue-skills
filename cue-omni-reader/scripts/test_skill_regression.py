@@ -418,7 +418,7 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.2\.0"$', re.M),
+            re.compile(r'^\s*version:\s*"0\.2\.1"$', re.M),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
@@ -689,7 +689,7 @@ class TestReferences(unittest.TestCase):
             self.assertIn(f"v{skill_version}", report)
 
     def test_compatibility_is_versioned_and_evidence_scoped(self) -> None:
-        self.assertIn("Skill version: `0.2.0`", self.compat)
+        self.assertIn("Skill version: `0.2.1`", self.compat)
         self.assertIn("Bridge version: `1.3.3`", self.compat)
         self.assertIn("Evidence date: 2026-08-11", self.compat)
         for client in (
