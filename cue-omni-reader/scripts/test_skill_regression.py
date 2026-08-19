@@ -426,7 +426,7 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.2\.1"$', re.M),
+            re.compile(r'^\s*version:\s*"0\.3\.0"$', re.M),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
@@ -440,10 +440,12 @@ class TestSkillMd(unittest.TestCase):
             "`read_result`",
             "`read_outline`",
             "`discard_result`",
+            "`save_result`",
         ):
             self.assertIn(tool, self.md)
         self.assertNotIn("mcp" + "__", self.md)
-        self.assertLess(len(self.md.split()), 800, "SKILL.md is no longer thin")
+        # 850: seven-tool list sits at 800 words; keep the thinness guard above it
+        self.assertLess(len(self.md.split()), 850, "SKILL.md is no longer thin")
 
     def test_source_handling_preserves_the_security_boundary(self) -> None:
         self.assertIn("Only HTTP(S) strings are URLs", self.md)
@@ -1378,6 +1380,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-08-18-bridge-1.3.1-published.md",
             "docs/verification-reports/2026-08-18-bridge-1.3.2-published.md",
             "docs/verification-reports/2026-08-18-bridge-1.3.3-published.md",
+            "docs/verification-reports/2026-08-19-bridge-1.4.1-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
