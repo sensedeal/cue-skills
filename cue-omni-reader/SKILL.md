@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.2.0"
+  version: "0.2.1"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -20,8 +20,8 @@ Use the official Omni MCP surface to turn a URL or authorized local file into co
 3. **Bootstrap only with consent.** Before installing the Bridge or expanding an allowed root, obtain user confirmation and add only the minimum required directory. Read [`references/setup.md`](references/setup.md), use the exact audited version, run `doctor`, and follow its reload/restart instruction. Never ask the user to paste an API key into chat. If the requested file is already inside an allowed root, the explicit request to parse it is authorization; do not ask for another confirmation.
 4. **Call the schema you actually have.** Obey the active `parse` schema and never invent arguments. Use its default path for short work. For long media or a large document, if the schema exposes `wait`, use `wait: false`; with the source-only Bridge, call `parse(source)` and accept its recoverable operation.
 5. **Read either response channel.** Prefer `structuredContent` when available. If the client exposes only `content[].text`, parse it as compact JSON first. A completed inline result may instead be the exact Markdown; every non-inline state is compact JSON equivalent to structured. A generic success string is not a completed result: never invent a handle or resubmit from it.
-6. **Preserve one operation.** On `processing`, save the `operation_id` and use `get_parse_status` with the returned poll timing or `wait_ms`. Recover the existing operation before resubmitting. Do not race synchronous and asynchronous submissions. After an ambiguous timeout with no recoverable operation, explain possible duplicate work or billing and obtain confirmation before a replacement.
-7. **Consume the complete result.** Inline content can be used directly. For `result.kind=artifact`, retain the result ID, call `read_result`, and follow every `next_cursor` until absent. In a text-only JSON fallback, append only `result.text`; never append the JSON wrapper. A preview or first chunk is not the complete result. For a long result, `read_outline` gives the heading tree and a jump cursor.
+6. **Preserve one operation.** On `processing`, save the `operation_id` and use `get_parse_status` with the returned poll timing or `wait_ms`. Recover the existing operation before resubmitting; do not race synchronous and asynchronous submissions. A lost operation ID isn't safe to resubmit by default — backends differ on dedupe vs. rebilling. Treat it like an ambiguous timeout: explain and get confirmation first.
+7. **Consume the complete result.** Inline content can be used directly. For `result.kind=artifact`, retain the result ID. For one section rather than the whole document, call `read_outline` first and jump via its cursor; otherwise read from the start and follow every `next_cursor` until absent — a preview or first chunk is not complete. In a text-only JSON fallback, append only `result.text`; never append the JSON wrapper.
 8. **Finish and clean up.** Continue the user's original task after parsing. For a summary, assemble the complete result first; do not truncate it. For parse only, return the complete Markdown or file and optionally offer a summary. Keep an artifact until the task is complete, then call `discard_result` unless the user asked to retain it. Claim deletion only after discard or cleanup is confirmed.
 
 ## Operation states
