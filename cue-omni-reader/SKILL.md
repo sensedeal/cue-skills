@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.3.2"
+  version: "0.3.3"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
