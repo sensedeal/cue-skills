@@ -1,8 +1,8 @@
 # Cue Omni Reader compatibility
 
-- Skill version: `0.3.0`
+- Skill version: `0.3.1`
 - Bridge version: `1.4.1`
-- Evidence date: 2026-08-11 (Bridge 1.2.0 pin: 2026-08-14; Bridge 1.2.1 pin: 2026-08-14; Bridge 1.2.2 pin: 2026-08-15; Bridge 1.3.0 pin: 2026-08-17; Bridge 1.3.1 pin: 2026-08-18; Bridge 1.3.2 pin: 2026-08-18; Bridge 1.3.3 pin: 2026-08-18; Bridge 1.4.0 pin: 2026-08-19; Bridge 1.4.1 pin: 2026-08-19)
+- Evidence date: 2026-08-11 (Bridge 1.2.0 pin: 2026-08-14; Bridge 1.2.1 pin: 2026-08-14; Bridge 1.2.2 pin: 2026-08-15; Bridge 1.3.0 pin: 2026-08-17; Bridge 1.3.1 pin: 2026-08-18; Bridge 1.3.2 pin: 2026-08-18; Bridge 1.3.3 pin: 2026-08-18; Bridge 1.4.0 pin: 2026-08-19; Bridge 1.4.1 pin: 2026-08-19; I1 parameter-unification sync: 2026-08-20)
 
 ## Tool-surface boundary
 
@@ -37,6 +37,18 @@ Bridge setup flags, native-adapter source, and trusted rollback semantics are [p
 ## Known compatibility boundary
 
 A client-side synchronous timeout does not prove backend failure. If no operation is recoverable, a replacement submission may duplicate work or billing and requires confirmation. The source-only Bridge avoids unsupported `wait` arguments; tool surfaces that publish `wait` may select the asynchronous path explicitly.
+
+## I1 parameter unification (2026-08-20 sync)
+
+Owner-decided unification of the two parse surfaces (the remote omni-reader MCP and the Bridge):
+
+- **`url` alias**: the Bridge `parse` now accepts exactly one of `source` or `url` (identical constraints, enforced — sending both is `INVALID_TOOL_ARGUMENTS`). Agents holding the remote schema (which offers `url`/`output`/`wait`) can call either surface without argument errors. `output` and `wait` remain remote-only by design — the Bridge never advertises them.
+- **`detail` on the remote**: the remote `parse` accepts the Bridge's `detail`. `text` (or omitted) forwards unchanged; `grounded`/`layout` fails closed with `UNSUPPORTED_DETAIL` (`failure_scope=local_capability`) before any operation is created — the remote produces markdown output only and never silently downgrades a requested representation.
+- **Failed wire shape**: the remote now serves `{status:"failed", error:{...}}` — the same shape the Bridge has always spoken (the previous flat envelope is superseded). Envelope fields (`ok`/`code`/`failure_scope`/`retryable`/`billed`/`parser_started`/`operation_created`…) are shared.
+- **Operation-id shape**: `get_parse_status`/`cancel_parse` validate ids as `op_` + 16–64 base64url chars; anything else returns the closed `INVALID_OPERATION_ID` envelope without touching the store.
+- **Artifact boundary**: `read_result`/`read_outline`/`discard_result`/`save_result` are Bridge-local; the remote surface does not expose them, and its tool descriptions now say so.
+
+Landed as omni-reader !691 (Bridge, merged to `test`) and cube-mcp !374 → dgts → !375 → master, deployed as cube-mcp 1.5.32; the Bridge npm release carrying the `url` alias follows the normal publish flow.
 
 ## Updating this file
 
