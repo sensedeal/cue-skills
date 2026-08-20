@@ -1,6 +1,6 @@
 # Omni Reader setup reference
 
-- **Audited package:** `@cueai/omni-reader-mcp@1.4.1`
+- **Audited package:** `@cueai/omni-reader-mcp@1.5.0`
 - **Runtime:** Node.js 20.12 or newer
 - **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/hub/api-key>
 
@@ -22,19 +22,19 @@ Do not paste an API key into chat, command arguments, skill files, logs, or gene
 Never use an implicit `latest`:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.4.1 setup
+npx -y @cueai/omni-reader-mcp@1.5.0 setup
 ```
 
 The interactive setup supports native configuration for Hermes, Cursor, and Claude Desktop. Choose **Other** for another client. Generic setup prints a reviewed stdio entry; apply it through that client's documented MCP configuration mechanism. Do not invent a configuration path or claim a client adapter is supported when it has not been verified.
 
-The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the historical [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md). Bridge 1.3.3 is a doc-only patch with no tool-surface change (still six public tools). The audited surface: 1.3.0 keeps the 1.2.2 wire/tool-surface contract for the five existing tools and the 1.1.3 traditional-text result channel covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md), adds the `read_outline` tool (the result's heading tree; with `node_id`, a `read_result`-compatible cursor anchored at that heading for jumping into a long result instead of reading sequentially from the start), and adds URL-result local hydration so a URL parse result can be re-read locally like a file result. The 1.3.1 hotfix makes the legacy grant response schema accept `omni.parse_grant.v2` — cube-mcp's v2 metering writer emits v2 grants for unprofiled local-file requests, which 1.3.0 rejected with `CUBE_PROTOCOL_ERROR`. The 1.3.2 hotfix surfaces cube-mcp's bare `UNSUPPORTED_SOURCE` error correctly instead of masking it as a generic `REMOTE_PROTOCOL_ERROR`. The 1.3.3 patch rewrites this README's URL/Bridge framing to lead with installing Bridge as the default, and narrows the source-constraint-error guidance to permit agent-side splitting/transcoding only with explicit user consent first — no tooling or behavior change. It is a trusted-predecessor upgrade from an existing 1.3.2 install. Published and `latest` on npm. Bridge 1.4.0 adds `save_result` as the seventh public tool — it writes a result's complete content to a stable file inside the Bridge cache's export directory (named from `result_id`; no path argument, so it cannot be pointed at an arbitrary location; calling it again for the same result overwrites the same file; exports are independent of the 24-hour cache sweep) — and is a trusted-predecessor upgrade from an existing 1.3.3 install. Published and `latest` on npm. Bridge 1.4.1 is a doc-only hotfix: the published 1.4.0 README never listed `save_result` (MR !655 deferred the tool-list entry and omitted the README entirely), so 1.4.1 documents the seventh tool with no tooling or behavior change; trusted-predecessor upgrade from an existing 1.4.0 install. Published and `latest` on npm. No live client configuration write was performed for this skill release.
+The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the historical [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md). Bridge 1.3.3 is a doc-only patch with no tool-surface change (still six public tools). The audited surface: 1.3.0 keeps the 1.2.2 wire/tool-surface contract for the five existing tools and the 1.1.3 traditional-text result channel covered by the local [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md), adds the `read_outline` tool (the result's heading tree; with `node_id`, a `read_result`-compatible cursor anchored at that heading for jumping into a long result instead of reading sequentially from the start), and adds URL-result local hydration so a URL parse result can be re-read locally like a file result. The 1.3.1 hotfix makes the legacy grant response schema accept `omni.parse_grant.v2` — cube-mcp's v2 metering writer emits v2 grants for unprofiled local-file requests, which 1.3.0 rejected with `CUBE_PROTOCOL_ERROR`. The 1.3.2 hotfix surfaces cube-mcp's bare `UNSUPPORTED_SOURCE` error correctly instead of masking it as a generic `REMOTE_PROTOCOL_ERROR`. The 1.3.3 patch rewrites this README's URL/Bridge framing to lead with installing Bridge as the default, and narrows the source-constraint-error guidance to permit agent-side splitting/transcoding only with explicit user consent first — no tooling or behavior change. It is a trusted-predecessor upgrade from an existing 1.3.2 install. Published and `latest` on npm. Bridge 1.4.0 adds `save_result` as the seventh public tool — it writes a result's complete content to a stable file inside the Bridge cache's export directory (named from `result_id`; no path argument, so it cannot be pointed at an arbitrary location; calling it again for the same result overwrites the same file; exports are independent of the 24-hour cache sweep) — and is a trusted-predecessor upgrade from an existing 1.3.3 install. Published and `latest` on npm. Bridge 1.4.1 is a doc-only hotfix: the published 1.4.0 README never listed `save_result` (MR !655 deferred the tool-list entry and omitted the README entirely), so 1.4.1 documents the seventh tool with no tooling or behavior change; trusted-predecessor upgrade from an existing 1.4.0 install. Published and `latest` on npm. Bridge 1.5.0 accepts the remote-compatible `url` parse alias (exactly one of `source`/`url`, normalized to `source`) and annotates the four artifact tools as Bridge-local capabilities — no tool-surface change (still seven tools); trusted-predecessor upgrade from an existing 1.4.1 install. Published and `latest` on npm. No live client configuration write was performed for this skill release.
 
 Supported non-interactive native-adapter examples:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.4.1 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.4.1 setup --client cursor --add-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.4.1 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.5.0 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.5.0 setup --client cursor --add-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.5.0 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
 ```
 
 Use `--allowed-root` to replace the explicit additional-root set with one minimum directory. Use `--add-root` to append one minimum directory to roots already configured for that client. Both require an absolute path and cannot be combined.
@@ -52,7 +52,7 @@ After changing roots, reload or restart the MCP client so it receives the new en
 Run:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.4.1 doctor --json
+npx -y @cueai/omni-reader-mcp@1.5.0 doctor --json
 ```
 
 Verify package version, key presence, root safety, endpoint compatibility, cache/artifact mode, and the client reload instruction. Reload or restart the client, then verify these tools are visible: `parse`, `get_parse_status`, `cancel_parse`, `read_result`, `read_outline`, `discard_result`, and `save_result`.
@@ -62,10 +62,10 @@ Verify package version, key presence, root safety, endpoint compatibility, cache
 ## Roll back
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.4.1 uninstall --yes --json
+npx -y @cueai/omni-reader-mcp@1.5.0 uninstall --yes --json
 ```
 
-Uninstall removes a trusted 1.4.0 or 1.4.1 Bridge entry and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
+Uninstall removes a trusted 1.4.1 or 1.5.0 Bridge entry and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
 
 ## Free credits and onboarding
 
