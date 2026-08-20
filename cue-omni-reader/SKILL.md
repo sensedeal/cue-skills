@@ -37,6 +37,8 @@ Use the official Omni MCP surface to turn a URL or authorized local file into co
 
 For any state not recognized, preserve the operation and follow the active schema. Do not resubmit or claim completion, cancellation, billing, or cleanup.
 
+**Resubmit reattaches, not recharges.** Re-calling `parse` with the same source while an operation is in flight transparently reattaches to that same operation (Bridge keys on source content, not on the per-call id) — no duplicate parse or charge. Prefer `get_parse_status` with the saved ID; resubmit only when the ID is lost.
+
 If the user asks to stop an active operation, call `cancel_parse` with the saved ID. Do not discard a result as a substitute for cancellation; you cannot promise cancellation avoided charges.
 
 ## Truthful error handling
