@@ -44,6 +44,8 @@ Agent: [reads SKILL.md → triggers +author flow]
        → on confirmation, +frequent to pin to workbench home
 ```
 
+> **Scope boundary (avoid stumbles when authoring a buddy):** Cue's tool surface **covers public data sources only**. Scenarios needing **private data** (real AML on bank-internal transaction flows / medical diagnosis on EHRs / internal enterprise ledgers) **are not suitable as Cue buddies** — the supervisor finds no matching tool in the catalog and falls back to web_search. `+author` cross-checks every search_plan dimension against `+capabilities` during drafting and warns when a dimension has no category backing.
+
 ## Status
 
 **v0.2.0** — cross-agent verified. The detailed write-up ([`docs/verification-reports/2026-05-20-gemini-cli.md`](./docs/verification-reports/2026-05-20-gemini-cli.md)) is the v0.1.0 Gemini CLI run that drove the `+test` long-stream replay-fallback hardening; Claude Code + Codex CLI were verified alongside it. **v0.2.0 itself has live cross-agent runs** (real tasks against the production API) on **Hermes, OpenClaw, and Kimi**, among others — see the report's **v0.2.0 status update** section.
@@ -116,6 +118,8 @@ The agent reads SKILL.md and dispatches the right verb (`+author`, `+test`, `+tu
 | `+tune` | Let LLM revise the template based on your issue notes; diff preview + auto-backup before PUT | **Yes** (~1–3 积分) |
 | `+frequent` | Mark template as "frequent" — pins it to your workbench home (`is_frequent=true`). This is *not* cross-user publishing; Cue has no such primitive. | No |
 | `+unfrequent` | Unmark "frequent" — unpins from workbench home | No |
+
+Detailed verb-by-verb walkthrough in [`SKILL.md`](./SKILL.md).
 
 ## Privacy
 

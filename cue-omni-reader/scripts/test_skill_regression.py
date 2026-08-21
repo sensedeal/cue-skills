@@ -1364,6 +1364,8 @@ class TestSecurityAndLayout(unittest.TestCase):
         expected = {
             "SKILL.md",
             "SKILL.zh-CN.md",
+            "README.md",
+            "README.zh-CN.md",
             "docs/verification-reports/2026-08-08-baseline-pressure.md",
             "docs/verification-reports/2026-08-08-bridge-cli-audit.md",
             "docs/verification-reports/2026-08-08-claude-code.md",
