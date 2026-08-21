@@ -426,7 +426,7 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.3\.3"$', re.M),
+            re.compile(r'^\s*version:\s*"0\.3\.4"$', re.M),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
@@ -1363,6 +1363,9 @@ class TestSecurityAndLayout(unittest.TestCase):
     def test_shipped_layout_is_exact_and_text_only(self) -> None:
         expected = {
             "SKILL.md",
+            "SKILL.zh-CN.md",
+            "README.md",
+            "README.zh-CN.md",
             "docs/verification-reports/2026-08-08-baseline-pressure.md",
             "docs/verification-reports/2026-08-08-bridge-cli-audit.md",
             "docs/verification-reports/2026-08-08-claude-code.md",

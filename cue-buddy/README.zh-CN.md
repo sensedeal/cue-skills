@@ -122,6 +122,35 @@ agent 读 SKILL.md 自动调相应 verb(`+author` / `+test` / `+tune` / `+freque
 
 详细 verb-by-verb walkthrough 见 [`SKILL.md`](./SKILL.md)。
 
+## 隐私
+
+你提供的参考资料（样例报告、内部 SOP、监控页面等）**只留在本机**。skill 只从中提取结构（章节大纲、来源聚类、语气）用于起草，**绝不会把你的原件上传给 Cue**。
+
+agent 消费本地文件时的详细规则见 [`references/materials-intake.md`](references/materials-intake.md)。
+
+## 仓库结构
+
+```
+cue-buddy/
+├── SKILL.md                   # 调用方 agent 读取的 skill 规范
+├── scripts/
+│   ├── cue_api.py             # 仅标准库的 HTTP 客户端（零依赖）
+│   ├── validate_template.py   # 离线 7 条 hard-rule 校验器
+│   ├── test_template.py       # 跑真实对话 + 8 项参数化验收
+│   └── tune_template.py       # 生成-修订 + diff 预览 + 确认 + 自动备份 + PUT
+└── references/
+    ├── template-fields-spec.md     # 4 字段详细格式指南
+    ├── hard-rules.md               # Validator 规则 R1–R8 及设计理由
+    ├── materials-intake.md         # agent 如何消费用户提供的本地文件
+    └── examples/
+        └── corporate-credit.md     # 完整样例模板（实测可用）
+```
+
+## 依赖
+
+- Python 3.10+（仅标准库——无需 `pip install`）
+- 支持 skills 的 AI agent
+
 ## 贡献
 
 Issue 和 PR 都欢迎。特别有价值的:

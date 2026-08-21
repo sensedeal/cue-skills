@@ -1,5 +1,7 @@
 # cue-research
 
+**[English](README.md) · [中文](README.zh-CN.md)**
+
 **Sibling to [`cue-buddy`](../cue-buddy).** Where cue-buddy is for **authoring** Cue templates, cue-research is for **using** them from inside your AI agent.
 
 Conversational loop: ask a question → skill matches ≤2 candidate buddies from your library (or offers free-form deep research) → you confirm → it runs → on satisfaction, you can distill a free-form run into a saved buddy that hands off to cue-buddy.

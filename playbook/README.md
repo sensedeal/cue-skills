@@ -1,17 +1,22 @@
-# Cue Playbook 场景 Skills
+# Cue Playbook Scene Skills
 
-这里每个子目录是一个 **playbook 场景的 agent skill**（`<slug>/SKILL.md`）。加载后，外部编码 agent（Claude Code / 第三方）可以用 Cue 跑该场景的深度研究、取回带来源的报告。
+**[English](README.md) · [中文](README.zh-CN.md)**
 
-## 两种发布/使用方式
-1. **整包**：装整个 `cue-skills` 仓（含 `cue-research` + `cue-buddy`），场景 skill 的 runner 已就位，直接用。
-2. **单场景（第三方 skill 市场）**：单独发某个 `<slug>/SKILL.md`。它**自带自举**——加载后若检测到本机没有 runner，会按正文指引 `git clone` 本开源仓（含 cue-research + cue-buddy 全套）到 `~/.cue/cue-skills`，GitHub 不通自动走 **Gitee 镜像** `https://gitee.com/sensedeal/cue-skills`，幂等（已存在则 `git pull`）。所以单文件也能独立跑通。
+Each subdirectory here is an **agent skill for one playbook scene** (`<slug>/SKILL.md`). Loaded into an external coding agent (Claude Code / third-party), it runs that scene's deep research with Cue and returns a source-cited report.
 
-## 怎么用
-1. 把某个 `<slug>/SKILL.md` 加载进你的 agent。
-2. 按 skill 指令：**准备 runner**（整包已有则跳过；否则按"准备 Cue runner"段自举克隆）→ 运行时拉 live `https://cuecue.cn/api/playbook` 取该场景**当前**搭子 → 选一个 → 经 `research_run.py --template-id <id>` 跑 → replay 取报告。
-3. 前置：`git` + `python3`；Cue 账号 API key（cue CLI 登录后在 `~/.cue/config.json`）；跑深度研究**耗 credits**。新账号送免费积分(注册 50 + 每天 10),可先免费试。
+## Two ways to publish / use
 
-## 设计要点
-- **运行时查 live**：skill 不烤 `template_id`，运行时从 `/api/playbook` 取当前搭子 → 搭子动态增删改**自动反映**，无需重生成。
-- **自动生成**：由 `scripts/gen_scene_skills.py` 从 `/api/playbook` + `GET /api/playbook/scenes/<scene>/skill` 端点生成。**场景集合变化**（新增/下线场景）时重跑生成器即可（`python3 scripts/gen_scene_skills.py --apply`）；搭子变动无需重跑。
-- 单一生成源在 Cue 后端服务，本目录是其快照。
+1. **Bundled**: install the whole `cue-skills` repo (with `cue-research` + `cue-buddy`); the scene skill's runner is already in place, use directly.
+2. **Standalone (third-party skill market)**: ship a single `<slug>/SKILL.md`. It **self-bootstraps** — on load, if no runner is detected locally, it follows the in-body instructions and `git clone`s this open repo (the full cue-research + cue-buddy set) to `~/.cue/cue-skills`; when GitHub is unreachable it falls back to the **Gitee mirror** `https://gitee.com/sensedeal/cue-skills`, idempotently (`git pull` if already present). So a single file runs end-to-end by itself.
+
+## How to use
+
+1. Load a `<slug>/SKILL.md` into your agent.
+2. Follow the skill's instructions: **prepare the runner** (skip if bundled; otherwise self-bootstrap-clone per the "准备 Cue runner" section) → pull the scene's **current** buddies live from `https://cuecue.cn/api/playbook` → pick one → run via `research_run.py --template-id <id>` → retrieve the report via replay.
+3. Prerequisites: `git` + `python3`; a Cue account API key (after `cue` CLI login at `~/.cue/config.json`); deep research **consumes credits**. New accounts get free credits (50 on signup + 10 daily) — try it for free first.
+
+## Design points
+
+- **Query live at runtime**: the skill bakes no `template_id`; it fetches the current buddies from `/api/playbook` at runtime → buddy add/edit/remove **reflects automatically**, no regeneration.
+- **Auto-generated**: by `scripts/gen_scene_skills.py` from `/api/playbook` + `GET /api/playbook/scenes/<scene>/skill`. When the **scene set changes** (scenes added/removed), re-run the generator (`python3 scripts/gen_scene_skills.py --apply`); buddy changes need no re-run.
+- The single generation source lives in the Cue backend service; this directory is its snapshot.

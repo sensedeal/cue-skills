@@ -3,13 +3,15 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.3.3"
+  version: "0.3.4"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
 ---
 
 # Cue Omni Reader
+
+> 中文版见 [`SKILL.zh-CN.md`](SKILL.zh-CN.md) — complete Chinese translation.
 
 Use the official Omni MCP surface to turn a URL or authorized local file into content, then complete the user's task. The MCP package and active tool schemas are authoritative; this skill never implements a parser, upload client, or MCP driver.
 
@@ -57,7 +59,7 @@ Use the client's semantic tool names, without hardcoded namespaces:
 - `discard_result` — Bridge-local artifact tool
 - `save_result` — Bridge-local artifact tool
 
-The four artifact tools exist only on the local Bridge; the remote surface never exposes them. Do not probe the remote for local artifact capabilities.
+The four artifact tools exist only on the local Bridge; the remote surface never exposes them.
 
 Client and service evidence belongs in [`references/compatibility.md`](references/compatibility.md).
 
