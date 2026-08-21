@@ -426,7 +426,7 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.3\.3"$', re.M),
+            re.compile(r'^\s*version:\s*"0\.3\.4"$', re.M),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
