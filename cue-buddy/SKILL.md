@@ -12,135 +12,137 @@ metadata:
     apiKeyPage: "https://cuecue.cn/api-key"
 ---
 
-# cue-buddy — 搭子模板作者工具
+# cue-buddy — the buddy-template authoring tool
 
-让业务用户在自己的 AI agent 里**起草、校验、创建、调试**搭子模板，并提交到 cuecue.cn 个人模板库。无需写代码，全程通过 Cue 生产 API 完成。
+Lets business users **draft, validate, create, and debug** buddy templates inside their own AI agent, and submit them to their cuecue.cn template library. No code required — everything goes through the Cue production API.
 
-## Cue 是什么 / 搭子是什么
+> 中文版见 [`SKILL.zh-CN.md`](SKILL.zh-CN.md) — complete Chinese translation.
 
-[Cue](https://cuecue.cn) 是面向复杂金融与商业场景的 **Deep Research Agent + Intelligence Sentinel** 平台——后端能从 **300+ 专业数据工具**（A 股/港股/美股/基金/工商/司法/监管/研报/资金流...）里主动挑工具、多源交叉验证，**每个结论附来源链接**——把"在十个网站之间来回切半天"的体力活压到几分钟。
+## What is Cue / What is a buddy
 
-**一个"搭子"是 Cue 里的专属调研伙伴**:把"满意的研究路径"沉淀成模板,**反复用于同类场景**(对公授信预尽调 / 主体合规风险公开快照 / 季度财报点评 / 财富投顾对比 / 私募尽调 / 行业景气跟踪 / 政府采购线索分析 ...)。之后只需输入主体名/重点,搭子按 Cue 实际工具面(A 股/港股/美股 / 基金 AMAC / 工商 / 司法 / 监管 / 资金流 / 行业研报 / 招投标 等公开数据)自动取证、按你定好的**报告骨架**自动产出结构化报告。Cue 的产品命题是"**把满意经历沉淀成你身边的 AI 伙伴**"——搭子模板就是这个沉淀的载体。
+[Cue](https://cuecue.cn) is a **Deep Research Agent + Intelligence Sentinel** platform for complex finance and business workflows — the backend picks tools from **300+ professional data sources** (A-share / HK / US equity, funds, business registries, courts, regulatory feeds, sell-side research, capital flow …), cross-validates across sources, and attaches a **source link to every conclusion** — compressing "juggling ten websites for half a day" into minutes.
 
-> **重要心智模型**:**Cue 公开搭子库已经有 100+ 个常见场景的搭子**,任何账号都能立刻调用——**一次性、不重复的调研不需要先建搭子**(去 [cuecue.cn](https://cuecue.cn) 网页端或兄弟 skill [`cue-research`](../cue-research) 直接说"调研 X"即可)。**本 skill (`cue-buddy`) 是给"你有一类反复要做的场景、想沉淀成专属搭子"的人用的**——一次起草、长期复用。
+A **"buddy" (搭子)** is your reusable research companion in Cue: you solidify a *satisfying research path* into a template and **reuse it for the same class of scenario** (corporate-credit pre-diligence / public-record compliance snapshot / quarterly earnings review / wealth-management peer comparison / private-fund DD / sector-activity tracking / gov-procurement lead scan …). From then on you just supply the subject name or focus; the buddy gathers evidence per Cue's actual tool surface (A-share/HK/US equity / fund AMAC / business registry / courts / regulatory / capital flow / sell-side reports / procurement — all public data) and produces a structured report per the **report skeleton** you defined. Cue's product premise is *"turn satisfying research experiences into your AI companions"* — buddy templates are how that solidification happens.
 
-> **agent 首次跟用户对话时,默认认为用户库非空**(系统公开搭子 100+ 任何账号都能用),**不要暗示"必须先 +create 才能跑调研"**;不确定时调 `search_templates(keyword="", include_system=True)` 看真实状态。
+> **Key mental model:** Cue's public buddy library already has **100+ ready-made buddies for common scenarios**, callable by any account — **a one-off, non-recurring research task does not need a buddy to be authored first** (just say "research X" on the [cuecue.cn](https://cuecue.cn) web side or via the sibling skill [`cue-research`](../cue-research)). **This skill (`cue-buddy`) is for "you have a class of scenario you do repeatedly and want to solidify into your own buddy"** — author once, reuse for a long time.
 
-> **范围边界(避免起 buddy 时踩坑)**:Cue 工具面**仅含公开数据源**。需要**私有数据**的场景(如真正反洗钱 AML 需银行内部交易流水、医疗诊断需电子病历、税务尽调需企业内账)**不适合做成 Cue 搭子** — supervisor 在 catalog 里挑不到匹配工具,只能 web_search 兜底,失去 Cue 调研伙伴价值定位。
+> **On first contact with a user, the agent must assume the user's library is NOT empty** (100+ system public buddies work for any account) — **never imply "+create is required before research can run"**; when unsure, call `search_templates(keyword="", include_system=True)` to see the real state.
+
+> **Scope boundary (avoid stumbles when authoring a buddy):** Cue's tool surface covers **public data sources only**. Scenarios needing **private data** (real AML on bank-internal transaction flows / medical diagnosis on EHRs / tax diligence on internal ledgers) **are not suitable as Cue buddies** — the supervisor finds no matching tool in the catalog and falls back to web_search, losing Cue's research-companion value.
 >
-> **`+author` 的两档防护**:
-> 1. **Hard refusal** — 当用户明确说"反洗钱 AML / 医疗诊断 / 内账尽调"等需要 **私有数据** 的场景时,agent **拒绝起草**,提示"Cue 公开数据面不支持此场景,建议改写为 X(公开监管+司法+处罚数据)" — 让 author 要么换形态,要么知难而退。
-> 2. **Soft warn** — 当 search_plan 单个维度无 category 兜底(如"行业协会公开数据"现 catalog 无对应 tool),`+author` 流程 warn 用户该维度只走 web_search 兜底,可继续 create。
+> **`+author`'s two-tier protection:**
+> 1. **Hard refusal** — when the user explicitly names a **private-data** scenario ("AML", "medical diagnosis", "internal-ledger diligence"), the agent **refuses to draft** and suggests "Cue's public-data surface doesn't support this scenario; consider rewriting it as X (public regulatory + court + penalty data)" — the author either reshapes the scenario or backs off.
+> 2. **Soft warn** — when a single `search_plan` dimension has no category backing (e.g. "industry-association public data" has no tool in the current catalog), the `+author` flow warns the user that dimension will fall back to web_search; creation may continue.
 
-本 skill 的产物就是定义这个调研伙伴的 **4 个字段**：
+The product of this skill is the **4 fields** that define the research companion:
 
-| 字段 | 决定 | ⚠️ 常见误解 |
+| Field | What it decides | ⚠️ Common misunderstanding |
 |---|---|---|
-| `title` | 搭子在卡片上的**名字** | 简洁有力、体现价值（~≤8-10字）；砍虚词（公开/全量/细项/与分析/简报/深度），但**别过度简化丢掉区分价值**（信披属实/需求匹配/海外执法 这类要留） |
-| `input_form_spec` | **用户输入表单规范**（必填/可填变量 + 默认值） | 单行 `需提供: [属性_主体_类型]，可提供: [属性_主体_类型] (默认: ...)`，前端把 `[...]` 渲染成输入框。**不是**自由文字介绍 |
-| `goal` | 搭子简介=卡片文案：解决什么问题/给什么价值 | 简洁有力一段（~40-80字，价值优先）；不堆"怎么做"、不泄漏实现、不硬码主体、不写免责、不写编号清单 |
-| `search_plan` | 你按哪些数据源、用什么策略取证 | 按"数据来源"聚类，不按章节顺序线性走 |
-| `report_format` | 你交付什么样的报告（章节/蓝图） | 主标题必须含三段式变量，每章带 `[执行蓝图]` 块 |
+| `title` | The buddy's **name on its card** | Concise and value-bearing (~≤8–10 chars); cut filler words (公开/全量/细项/与分析/简报/深度) but **don't over-simplify away distinguishing value** (keep 信披属实/需求匹配/海外执法 type qualifiers) |
+| `input_form_spec` | **User input form spec** (required/optional variables + defaults) | One line: `需提供: [属性_主体_类型]，可提供: [属性_主体_类型] (默认: ...)`; the frontend renders `[...]` as input boxes. **Not** free-text prose |
+| `goal` | The buddy intro = card copy: what problem it solves / what value it delivers | Concise, one paragraph (~40–80 chars, value-first); no "how it works", no implementation leaks, no hardcoded subjects, no disclaimers, no numbered lists |
+| `search_plan` | Which data sources you gather evidence from, and the strategy | Cluster by **data source**, not by report-section order |
+| `report_format` | What report you deliver (sections/blueprints) | Main heading must contain three-part variables; every section carries a `[执行蓝图]` block |
 
-后端按顺序消费这 4 字段：先按 `input_form_spec` 表单收输入 → 按 `search_plan` 调研取证 → 按 `report_format` 产报告；整段产出由 `goal` 定基调。
+The backend consumes these 4 fields in order: collect input per `input_form_spec` → research/evidence per `search_plan` → produce the report per `report_format`; the whole output's tone is set by `goal`.
 
-"搭子描述/介绍"这类自由文字其实只在前端工作台分类卡片上展示一句话——那是后端从 `goal` 自动派生的，**作者不需要单独写**。
+Free-form copy like "buddy description/intro" is only displayed as a one-liner on the frontend workbench category card — that is **auto-derived from `goal` by the backend**, so the author never writes it separately.
 
-## 你是谁、做什么
+## Who you are, what you do
 
-- **目标用户**：懂业务场景（金融 / 银行授信 / 资管投顾 / 私募尽调 / 合规监管研究 / 行业咨询 等专业领域,以公开数据可调研为前提）的非技术人员
-- **能做**：用自然语言描述一个场景、**或者把你工作中的样例报告 / 行业 SOP / 监管文件 / 相关链接喂给 agent**，让本 skill 引导你把它们整理成符合 Cue 模板规范的 4 个字段、提交到你的模板库、并跑真实任务验证
-- **不需要懂**：Python / API / BuddyContract 等技术概念。本 skill 把这些藏起来，你只见业务语言
-- **隐私边界**：你提供的本地材料只在你 agent 的上下文里使用，**不会被上传到 Cue 服务端**（详见 [`references/materials-intake.md`](references/materials-intake.md)）
+- **Target users**: non-technical people who know a business scenario deeply (finance / banking credit / asset management / private-fund DD / compliance research / industry consulting — any domain researchable via public data)
+- **What you can do**: describe a scenario in natural language, **or feed the agent sample reports / industry SOPs / regulatory documents / related links from your work**, and this skill guides you into a spec-compliant 4-field template, submits it to your library, and runs a real task to verify it
+- **What you don't need**: Python / API / BuddyContract and other technical concepts. This skill hides them; you only ever see business language
+- **Privacy boundary**: your local materials stay in your agent's context and are **never uploaded to the Cue server** (see [`references/materials-intake.md`](references/materials-intake.md))
 
-## Onboarding(给 agent 的指令——首屏怎么说)
+## Onboarding (instructions for the agent — what the first screen says)
 
-**禁止行为**:第一屏**不要列完整 verb 菜单**(`+author / +list / +capabilities / +test / +tune ...` 等),也**不要单独把 `+capabilities` 推给用户**——那是给开发者看的内部 verb,业务用户永远用不上。
+**Forbidden**: do **not** show the full verb menu on the first screen (`+author / +list / +capabilities / +test / +tune ...`), and **do not** push `+capabilities` on its own — it is an internal developer verb a business user will never need.
 
-**首屏应该说什么**:
+**The first screen should say**:
 
-1. **一句温和的招呼**(1 行,认出他到了哪)。
-2. **意图分流(2 选 1,自然语言,带 brief 说明)**:
-   > 你今天想做什么?
-   > 1. **有反复要做的某类调研场景**,想做个自己的搭子(几分钟搞定;之后这类问题都用它跑) → 我引导你
-   > 2. **就想立刻调研一下某个公司/话题**(一次性) → 用兄弟 skill [`cue-research`](../cue-research)(按你 agent 的加载方式启用),或直接去 [cuecue.cn](https://cuecue.cn) 网页端;**不用先建搭子**,系统公开搭子 100+ 任何账号都能跑
-3. **一行隐性提醒**:跑真任务花积分(粗略 3-8 积分 起步,跑前必有确认);只看公开数据(私有数据场景如银行流水/病历/内账会被拒)。
-4. **停**。等用户回答。**不要塞 `+author` / `+ask` / 完整 verb 列表 / 详细 step**。
+1. **One warm greeting line** (recognize where they are).
+2. **Intent split (2 choices, natural language, brief)**:
+   > What would you like to do today?
+   > 1. **You have a class of research scenario you do repeatedly** and want your own buddy (a few minutes; afterwards every such question runs through it) → I'll guide you
+   > 2. **You just want to research a company/topic right now** (one-off) → use the sibling skill [`cue-research`](../cue-research) (enable it per your agent's loading convention), or go straight to the [cuecue.cn](https://cuecue.cn) web side; **no need to author a buddy first** — the 100+ system public buddies run for any account
+3. **One quiet reminder line**: real tasks cost credits (roughly 3–8 积分 to start; always a confirmation before running); public data only (private-data scenarios like bank flows / medical records / internal ledgers are refused).
+4. **Stop.** Wait for the user to answer. Do not stuff `+author` / `+ask` / the full verb list / detailed steps into the first screen.
 
-**可选快捷词**(用户主动输才用,不要主动展示):用户如果直接输 `+author` 或 `+ask`,agent 识别为明确触发即可走对应流。**默认还是自然语言路由**(下面的"决策树"是你内部参考,不是给用户看的菜单)。
+**Optional shortcuts** (only when the user types them, don't advertise): if the user directly types `+author` or `+ask`, treat it as an explicit trigger and run the corresponding flow. **Natural-language routing is the default** (the decision tree below is your internal reference, not a user-facing menu).
 
-**首屏数据保护**:agent 不要在第一屏调任何**会消耗 credits 或写库**的 API。若需要看用户库状态(用户问"我有什么搭子可用"),调 `search_templates(keyword="", include_system=True)` 拿真实情况(免费、只读),**不要凭空假设空库或非空库**。
+**First-screen data safety**: the agent must not call any API that **consumes credits or writes** on the first screen. If the user's library state is needed (user asks "what buddies do I have"), call `search_templates(keyword="", include_system=True)` for the real state (free, read-only) — never assume an empty or non-empty library.
 
-## 社区邀请（Cue 用户社群）
+## Community invite (Cue user community)
 
-在**高意图时刻**邀请用户加入「Cue 用户社群」（答疑 + 最新搭子模板分享），按 [`../community-invite.md`](../community-invite.md) 的触发 + 冷却规则呈现群二维码——**克制、一行附加、不每次弹**：
+At **high-intent moments**, invite the user to the「Cue 用户社群」(Q&A + newest buddy-template sharing), presenting the group QR per the trigger + cooldown rules in [`../community-invite.md`](../community-invite.md) — **restrained, one extra line, not every session**:
 
-- **① 首次使用**：onboarding 首屏低调一行（一次性）。
-- **② `+create` 成功后**："好用?进群交流、拿最新模板"（14 天冷却）。
-- **③ 卡住/报错**：`+validate` 连错 / 权限错 / 用户困惑时，**先帮用户处理 / 给下一步**，再把群作为**温和兜底**（"还卡着群里也能问"）——不是报错就把用户甩去群里（14 天冷却）。
-- **④ 用户显式问**："怎么加群 / 社区 / 反馈 / 有没有新模板" → **展示二维码图片**（**不冷却**）。
+- **① First use**: one quiet line on the onboarding screen (one-time).
+- **② After `+create` succeeds**: "Like it? Join the group for the latest templates" (14-day cooldown).
+- **③ Stuck/error**: when `+validate` fails / permission errors / user confusion, **first help the user / give next steps**, then offer the group as a **gentle fallback** ("if you're still stuck, the group can help too") — not dumping the user into the group on every error (14-day cooldown).
+- **④ User explicitly asks**: "how do I join the group / community / feedback / any new templates" → **show the QR image** (**no cooldown**).
 
-**被动触发（①②③）只给一行文字 + 指向二维码 `../assets/community-group-qr.png`，不渲染大图；大图仅在 ④（用户主动要）时展示。** 加群入口只有二维码（已编码加群链接），**不发明文加群链接**。 冷却 `${CUE_HOME:-$HOME/.cue}/last-community-invite.json`（被动每会话最多一次、距上次 <14 天跳过；读写失败则本会话不再弹）。**外部群：飞书用户（含其它租户）可扫码加入；仅纯非飞书用户加不进**——完整规则与边界见 [`../community-invite.md`](../community-invite.md)。
+**Passive triggers (①②③) get one line of text pointing to the QR image `../assets/community-group-qr.png` — no large image rendering; the large image is only shown on ④ (user-initiated).** The only join entry is the QR code (which encodes the group link) — **never print a plaintext group link**. Cooldown `${CUE_HOME:-$HOME/.cue}/last-community-invite.json` (passive triggers at most once per session, skipped if <14 days since last; read/write failure → no more invites this session). **External groups: Feishu users (incl. other tenants) can scan to join; only pure non-Feishu users cannot** — full rules and boundaries in [`../community-invite.md`](../community-invite.md).
 
-## 一份"搭子"由 4 个朴素回答组成
+## A "buddy" is 4 plain answers
 
-| 问题 | 字段名 | 例子 |
+| Question | Field name | Example |
 |---|---|---|
-| 用户给你什么输入？ | `input_form_spec` | "需提供：[目标_授信_企业]，可提供：[关注_风险_主题] (默认：通用授信审查)" |
-| 你是谁、要解决什么痛点？ | `goal` | "作为银行客户经理的预尽调助手，从公开监管披露和司法记录穿透 [目标_授信_企业] 的偿债与合规风险..." |
-| 你怎么调研？（按数据来源分组） | `search_plan` | 主体核验 / 财务实证 / 行业景气 / 经营动态 4 个聚类，每个写明数据路由+执行动作+验证策略 |
-| 报告交付什么样？ | `report_format` | `> **关键配置**` 头部 + 13 个章节，每节带 `> **[执行蓝图]**` 块（研究目标/逻辑链条/信息需求/输出形式） |
+| What input does the user give you? | `input_form_spec` | "需提供：[目标_授信_企业]，可提供：[关注_风险_主题] (默认：通用授信审查)" |
+| Who are you, what pain do you solve? | `goal` | "作为银行客户经理的预尽调助手，从公开监管披露和司法记录穿透 [目标_授信_企业] 的偿债与合规风险..." |
+| How do you research? (grouped by data source) | `search_plan` | 4 clusters — 主体核验 / 财务实证 / 行业景气 / 经营动态 — each with data routing + actions + validation strategy |
+| What report shape do you deliver? | `report_format` | `> **关键配置**` header + 13 sections, each with a `> **[执行蓝图]**` block (research goal / logic chain / info needs / output form) |
 
-详细字段规范见 [`references/template-fields-spec.md`](references/template-fields-spec.md)。规则铁律见 [`references/hard-rules.md`](references/hard-rules.md)。
+Detailed field spec: [`references/template-fields-spec.md`](references/template-fields-spec.md). Rule hard-codes: [`references/hard-rules.md`](references/hard-rules.md).
 
-## 准备：API key 一次性配置
+## Setup: one-time API key
 
-1. 打开 `https://cuecue.cn/api-key`（已登录 Cue 账号）
-2. 创建一个 API key（格式 `sk...`），复制
-3. 在 shell 里设置环境变量（一次即可）：
+1. Open `https://cuecue.cn/api-key` (logged into your Cue account)
+2. Create an API key (format `sk...`), copy it
+3. Set it as an environment variable in your shell (once):
 
 ```bash
 export CUE_API_KEY=sk...
 ```
 
-或写入 `~/.cue/config.json`：
+Or write `~/.cue/config.json`:
 
 ```json
 { "api_key": "sk...", "base": "https://cuecue.cn/api" }
 ```
 
-可选：`export CUE_API_BASE=https://cuecue.cn/api`（覆盖默认）。
+Optional: `export CUE_API_BASE=https://cuecue.cn/api` (overrides the default).
 
-调用任何 verb 前 skill 会自动校验 key 可用（请求 `/api/templates`，200 即过）。
+Before any verb call, the skill auto-checks the key's validity (requests `/api/templates`, a 200 passes).
 
-## 调用约定（verbs）
+## Invocation convention (verbs)
 
-所有操作通过 `+<verb>` 触发。Skill 通过本目录下 `scripts/` 里的 Python 脚本（仅 stdlib，无依赖）执行。
+All operations are triggered via `+<verb>`. The skill executes through Python scripts in `scripts/` (stdlib only, no dependencies).
 
-| Verb | 做什么 | 是否消耗 credits | 后端 endpoint |
+| Verb | What it does | Costs credits? | Backend endpoint |
 |---|---|---|---|
-| `+author` | 引导式起草新模板：问几个业务问题 → 调 `+capabilities` 拿当前 Cue 工具面 → agent LLM 按支持的 category 起草 4 字段 → 跑 `+capabilities` 交叉验证 search_plan 各维度有 category 兜底（无则 warn）→ 自动跑 `+validate` | 否（capabilities 是只读 metadata，不计费） | (本地 + `GET /api/tools/capabilities`) |
-| `+capabilities` | 拉当前 Cue researcher 工具面（~391 tools / ~56 categories / 10 presets）；支持 `q=<关键词>` / `category=<标签>` 探查;ETag 缓存 + 304 短路;不带参数返 summary | 否 | `GET /api/tools/capabilities` |
-| `+validate <file>` | 离线校验任意 JSON 模板文件是否合规 | 否 | (本地) |
-| `+create` | 把校验过的模板 POST 到你的模板库 | 否 | `POST /api/templates` |
-| `+list` | 列出你的所有模板 | 否 | `GET /api/templates` |
-| `+get <template_id>` | 拉取一个完整模板 | 否 | `GET /api/templates/<id>` |
-| `+update <template_id>` | 修改已有模板 | 否 | `PUT /api/templates/<id>` |
-| `+test <template_id> <entity>` | 跑一次真实对话（例如以"万科"做测试主体），抓 SSE 流，跑 8 项参数化验收。**单次深研通常 3-15 分钟，复杂主体更久；服务端 60 分钟硬超时**——客户端等待应按此设置（`--timeout` 默认 3600s）。长跑时 live SSE 流常在 reporter 段流到客户端前就断连（超时或网络掐断都会），脚本随即自动走 DB 回放（replay）兜底拿完整报告、不重复扣费——这是常态不是错误 | **是**（粗略 **3-8 积分** 起步，确切费用见工作台） | `POST /api/chat/stream` |
-| `+tune <template_id> --issues <path>` | 基于当前内容 + 问题清单让 LLM 优化模板（走 seed: bypass 路径），含 diff 预览与人工确认 | **是**（粗略 **1-3 积分** 起步） | `POST /api/generate_template` + `PUT /api/templates/<id>` |
-| `+frequent <template_id>` | 把模板设为"常用",钉到 cuecue.cn 工作台首页"常用"区 | 否 | `POST /api/templates/frequent` |
-| `+unfrequent <template_id>` | 取消"常用",从首页"常用"区移除 | 否 | `POST /api/templates/frequent` (`is_frequent=false`) |
-| `+upgrade` | 检查并(经确认后)升级 skill 自身到 GitHub `main` 最新版。git clone 装的走 `git pull --ff-only`,copy 装的给手动指引;本地有未提交改动则 abort 不强覆盖。**注意:跟 `+update <template_id>`(改模板)语义完全不同** | 否 | (GitHub raw + `git pull`,**本地操作**) |
+| `+author` | Guided drafting of a new template: a few business questions → call `+capabilities` for the current Cue tool surface → agent LLM drafts the 4 fields against supported categories → cross-check every search_plan dimension against `+capabilities` for category backing (warn if none) → auto-run `+validate` | No (capabilities is read-only metadata, unbilled) | (local + `GET /api/tools/capabilities`) |
+| `+capabilities` | Fetch the current Cue researcher surface (~391 tools / ~56 categories / 10 presets); supports `q=<term>` / `category=<label>` probes; ETag cache + 304 short-circuit; summary when no args | No | `GET /api/tools/capabilities` |
+| `+validate <file>` | Offline-lint any template JSON file for compliance | No | (local) |
+| `+create` | POST a validated template to your template library | No | `POST /api/templates` |
+| `+list` | List all your templates | No | `GET /api/templates` |
+| `+get <template_id>` | Fetch one full template | No | `GET /api/templates/<id>` |
+| `+update <template_id>` | Modify an existing template | No | `PUT /api/templates/<id>` |
+| `+test <template_id> <entity>` | Run one real conversation (e.g. test subject "万科"), capture the SSE stream, run 8 parametric checks. **A single deep-research run typically takes 3–15 min (longer for complex subjects); the server hard-times-out at 60 min** — the client should wait accordingly (`--timeout` default 3600s). On long runs the live SSE stream often drops before the reporter section reaches the client (timeout or network cut); the script then automatically falls back to DB replay to fetch the full report — **no double charge; this is normal, not an error** | **Yes** (roughly **3–8 积分** to start; exact cost in the workbench) | `POST /api/chat/stream` |
+| `+tune <template_id> --issues <path>` | Let the LLM optimize the template from current content + an issue list (seed: bypass path), with diff preview and human confirmation | **Yes** (roughly **1–3 积分** to start) | `POST /api/generate_template` + `PUT /api/templates/<id>` |
+| `+frequent <template_id>` | Mark the template "frequent" — pins it to the cuecue.cn workbench home "常用" area | No | `POST /api/templates/frequent` |
+| `+unfrequent <template_id>` | Unmark "frequent" — removes it from the workbench home "常用" area | No | `POST /api/templates/frequent` (`is_frequent=false`) |
+| `+upgrade` | Check and (after confirmation) upgrade the skill itself to the latest GitHub `main`. git-clone installs use `git pull --ff-only`; copy installs get manual instructions; abort without force-overwrite if there are local uncommitted changes. **Note: semantically completely different from `+update <template_id>` (editing a template)** | No | (GitHub raw + `git pull`, **local operation**) |
 
-**全部已上线 verb**:`+author / +capabilities / +validate / +create / +list / +get / +update / +test / +tune / +frequent / +unfrequent / +upgrade`。
+**All shipped verbs**: `+author / +capabilities / +validate / +create / +list / +get / +update / +test / +tune / +frequent / +unfrequent / +upgrade`.
 
-**`+upgrade` 与 session 启动 silent-check**:agent 加载本 SKILL.md 时,**建议**在跑任何 verb 前先 silent 跑一次:`python3 cue-buddy/scripts/update_skill.py --silent-check`。这是带 24h 冷却的轻量版本对比,落后时只在 stderr 打一行 `ℹ️ cue-skills/cue-buddy 有新版可用 vX → vY,运行 +upgrade 升级`,**不弹问、不阻塞、不自动 pull**。网络失败时静默跳过(下次再试)。冷却 timestamp 存 `~/.cue/last-update-check.json`。
+**`+upgrade` and the session-start silent check**: when the agent loads this SKILL.md, **it should** silently run `python3 cue-buddy/scripts/update_skill.py --silent-check` before any verb. This is a lightweight version comparison with a 24h cooldown — when behind, it prints a single line to stderr `ℹ️ cue-skills/cue-buddy 有新版可用 vX → vY,运行 +upgrade 升级`, no dialog, no blocking, no auto-pull. Network failures are skipped silently (retried later). The cooldown timestamp lives in `~/.cue/last-update-check.json`.
 
-**关于 `+frequent` 不叫 `+publish`**:Cue 当前没有"跨用户发布"原语;`+frequent` 实际就是把模板钉到调用者自己工作台首页"常用"区(`is_frequent=true`)方便高频访问。早期文档曾用 `+publish` 命名容易让用户误以为是对外发布——已统一改名为 `+frequent`。"对外分享"能力须走 cuecue.cn 网页端的分享/复制链路。
+**Why `+frequent` is not called `+publish`**: Cue currently has no "cross-user publishing" primitive; `+frequent` pins the template to the caller's own workbench home "常用" area (`is_frequent=true`) for high-frequency access. Early docs used `+publish`, which misled users into thinking it was public publishing — it has been renamed to `+frequent`. "Share externally" must go through the share/copy flow on the cuecue.cn web side.
 
-## 决策树（agent 怎么响应用户）
+## Decision tree (how the agent responds to the user)
 
-中英文都识别；下面给典型短语，agent 应识别语义而非死匹配字符串。
+Recognizes both Chinese and English; the examples below are typical phrasings — match semantics, not literal strings.
 
 ```
 用户说什么（中/英文/口语）                                       → 调哪个 verb
@@ -166,142 +168,142 @@ export CUE_API_KEY=sk...
 ──────────────────────────────────────────────────────────────────────────
 ```
 
-### Reference doc 读取路由（机械化）
+### Reference-doc routing (mechanical)
 
-不同流程阶段必须读不同的 references doc，不要凭印象起草：
+Different flow stages must read different references docs — never draft from memory:
 
-| 时机 | 必读 doc |
+| When | Must-read doc |
 |---|---|
-| `+author` Stage 0 — 用户提供材料 | [`references/materials-intake.md`](references/materials-intake.md) |
-| `+author` Stage 1-4 — 起草 4 字段 | [`references/template-fields-spec.md`](references/template-fields-spec.md) |
-| `+validate` 返回 errors / 用户说"为什么报错" | [`references/hard-rules.md`](references/hard-rules.md) |
-| `+author` 首次启动需要示例参考 | [`references/examples/corporate-credit.md`](references/examples/corporate-credit.md) |
+| `+author` Stage 0 — user provides materials | [`references/materials-intake.md`](references/materials-intake.md) |
+| `+author` Stage 1-4 — drafting the 4 fields | [`references/template-fields-spec.md`](references/template-fields-spec.md) |
+| `+validate` returns errors / user asks "why does it error" | [`references/hard-rules.md`](references/hard-rules.md) |
+| `+author` first launch needs an example | [`references/examples/corporate-credit.md`](references/examples/corporate-credit.md) |
 
-## `+author` 流程（最常用）
+## `+author` flow (most used)
 
-Agent 引导用户回答 4 组问题，对应 4 个字段。每个问题先用业务语言问，再 agent LLM 起草字段内容，立即跑 `+validate` 反馈。
+The agent guides the user through 4 groups of questions mapping to the 4 fields. Each question is asked in business language first, then the agent LLM drafts the field and immediately runs `+validate` for feedback.
 
-### Stage 0：参考材料摄入（强烈建议）
+### Stage 0: reference-material intake (strongly recommended)
 
-在问字段问题前，agent 先问用户：
+Before the field questions, the agent asks the user:
 
-> "你手头有没有这个场景下的参考资料?可选类型:已有报告样例(PDF/Word/Markdown/纯文本)、行业 SOP/内部规范/监管文件、同类竞品搭子描述、相关链接(公司官网/行业研报/监管页面)。
+> "Do you have any reference materials for this scenario? Options: a sample report (PDF/Word/Markdown/plain text), an industry SOP / internal spec / regulatory document, a similar competitor buddy description, or relevant links (company site / industry report / regulatory page).
 >
-> 1. 我有文件,路径给你
-> 2. 我有链接,贴给你
-> 3. 我直接粘文本
-> 4. 没有,直接起草(凭场景描述起,无参考)"
+> 1. I have a file, here's the path
+> 2. I have a link, I'll paste it
+> 3. I'll paste text directly
+> 4. No, draft directly (from the scenario description)"
 
-(1/2/3 可叠加——例如先粘链接再补充文本。)
+(1/2/3 can combine — e.g. paste a link, then add text.)
 
-Agent 用 `Read` / `WebFetch` 读取后，**只在本地 agent 上下文里使用**——绝不上传到 Cue API、绝不写进任何 `+create / +update` 的 payload，绝不入 git。
+The agent reads with `Read` / `WebFetch` and uses the materials **only in the local agent context** — never uploaded to the Cue API, never written into any `+create / +update` payload, never committed to git.
 
-从材料里提取：
-- 章节结构 → 反推 `report_format` 的 13 节骨架
-- 字段口径 / 行业术语 → 校准 `goal` 与 `search_plan` 的用词
-- 数据源命名 → 校准 `search_plan` 的数据路由聚类
-- 报告基调（克制 vs 强观点 / 长 vs 短）→ 写进 `关键配置 · 基调设定`
+Extract from the materials:
+- Section structure → reverse into the `report_format` ~13-section skeleton
+- Field definitions / industry terms → calibrate wording of `goal` and `search_plan`
+- Data-source naming → calibrate `search_plan`'s data-routing clusters
+- Report tone (restrained vs strong opinion / long vs short) → write into `关键配置 · 基调设定`
 
-具体提取规则见 [`references/materials-intake.md`](references/materials-intake.md)。
+Specific extraction rules: [`references/materials-intake.md`](references/materials-intake.md).
 
-### Stage 1-4：4 字段引导起草
+### Stage 1-4: guided drafting of the 4 fields
 
-1. **场景与角色**
-   - 你的目标用户是谁?(例如:银行授信岗、券商投研、私募尽调、主体合规公开快照、政府采购线索分析)
-   - 这个搭子要解决用户什么具体痛点?
-   - 起点选哪个?
-     > 1. 参考已有示例(`references/examples/corporate-credit.md` 是金融预尽调,做对公授信类直接拷裁剪)
-     > 2. 从零起(我描述场景,你起草)
-     > 3. 我先描述场景,你帮我从 `references/examples/` 里推荐最匹配的示例
-   → 起草 `goal` + `title` + 类别
+1. **Scenario and role**
+   - Who is your target user? (e.g. banking credit desk, sell-side research, private-fund DD, public-record compliance snapshot, gov-procurement lead analysis)
+   - What specific pain does this buddy solve for them?
+   - Which starting point?
+     > 1. Reference an existing example (`references/examples/corporate-credit.md` is finance pre-diligence — copy-trim it for corporate-credit)
+     > 2. From scratch (I describe the scenario, you draft)
+     > 3. I describe the scenario first; you recommend the best-matching example from `references/examples/`
+   → Draft `goal` + `title` + category
 
-2. **输入定义**
-   - 用户必填什么？（例如：企业名 / 病例编号 / 行业关键词）
-   - 可选输入哪些？（例如：时间窗口 / 关注重点）
-   - 必填变量起个三段式名字：`[属性_主体_类型]`（skill 帮你命名）
-   → 起草 `input_form_spec`
+2. **Input definition**
+   - What is required from the user? (e.g. company name / case number / industry keyword)
+   - What is optional? (e.g. time window / focus)
+   - Name the required variable in three parts: `[属性_主体_类型]` (the skill names it for you)
+   → Draft `input_form_spec`
 
-3. **调研策略**
-   - 你的搭子从哪些**公开数据来源**取证据?(公开披露 / 司法数据库 / 行业报告 / 新闻舆情 等)
-   - 把数据源按"一次拉取多类信息"的方式聚类成 2-5 个调研维度
-   - ⚠️ **本地材料**(用户提供的样例报告 / 内部规范 / 监管文件)只用作起草模板**结构**的参考——它们**不是 Cue 运行时能抓取的数据源**,不要写进 search_plan 的"数据路由"
-   - 每个维度写明：支撑报告哪些章节 / 怎么执行 / 怎么验证多源冲突
-   → 起草 `search_plan`
+3. **Research strategy**
+   - Which **public data sources** does your buddy gather evidence from? (public disclosures / court databases / industry reports / news sentiment …)
+   - Cluster the sources into 2–5 research dimensions by "one pull serving multiple info types"
+   - ⚠️ **Local materials** (the user's sample reports / internal specs / regulatory documents) are reference only for the template's **structure** — they are **not data sources Cue can fetch at runtime**, so never write them into `search_plan`'s "data routing"
+   - Per dimension: which report sections it feeds / how to execute / how to validate multi-source conflicts
+   → Draft `search_plan`
 
-4. **输出形态**
-   - 报告有多少章节？每章解决什么问题？
-   - 每章读者读完应该获得什么决策依据？
-   - 章节顺序应该是怎样的？（结论先行 / 时间线 / 风险等级…）
-   → 起草 `report_format`，每章带 `[执行蓝图]` 块
+4. **Output shape**
+   - How many sections does the report have? What problem does each solve?
+   - What decision basis should the reader have after each section?
+   - What order? (conclusion-first / timeline / risk level …)
+   → Draft `report_format`, each section with a `[执行蓝图]` block
 
-每步起草后立即 `+validate`，发现规则违反就当场改。
+After each drafting step, run `+validate` immediately; fix any rule violation on the spot.
 
-## Hard Rules（铁律，违反会被 `+validate` 拒绝）
+## Hard rules (violations are rejected by `+validate`)
 
-完整版见 [`references/hard-rules.md`](references/hard-rules.md)，最重要的 5 条：
+Full version: [`references/hard-rules.md`](references/hard-rules.md). The 5 most important:
 
-1. **`input_form_spec` 必须三段式变量** — `需提供: [属性_主体_类型]，可提供: [属性_主体_类型] (默认: ...)` 单行
-2. **`goal` 必须简洁有力、价值优先**（它就是卡片简介）— ~40-80字一段，讲解决什么问题/给什么价值；不堆怎么做（放 search_plan）、不泄漏实现、不硬码主体、不写免责、不写编号清单（详见 hard-rules R2）
-3. **`search_plan` 必须按"数据来源"聚类** — 而不是按章节顺序线性走
-4. **`report_format` 主标题必须含变量** — `# [目标_<场景>_主体] <场景>底稿`，不要写死字符串
-5. **任何字段不准出现工具名**（`get_*` / `list_*` / `find_*` 等开头），也不准出现"建议进入/谨慎进入/暂缓进入"等决策语 — 搭子是证据收集器，不是决策者
+1. **`input_form_spec` must use three-part variables** — `需提供: [属性_主体_类型]，可提供: [属性_主体_类型] (默认: ...)` in one line
+2. **`goal` must be concise, forceful, value-first** (it IS the card copy) — one ~40–80-char paragraph about the problem it solves / the value it delivers; no "how it works" (that goes in search_plan), no implementation leaks, no hardcoded subjects, no disclaimers, no numbered lists (see hard-rules R2)
+3. **`search_plan` must cluster by "data source"** — not linear by section order
+4. **`report_format` main heading must contain variables** — `# [目标_<场景>_主体] <场景>底稿`, never a hardcoded string
+5. **No tool names in any field** (`get_*` / `list_*` / `find_*` prefixes etc.), and no decision phrasing like "建议进入/谨慎进入/暂缓进入" — a buddy is an evidence collector, not a decision maker
 
-## 示例模板
+## Example templates
 
-- [`references/examples/corporate-credit.md`](references/examples/corporate-credit.md) — 对公授信预尽调（金融/银行场景）
-- [`references/examples/earnings-review.md`](references/examples/earnings-review.md) — 季度财报点评（二级投研场景）
-- 后续将补充:主体合规风险快照、市场异动快讯、政府采购线索 等
+- [`references/examples/corporate-credit.md`](references/examples/corporate-credit.md) — corporate-credit pre-diligence (finance/banking scenario)
+- [`references/examples/earnings-review.md`](references/examples/earnings-review.md) — quarterly earnings review (secondary-market research scenario)
+- Coming next: public-record compliance snapshot, market-movement flash, gov-procurement leads, etc.
 
-## 安全规则
+## Security rules
 
-- API key 绝不出现在文本输出 / 提交的代码 / 日志里
-- **如果用户不慎在对话里粘了 `sk...` 形式的 key**：立即提醒用户 (1) 不要再发，(2) 到 cuecue.cn/api-key 立即轮换该 key（之前那一份要废掉）。Agent 在后续对话中绝不复述/打印那段字符
-- **用户提供的本地材料只在 agent 上下文中使用**，绝不上传到 Cue API、绝不写进 `create / update` payload、绝不入 git
-  - "材料"定义见 [`references/materials-intake.md`](references/materials-intake.md) → "材料 的明确定义" 段
-  - 如材料含敏感字段（客户名 / 内部金额 / 内控规则），抽取结构后明确告知用户"已用作模板起草，原文未上传"
+- The API key must never appear in text output / committed code / logs
+- **If the user accidentally pastes an `sk...` key into chat**: immediately tell them (1) don't send it again, (2) rotate the key at cuecue.cn/api-key right away (the previous one must be revoked). The agent must never repeat or print that string in later conversation
+- **User-provided local materials stay in the agent context only** — never uploaded to the Cue API, never written into `create / update` payloads, never committed to git
+  - "Materials" is defined in [`references/materials-intake.md`](references/materials-intake.md) → "材料 的明确定义" section
+  - If materials contain sensitive fields (client names / internal amounts / internal-control rules), after extracting the structure explicitly tell the user "used for template drafting; the original was not uploaded"
 
-### `+create` / `+update` 前的预检 checklist
+### Preflight checklist before `+create` / `+update`
 
-Agent 在调用 `+create` / `+update` **之前必须自检**以下 4 项；任一项异常立刻问用户确认：
+The agent **must self-check these 4 items** before calling `+create` / `+update`; any anomaly → ask the user for confirmation immediately:
 
-1. **payload 中的 `goal / input_form_spec` 段不含真实客户名、案号、金额、内部规范摘录** —— 这些都是材料，应替换成三段式变量或通用术语
-2. **payload 中的 `search_plan` 没把任意"用户提供的样例报告原文段落"逐字 copy-paste 进去** —— 应抽取的是结构（信源/动作/验证），不是原文
-3. **payload 中的 `report_format` 没夹带任何客户专属术语** —— 主标题已含三段式变量，没漏写死的客户名
-4. **`source_conversation_id` 填的是 `seed:<slug>:v1` 或来自 +author 流程的 conv id**，不是任何真实业务对话 ID
+1. The `goal / input_form_spec` in the payload contains **no real client names, case numbers, amounts, or internal-spec excerpts** — those are materials and must be replaced with three-part variables or generic terms
+2. The `search_plan` in the payload does **not copy-paste verbatim passages of any user-provided sample report** — extract structure (sources/actions/validation), not the original text
+3. The `report_format` in the payload carries **no client-specific jargon** — the main heading contains the three-part variables and no hardcoded client name was missed
+4. `source_conversation_id` is a `seed:<slug>:v1` or a conv id from the `+author` flow — **never a real business conversation id**
 
-通过后再 POST。
+Only then POST.
 
-- `+create` / `+update` / `+frequent` / `+unfrequent` 等**写操作**前,用户必须明示确认。统一 1/2 风格,便于用户用数字回复:
-  > 1. 确认执行
-  > 2. 取消
-- `+test` / `+tune` **消耗 credits 的操作**前,先提示"这次约消耗 N credits" 再用同款 1/2 确认。
-- 删除操作（`+delete`）暂未实现，避免误删
+- Before **write operations** (`+create` / `+update` / `+frequent` / `+unfrequent`), the user must explicitly confirm. Use the uniform 1/2 style so the user can reply with a number:
+  > 1. Confirm and execute
+  > 2. Cancel
+- Before **credit-consuming operations** (`+test` / `+tune`), state "this will cost about N credits" first, then use the same 1/2 confirmation.
+- The delete operation (`+delete`) is not implemented yet, to avoid accidental deletion.
 
-## 兼容性
+## Compatibility
 
-| Platform | 状态 | 调用方式 |
+| Platform | Status | How to load |
 |---|---|---|
-| Claude Code | ✅ 已验证 | 把目录加入 skills 路径，通过 `Skill` 工具自动加载 SKILL.md |
-| Gemini CLI | ✅ 已验证(2026-05-20,见 [verification report](docs/verification-reports/2026-05-20-gemini-cli.md)) | `activate_skill` 加载 SKILL.md |
-| Codex CLI | ✅ 已验证(2026-05-21) | 手动 `cat SKILL.md` 注入或按 codex skill 约定加载 |
-| Hermes / OpenClaw / Kimi | ✅ 已验证(v0.2.0,真实任务跑通 live API) | 按各自 skill spec 加载 SKILL.md + scripts/ 目录 |
-| 其他 agent | ⚠️ 未独立验证 | 按各自 skill spec 加载 SKILL.md + scripts/ 目录 |
+| Claude Code | ✅ Verified | Add the directory to your skills path; the `Skill` tool loads SKILL.md automatically |
+| Gemini CLI | ✅ Verified (2026-05-20, see [verification report](docs/verification-reports/2026-05-20-gemini-cli.md)) | `activate_skill` loads SKILL.md |
+| Codex CLI | ✅ Verified (2026-05-21) | Manually `cat SKILL.md` inject, or load per the codex skill convention |
+| Hermes / OpenClaw / Kimi | ✅ Verified (v0.2.0, real tasks against the live API) | Load SKILL.md + scripts/ per each agent's skill spec |
+| Other agents | ⚠️ Not independently verified | Load SKILL.md + scripts/ per each agent's skill spec |
 
-scripts/ 用 Python 3.10+ stdlib，无第三方依赖，任何能跑 Python 的环境都通。如果你在 ✅ 之外的 agent 上跑通，欢迎到 GitHub repo 开 issue 报告兼容性。
+scripts/ uses Python 3.10+ stdlib with no third-party dependencies — any environment that can run Python works. If you get it running on an agent outside the ✅ list, please open an issue on the GitHub repo to report compatibility.
 
-## 关于 API 稳定性
+## About API stability
 
-Cue 公开 API 文档当前覆盖 4 个 endpoint：`POST /api/chat/stream`、`GET /api/templates`、`POST /api/templates/search`、`GET /api/templates/conversation/<id>`。
+Cue's public API docs currently cover 4 endpoints: `POST /api/chat/stream`, `GET /api/templates`, `POST /api/templates/search`, `GET /api/templates/conversation/<id>`.
 
-本 skill **额外使用**了若干内部 endpoint：`POST /api/templates`（create）、`PUT /api/templates/<id>`（update）、`GET /api/templates/<id>`（get one）、`POST /api/generate_template`（+tune 后端）、`POST /api/templates/frequent`（+frequent）。这些 endpoint 与前端工作台共享同一套 auth 中间件，API key 可调用，但**未列在公开 API 文档中**——意味着未来可能调整 path/payload。
+This skill **additionally uses** several internal endpoints: `POST /api/templates` (create), `PUT /api/templates/<id>` (update), `GET /api/templates/<id>` (get one), `POST /api/generate_template` (+tune backend), `POST /api/templates/frequent` (+frequent). These share the same auth middleware as the frontend workbench and accept API keys, but are **not listed in the public API docs** — their paths/payloads may change in the future.
 
-如果你在 +create / +update / +tune / +frequent 上遇到 4xx 错误，先检查 [Cue 官方文档](https://sensedeal.feishu.cn/wiki/NS0ywPa4jiN4dgkA8V7cQvpxndf) 是否已更新对应规范。
+If you hit 4xx errors on +create / +update / +tune / +frequent, first check whether the [Cue official docs](https://sensedeal.feishu.cn/wiki/NS0ywPa4jiN4dgkA8V7cQvpxndf) have updated the corresponding spec.
 
-## 脚本到 verb 映射
+## Script-to-verb mapping
 
-agent 不需要"硬编码"如何执行 verb——直接调用脚本即可：
+The agent does not need to "hardcode" how a verb executes — call the scripts directly:
 
-| Verb | 脚本 | 等价命令 |
+| Verb | Script | Equivalent command |
 |---|---|---|
 | `+validate <path>` | `validate_template.py` | `python3 scripts/validate_template.py path.json` |
 | `+list` | `cue_api.py` | `python3 scripts/cue_api.py list` |
@@ -312,8 +314,8 @@ agent 不需要"硬编码"如何执行 verb——直接调用脚本即可：
 | `+tune <id> --issues f` | `tune_template.py` | `python3 scripts/tune_template.py <id> --issues issues.txt` |
 | `+frequent <id>` | `cue_api.py` | `python3 scripts/cue_api.py frequent <id>` |
 | `+unfrequent <id>` | `cue_api.py` | `python3 scripts/cue_api.py unfrequent <id>` |
-| `+upgrade` | `update_skill.py` | `python3 scripts/update_skill.py --skill cue-buddy`(交互);`--silent-check` 走 session-start 轻量版 |
+| `+upgrade` | `update_skill.py` | `python3 scripts/update_skill.py --skill cue-buddy`(interactive); `--silent-check` for the session-start lightweight version |
 
-`+author` 没有专用脚本——它就是 agent 用 SKILL.md 的引导问答 + `validate_template.py` 反馈 + `cue_api.create_template` 落库的一个流程。
+`+author` has no dedicated script — it is the agent running SKILL.md's guided Q&A + `validate_template.py` feedback + `cue_api.create_template` persistence as a flow.
 
-**运行时文件位置(单根):** 所有运行时产物落同一个可写根 `<root>` = `python3 scripts/cue_api.py root`(默认 `~/.cue`;沙箱封 home 自动回落 cwd/temp,跨平台无 `/tmp` 依赖)。agent 只需对这一个目录有写授权。各脚本默认落点:`+test` 运行记录 -> `<root>/runs/buddy-run-<id>-<ts>.md`;`+tune` 提案(有 errors 时)-> `<root>/proposals/`、更新前备份 -> `<root>/backups/`。`+create`/`+update` 的临时 `payload.json` 写到 `$(mktemp)` 或 `<root>/tmp/`,别污染 cwd。config(`config.json`)+ 冷却(`last-update-check.json` / `last-community-invite.json`)留在 `~/.cue/`(设 `CUE_HOME` 则随迁)--它们随 config 走、不走可写性回落。
+**Runtime file location (single root):** all runtime artifacts land in one writable root `<root>` = `python3 scripts/cue_api.py root` (default `~/.cue`; sandboxes that lock home fall back to cwd/temp automatically — no cross-platform `/tmp` dependency). The agent only needs write authorization for this one directory. Script defaults: `+test` run logs -> `<root>/runs/buddy-run-<id>-<ts>.md`; `+tune` proposals (when errors) -> `<root>/proposals/`, pre-update backups -> `<root>/backups/`. `+create`/`+update` temp `payload.json` files go to `$(mktemp)` or `<root>/tmp/` — don't pollute cwd. Config (`config.json`) + cooldowns (`last-update-check.json` / `last-community-invite.json`) stay in `~/.cue/` (moved with `CUE_HOME` if set) — they travel with the config, not with the writable-root fallback.

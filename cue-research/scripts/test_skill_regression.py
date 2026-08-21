@@ -32,7 +32,11 @@ sys.path.insert(0, str(_BUDDY_SCRIPTS))
 
 class TestSkillMd(unittest.TestCase):
     def setUp(self):
+        # Bilingual contract (same pattern as cue-omni-reader): SKILL.md is the
+        # EN loading contract; SKILL.zh-CN.md is the complete zh translation.
+        # Prose checks assert BOTH, so EN↔zh drift fails CI.
         self.md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.zh = (_SKILL_DIR / "SKILL.zh-CN.md").read_text(encoding="utf-8")
 
     def test_frontmatter_has_required_keys(self):
         m = re.match(r"^---\n(.*?)\n---\n", self.md, re.S)
@@ -66,7 +70,8 @@ class TestSkillMd(unittest.TestCase):
 
     def test_never_autoselects_buddy_hard_rule(self):
         # Codex Block B fix: matching is low-confidence, never auto-pick.
-        self.assertRegex(self.md, r"不自动选搭子|never auto-?select")
+        self.assertRegex(self.md, r"不自动选搭子|[Nn]ever auto-?(select|pick)")
+        self.assertIn("不自动选搭子", self.zh)
 
     def test_stage6_save_prompt_does_not_leak_internal_verbs_to_user(self):
         """Codex onboarding review F: Stage 6 prompt previously read
@@ -102,16 +107,24 @@ class TestSkillMd(unittest.TestCase):
         Empirical basis: across 7 real queries against the live catalog of
         106 templates, weak/zero-match cases were common enough (e.g. 毛利
         / 业绩超预期) that surfacing this escape hatch matters."""
-        self.assertIn("要不做个新搭子", self.md)
-        self.assertRegex(self.md, r"弱匹配|匹配.*?不强")
+        self.assertIn("make a new buddy", self.md)
+        self.assertRegex(self.md, r"Matching is weak|weak-?match")
+        self.assertIn("要不做个新搭子", self.zh)
+        self.assertRegex(self.zh, r"弱匹配|匹配.*?不强")
         # User-facing nudge prose must NOT leak the internal verb name.
         # Check inside the literal blockquote line only — agent-routing
         # guidance further down may legitimately mention +author internally.
-        nudge_lines = re.findall(r"> 匹配都不强.*$", self.md, re.M)
+        nudge_lines = re.findall(r"> .*make a new buddy.*$", self.md, re.M)
         for line in nudge_lines:
             self.assertNotIn(
                 "+author", line,
                 "user-facing weak-match prose must not leak +author verb",
+            )
+        zh_nudge_lines = re.findall(r"> 匹配都不强.*$", self.zh, re.M)
+        for line in zh_nudge_lines:
+            self.assertNotIn(
+                "+author", line,
+                "zh user-facing weak-match prose must not leak +author verb",
             )
 
     def test_no_delete_verb_in_verb_table(self):
@@ -132,20 +145,29 @@ class TestSkillMd(unittest.TestCase):
 
     def test_material_upload_uses_server_capability_limit(self):
         self.assertIn("/api/file_server/accept_type", self.md)
-        self.assertIn("单文件最大 256 MiB", self.md)
+        self.assertIn("single file max 256 MiB", self.md)
+        self.assertIn("单文件最大 256 MiB", self.zh)
         self.assertNotIn("50MB", self.md)
+        self.assertNotIn("50MB", self.zh)
 
     def test_query_keeps_internal_orchestration_out_of_user_language(self):
         """The agent may inspect internal progress, but must not manufacture a
         demo/user query that names nodes, tools, call counts, or execution order.
         Those constraints belong to runtime/template/verification layers."""
-        self.assertIn("用户问题与内部执行必须分层", self.md)
-        self.assertRegex(self.md, r"不得(?:自行|额外)(?:向 query )?(?:注入|加入)")
+        self.assertIn("User question vs internal execution must stay layered", self.md)
+        self.assertRegex(self.md, r"must not (?:inject|add)")
+        self.assertIn("用户问题与内部执行必须分层", self.zh)
+        self.assertRegex(self.zh, r"不得(?:自行|额外)(?:向 query )?(?:注入|加入)")
         material_example = re.search(
-            r'query 用正常业务语言.*?例如:"([^"]+)"', self.md
+            r'normal business language.*?e\.g\.:\s*"([^"]+)"', self.md, re.S
         )
         self.assertIsNotNone(material_example, "missing natural material-query example")
         query = material_example.group(1)
+        zh_material_example = re.search(
+            r'query 用正常业务语言.*?例如:"([^"]+)"', self.zh, re.S
+        )
+        self.assertIsNotNone(zh_material_example, "zh missing material-query example")
+        zh_query = zh_material_example.group(1)
         for forbidden in (
             "Researcher",
             "Reporter",
@@ -159,8 +181,15 @@ class TestSkillMd(unittest.TestCase):
                 query,
                 f"user-facing material query leaks internal detail: {forbidden}",
             )
-        self.assertIn("上传的材料", query)
-        self.assertIn("标注出处", query)
+            self.assertNotIn(
+                forbidden,
+                zh_query,
+                f"zh user-facing material query leaks internal detail: {forbidden}",
+            )
+        self.assertIn("my uploaded materials", query)
+        self.assertIn("citing sources", query)
+        self.assertIn("上传的材料", zh_query)
+        self.assertIn("标注出处", zh_query)
 
     def test_stage2_uses_full_list_semantic_picking(self):
         """Stage 2 must use single-stage full-list + agent semantic picking,
@@ -185,7 +214,12 @@ class TestSkillMd(unittest.TestCase):
         # empirically: 34 cats vs 46, top 12 cover ~80% of templates).
         self.assertIn("secondary_category", s2)
         # Must distinguish entity vs intent.
-        self.assertRegex(s2, r"主体.*意图|实体.*意图")
+        self.assertRegex(s2, r"entity vs intent separation|主体.*意图|实体.*意图")
+        zh_stage2 = _re.search(
+            r"###?\s*Stage 2:.*?(?=###?\s*Stage|\Z)", self.zh, _re.S
+        )
+        self.assertIsNotNone(zh_stage2, "zh Stage 2 section not found")
+        self.assertRegex(zh_stage2.group(0), r"主体.*意图|实体.*意图")
         # Must NOT advise the OLD keyword-variant search strategy.
         self.assertNotRegex(
             s2, r"2-3 个 keyword 变体.*分别搜|keyword 变体.*合并去重",
@@ -205,8 +239,15 @@ class TestSkillMd(unittest.TestCase):
         hr_text = hr.group(0)
         self.assertRegex(
             hr_text,
-            r"主体名.*task_input|task_input.*主体|绝不进模板匹配",
+            r"task_input.*never into any template-matching|主体名.*task_input|task_input.*主体|绝不进模板匹配",
             "Hard Rule 6 must codify entity→task_input only (mechanism-agnostic)",
+        )
+        hr_zh = _re.search(r"##\s*Hard rules.*?(?=^##\s|\Z)", self.zh, _re.S | _re.M)
+        self.assertIsNotNone(hr_zh)
+        self.assertRegex(
+            hr_zh.group(0),
+            r"主体名.*task_input|task_input.*主体|绝不进模板匹配",
+            "zh Hard Rule 6 must codify entity→task_input only",
         )
 
     def test_no_client_side_rewrite_reimpl_rule_present(self):
@@ -214,8 +255,13 @@ class TestSkillMd(unittest.TestCase):
         # Look for either a Chinese phrasing or an English one.
         self.assertRegex(
             self.md,
-            r"不在 agent 侧重写|不重写深研逻辑|don'?t (?:re-?implement|reimplement) (?:the )?rewrite",
+            r"不在 agent 侧重写|不重写深研逻辑|[Dd]on'?t re-?implement.*rewrite",
             "SKILL.md must forbid client-side rewrite reimplementation",
+        )
+        self.assertRegex(
+            self.zh,
+            r"不在 agent 侧重写|不重写深研逻辑",
+            "zh SKILL must forbid client-side rewrite reimplementation",
         )
 
     def test_version_matches_root_readme(self):
@@ -698,11 +744,14 @@ class TestResearchRunner(unittest.TestCase):
 
     def test_skill_md_documents_material_option(self):
         md = (_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        zh = (_SKILL_DIR / "SKILL.zh-CN.md").read_text(encoding="utf-8")
         self.assertIn("--material", md)
-        self.assertRegex(md, r"素材|接地|file_retrieval")
+        self.assertRegex(md, r"materials|grounding|file_retrieval")
+        self.assertRegex(zh, r"素材|接地|file_retrieval")
         # security rule must scope the "don't upload local files" default to
         # explicitly-confirmed material uploads, not contradict it.
-        self.assertRegex(md, r"默认不上传本地材料|经用户确认后才上传")
+        self.assertRegex(md, r"never uploaded by default|user \*\*explicitly asks.*confirm")
+        self.assertRegex(zh, r"默认不上传本地材料|经用户确认后才上传")
 
 
 class TestNormalizeTemplateId(unittest.TestCase):
