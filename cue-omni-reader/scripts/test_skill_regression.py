@@ -1363,6 +1363,7 @@ class TestSecurityAndLayout(unittest.TestCase):
     def test_shipped_layout_is_exact_and_text_only(self) -> None:
         expected = {
             "SKILL.md",
+            "SKILL.zh-CN.md",
             "docs/verification-reports/2026-08-08-baseline-pressure.md",
             "docs/verification-reports/2026-08-08-bridge-cli-audit.md",
             "docs/verification-reports/2026-08-08-claude-code.md",

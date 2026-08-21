@@ -11,6 +11,8 @@ metadata:
 
 # Cue Omni Reader
 
+> 中文版见 [`SKILL.zh-CN.md`](SKILL.zh-CN.md) — complete Chinese translation.
+
 Use the official Omni MCP surface to turn a URL or authorized local file into content, then complete the user's task. The MCP package and active tool schemas are authoritative; this skill never implements a parser, upload client, or MCP driver.
 
 ## Core flow
@@ -57,7 +59,7 @@ Use the client's semantic tool names, without hardcoded namespaces:
 - `discard_result` — Bridge-local artifact tool
 - `save_result` — Bridge-local artifact tool
 
-The four artifact tools exist only on the local Bridge; the remote surface never exposes them. Do not probe the remote for local artifact capabilities.
+The four artifact tools exist only on the local Bridge; the remote surface never exposes them.
 
 Client and service evidence belongs in [`references/compatibility.md`](references/compatibility.md).
 
