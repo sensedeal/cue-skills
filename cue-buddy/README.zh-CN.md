@@ -49,7 +49,7 @@ Agent: [reads SKILL.md → triggers +author flow]
 
 ## 状态
 
-**v0.2.0** — cross-agent 已验证。详细写报告的那次([`docs/verification-reports/2026-05-20-gemini-cli.md`](./docs/verification-reports/2026-05-20-gemini-cli.md))是 v0.1.0 的 Gemini CLI 跑,正是它跑出 +test 长流断点、驱动了 replay fallback 加固;Claude Code + Codex CLI 同期一起验过。**v0.2.0 本身也有实活 cross-agent 跑**(真实任务、live 生产 API),在 **Hermes、OpenClaw、Kimi** 等 agent 上——见报告的 **v0.2.0 status update** 段。
+**v0.3.5** — 当前版本（确切版本见 `SKILL.md` frontmatter）。cross-agent 已验证：详细写报告的那次（[`docs/verification-reports/2026-05-20-gemini-cli.md`](./docs/verification-reports/2026-05-20-gemini-cli.md)）是 v0.1.0 的 Gemini CLI 跑，正是它跑出 +test 长流断点、驱动了 replay fallback 加固（Claude Code + Codex CLI 同期一起验过）；v0.2.0 起有实活 cross-agent 跑（真实任务、live 生产 API），在 **Hermes、OpenClaw、Kimi** 等 agent 上。近版本：v0.3.3 与 cue-research 版本统一，v0.3.4 把运行时文件整合到单一可写根目录（`CUE_HOME`），v0.3.5 校验器强制业务语言输入。
 
 ## 适合谁用
 
