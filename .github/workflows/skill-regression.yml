@@ -139,3 +139,20 @@ jobs:
               assert TOOL_NAME_LEAK_RE.search(sample), sample
           print('validate_template import + regex coverage OK')
           "
+
+  # ============================================================
+  # Root-level generator regression (not a skill dir → outside matrix)
+  # 守护 playbook/ 22 个场景 SKILL.md 的生成器逻辑。
+  # 必须 stdlib unittest 直跑 —— pytest 风格的 tmp_path/no-__main__ 会静默 no-op。
+  # ============================================================
+
+  test-gen-scene-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run playbook generator regression
+        run: python3 scripts/test_gen_scene_skills.py
