@@ -201,9 +201,18 @@ def check_publish(bundle: Path) -> list[str]:
     return errors
 
 
-def count_md_headings(text: str) -> int:
-    """Count ATX headings at level 2+ (the section skeleton of a doc)."""
-    return sum(1 for line in text.splitlines() if re.match(r"^#{2,}\s", line))
+def heading_skeleton(text: str) -> list[tuple[int, str]]:
+    """Ordered list of (level, heading-text) for every ATX heading at level 2+.
+
+    The heading TEXT is language-specific, so parity matches on LEVEL + ORDER
+    only, but the text is kept for human-readable diagnostics.
+    """
+    skeleton: list[tuple[int, str]] = []
+    for line in text.splitlines():
+        m = re.match(r"^(#{2,})(\s+)(.*)$", line)
+        if m:
+            skeleton.append((len(m.group(1)), m.group(3).strip()))
+    return skeleton
 
 
 def count_fences(text: str) -> int:
@@ -225,10 +234,9 @@ def doc_pairs() -> list[tuple[Path, Path]]:
 def check_translation_parity() -> list[str]:
     """Enforce structural parity between each English/Chinese doc pair.
 
-    Translations legitimately differ in wording, so exact heading text cannot be
-    compared; instead compare the section skeleton (ATX heading count) and the
-    fenced-code block count. A drift in either means a section was added/removed
-    or a snippet was misplaced in only one language.
+    Translations differ in wording, so text is never compared. Instead match the
+    section skeleton by (level, order) — a heading added/removed/reordered/level
+    -changed in only one language is caught — plus the fenced-code-block count.
     """
     errors: list[str] = []
     for en, zh in doc_pairs():
@@ -237,12 +245,19 @@ def check_translation_parity() -> list[str]:
         etxt = en.read_text(encoding="utf-8")
         ztxt = zh.read_text(encoding="utf-8")
         rel = en.relative_to(DSH_DIR)
-        eh, zhc = count_md_headings(etxt), count_md_headings(ztxt)
-        if eh != zhc:
+        es, zs = heading_skeleton(etxt), heading_skeleton(ztxt)
+        if len(es) != len(zs):
             errors.append(
-                f"{rel}: section heading count differs — EN {eh} vs zh {zhc} "
+                f"{rel}: section count differs — EN {len(es)} vs zh {len(zs)} "
                 f"(add/translate the section in both languages)"
             )
+        else:
+            for i, ((elv, et), (zlv, zt)) in enumerate(zip(es, zs)):
+                if elv != zlv:
+                    errors.append(
+                        f"{rel}: section #{i + 1} level differs — "
+                        f"EN {'#'*elv} ({et}) vs zh {'#'*zlv} ({zt})"
+                    )
         ef, zf = count_fences(etxt), count_fences(ztxt)
         if ef != zf:
             errors.append(
