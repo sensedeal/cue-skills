@@ -95,11 +95,14 @@ def validate_bundle(bundle: Path) -> list[str]:
             if k not in row:
                 errors.append(f"{bundle.name}/{patch_rel}: insert row missing `{k}`")
         name = row.get("name")
-        if name and name not in deps:
+        pkg_name = pkg.get("name")
+        # A bundle may mount a plugin it ships itself (name == pkg name) or a
+        # plugin it depends on; anything else must be a declared dependency.
+        if name and name not in deps and name != pkg_name:
             errors.append(
-                f"{bundle.name}: row plugin `{name}` is not declared in "
-                f"dependencies/peerDependencies (DSH resolves bare plugins only "
-                f"from the resolver manifest)"
+                f"{bundle.name}: row plugin `{name}` is not the bundle's own "
+                f"package nor declared in dependencies/peerDependencies "
+                f"(DSH resolves bare plugins only from the resolver manifest)"
             )
 
     if errors:
@@ -109,6 +112,24 @@ def validate_bundle(bundle: Path) -> list[str]:
         f"deps={sorted(deps)}"
     )
     return []
+
+
+def validate_docs(bundles: list[Path]) -> list[str]:
+    """Doc-consistency: every bundle has a README; the dsh/ index covers them."""
+    errors: list[str] = []
+    index = DSH_DIR / "README.md"
+    index_text = index.read_text(encoding="utf-8") if index.exists() else ""
+
+    for bundle in bundles:
+        if not (bundle / "README.md").exists():
+            errors.append(f"{bundle.name}: bundle has no README.md (a distributable needs docs)")
+
+    for bundle in bundles:
+        # the index table links each bundle by its folder name, e.g. [name](name)
+        if bundle.name not in index_text:
+            errors.append(f"{bundle.name}: not listed in {index.name} (add it to the bundles table)")
+
+    return errors
 
 
 def main() -> int:
@@ -122,12 +143,13 @@ def main() -> int:
     all_errors: list[str] = []
     for bundle in bundles:
         all_errors.extend(validate_bundle(bundle))
+    all_errors.extend(validate_docs(bundles))
     if all_errors:
         print("DSH bundle validation FAILED:", file=sys.stderr)
         for e in all_errors:
             print("  - " + e, file=sys.stderr)
         return 1
-    print(f"All {len(bundles)} DSH bundle(s) OK.")
+    print(f"All {len(bundles)} DSH bundle(s) OK (structure + docs).")
     return 0
 
 

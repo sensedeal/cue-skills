@@ -175,3 +175,5 @@ jobs:
         run: |
           python3 -m pip install --quiet pyyaml
           python3 scripts/verify_dsh_bundles.py
+      - name: Run guard policy unit tests
+        run: node --test dsh/cue-omni-reader-guard/test/policy.test.js

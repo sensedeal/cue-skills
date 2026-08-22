@@ -23,6 +23,7 @@ and its config, and ships no parser, protocol driver, or MCP client.
 | Bundle | Purpose | Package |
 |---|---|---|
 | [`cue-omni-reader/`](cue-omni-reader) | Wire the audited **Cue Omni Reader** MCP server → tools `mcp__omni__parse`, `…read_result`, `…save_result`, etc. | `@cueai/dsh-omni-reader` |
+| [`cue-omni-reader-guard/`](cue-omni-reader-guard) | Optional hardening: a `tools/pre-execute` guard that denies SSRF (private/reserved hosts) and enforces an allow-list / consent for `mcp__omni__parse`. | `@cueai/dsh-omni-reader-guard` |
 
 ## Install & use
 

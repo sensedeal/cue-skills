@@ -1,0 +1,20 @@
+# @cueai/dsh-omni-reader-guard — SSRF / consent guard for the Omni parse tool.
+#
+# Optional hardening bundle. Mount it alongside (after) the `@cueai/dsh-omni-reader`
+# bundle so its `tools/pre-execute` listener gates the model-facing
+# `mcp__omni__parse` tool:
+#   - private / loopback / link-local / cloud-metadata hosts are denied;
+#   - allow-listed hosts pass;
+#   - otherwise `policyForUnknown` decides (deny by default, or ask for consent).
+#
+# Avoids hardcoded deployment specifics: allowList / allowedRoots / policy all
+# come from Config below. allowedRoots defaults to the dsh cwd when unset.
+- insert:
+    - id: cue-omni-reader-guard
+      name: '@cueai/dsh-omni-reader-guard'
+      config:
+        blockPrivate: true
+        allowList: []
+        # allowedRoots: [ 'process.cwd()' ]  # default; uncomment to pin a root
+        policyForUnknown: deny   # deny | ask | allow
+        consentReason: '解析外部 URL 前请确认(将消耗 Cue 积分)'
