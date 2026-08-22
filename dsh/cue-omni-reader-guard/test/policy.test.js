@@ -87,6 +87,13 @@ test('classifySource: local path within/outside roots', () => {
   assert.equal(classifySource('/etc/passwd', opts).kind, 'deny')
 })
 
+test('classifySource: empty allowedRoots denies local files (fail-closed)', () => {
+  // allowedRoots omitted -> defaults to [] -> no implicit cwd root
+  const opts = { blockPrivate: true, allowList: [] }
+  assert.equal(classifySource(join(wrk, 'doc.pdf'), opts).kind, 'deny')
+  assert.equal(classifySource(process.cwd(), opts).kind, 'deny')
+})
+
 test('decideTool: only mcp__omni__parse is gated', () => {
   const opts = { blockPrivate: true, allowList: [], allowedRoots: [wrk] }
   assert.equal(decideTool({ name: 'mcp__omni__get_parse_status', arguments: {} }, opts).kind, 'allow')

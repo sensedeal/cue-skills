@@ -8,13 +8,16 @@
 #   - otherwise `policyForUnknown` decides (deny by default, or ask for consent).
 #
 # Avoids hardcoded deployment specifics: allowList / allowedRoots / policy all
-# come from Config below. allowedRoots defaults to the dsh cwd when unset.
+# come from Config below. `allowedRoots` is empty by default -> local file
+# sources are DENIED (fail-closed) until an explicit absolute root is set.
 - insert:
     - id: cue-omni-reader-guard
       name: '@cueai/dsh-omni-reader-guard'
       config:
         blockPrivate: true
         allowList: []
-        # allowedRoots: [ 'process.cwd()' ]  # default; uncomment to pin a root
+        # OPT-IN: authorize local files by setting explicit absolute root(s).
+        #   allowedRoots: [!!js process.cwd()]
+        # Default (empty) denies all local file sources.
         policyForUnknown: deny   # deny | ask | allow
         consentReason: '解析外部 URL 前请确认(将消耗 Cue 积分)'

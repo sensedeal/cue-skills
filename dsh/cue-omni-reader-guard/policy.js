@@ -6,7 +6,7 @@
 // as the DSH `tools/pre-execute` PreToolDecision, so the glue maps directly.
 import { URL } from 'node:url'
 import { isIP } from 'node:net'
-import { resolve, join, sep } from 'node:path'
+import { resolve, sep } from 'node:path'
 
 export function isHttpSource(source) {
   return typeof source === 'string' && /^https?:\/\//i.test(source.trim())
@@ -89,7 +89,7 @@ export function defaultOpts() {
   return {
     blockPrivate: true,
     allowList: [],
-    allowedRoots: [], // empty -> resolved to [process.cwd()] at normalize time
+    allowedRoots: [], // empty -> local file sources are DENIED (must be set explicitly)
     policyForUnknown: 'deny', // 'deny' | 'ask' | 'allow'
     consentReason: '解析外部 URL 前请确认(将消耗 Cue 积分)',
   }
@@ -106,7 +106,8 @@ export function normalizeOpts(raw = {}) {
   if (!['deny', 'ask', 'allow'].includes(o.policyForUnknown)) {
     throw new Error("policyForUnknown must be 'deny' | 'ask' | 'allow'")
   }
-  if (o.allowedRoots.length === 0) o.allowedRoots = [join(process.cwd())]
+  // Fail-closed: no implicit root. An empty allowedRoots denies local files
+  // until the deployment config authorizes an explicit absolute directory.
   return o
 }
 
@@ -115,13 +116,16 @@ export function classifySource(source, rawOpts = {}) {
   const value = typeof source === 'string' ? source.trim() : source
 
   if (!isHttpSource(value)) {
-    // treat as a local path
+    // treat as a local path. Fail-closed on an empty allowedRoots: no implicit
+    // cwd. The deployment must authorize an explicit absolute directory.
     if (typeof value === 'string' && isUnderRoot(value, o.allowedRoots)) {
       return { kind: 'allow' }
     }
     return {
       kind: 'deny',
-      reason: 'local source is outside the allowed roots; authorize a root first',
+      reason: o.allowedRoots.length
+        ? 'local source is outside the allowed roots'
+        : 'no allowedRoots configured; set allowedRoots to authorize local files',
     }
   }
 
