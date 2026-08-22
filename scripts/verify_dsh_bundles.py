@@ -17,7 +17,9 @@ the fallback). Exit 0 on success, 1 on any failure.
 """
 
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -132,7 +134,69 @@ def validate_docs(bundles: list[Path]) -> list[str]:
     return errors
 
 
+SEMVER_RE = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
+)
+
+
+def semver_ok(value) -> bool:
+    return isinstance(value, str) and SEMVER_RE.fullmatch(value) is not None
+
+
+def plugin_entry(pkg: dict):
+    """Return a relative plugin entry path if the package ships a plugin module."""
+    exports = pkg.get("exports")
+    if isinstance(exports, dict) and "." in exports:
+        val = exports["."]
+        if isinstance(val, dict) and "import" in val:
+            return val["import"]
+        if isinstance(val, str):
+            return val
+    main = pkg.get("main")
+    return main if isinstance(main, str) else None
+
+
+def check_publish(bundle: Path) -> list[str]:
+    """Pre-publish hygiene: scope, version, npm metadata, and the plugin entry."""
+    errors: list[str] = []
+    pkg_path = bundle / "package.json"
+    pkg = json.loads(pkg_path.read_text(encoding="utf-8"))
+
+    name = pkg.get("name")
+    if not isinstance(name, str) or "/" not in name or not name.startswith("@"):
+        errors.append(f"{bundle.name}/package.json: name must be scoped (e.g. @cueai/dsh-…); got {name!r}")
+    else:
+        scope = name.split("/")[0]
+        allowed = tuple(
+            s.strip() for s in os.environ.get("DSH_PUBLISH_SCOPE", "@cueai").split(",") if s.strip()
+        )
+        if allowed and scope not in allowed:
+            errors.append(
+                f"{bundle.name}: scope {scope!r} not in allowed publish scopes {allowed} "
+                f"(override via DSH_PUBLISH_SCOPE)"
+            )
+
+    if not semver_ok(pkg.get("version")):
+        errors.append(f"{bundle.name}: version must be valid semver; got {pkg.get('version')!r}")
+    for field in ("description", "license"):
+        if not pkg.get(field):
+            errors.append(f"{bundle.name}: missing npm field `{field}`")
+
+    entry = plugin_entry(pkg)
+    if entry:
+        ep = bundle / entry
+        if not ep.exists():
+            errors.append(f"{bundle.name}: plugin entry missing: {entry}")
+        else:
+            r = subprocess.run(["node", "--check", str(ep)], capture_output=True, text=True)
+            if r.returncode != 0:
+                errors.append(f"{bundle.name}: plugin entry syntax error ({entry}): {r.stderr.strip()[:160]}")
+
+    return errors
+
+
 def main() -> int:
+    publish = "--publish-check" in sys.argv
     if not DSH_DIR.exists():
         print(f"(no {DSH_DIR.relative_to(REPO)}/ directory — nothing to verify)")
         return 0
@@ -144,12 +208,16 @@ def main() -> int:
     for bundle in bundles:
         all_errors.extend(validate_bundle(bundle))
     all_errors.extend(validate_docs(bundles))
+    if publish:
+        for bundle in bundles:
+            all_errors.extend(check_publish(bundle))
     if all_errors:
         print("DSH bundle validation FAILED:", file=sys.stderr)
         for e in all_errors:
             print("  - " + e, file=sys.stderr)
         return 1
-    print(f"All {len(bundles)} DSH bundle(s) OK (structure + docs).")
+    mode = "structure + docs + publish-check" if publish else "structure + docs"
+    print(f"All {len(bundles)} DSH bundle(s) OK ({mode}).")
     return 0
 
 
