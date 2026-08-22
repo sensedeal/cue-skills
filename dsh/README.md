@@ -18,7 +18,7 @@ the profile's bundle stack. DSH itself bridges the MCP server —
 `@deepseek-ai/dsh-mcp-client` — so a bundle is thin: it declares the server row
 and its config, and ships no parser, protocol driver, or MCP client.
 
-> Setup, config, and troubleshooting: see [`usage.md`](usage.md) (EN · 中文).
+> Setup, config, and troubleshooting: see [`usage.md`](usage.md) (EN) · [中文](usage.zh-CN.md).
 
 ## Bundles
 

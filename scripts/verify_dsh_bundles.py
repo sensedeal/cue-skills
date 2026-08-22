@@ -124,6 +124,8 @@ def validate_docs(bundles: list[Path]) -> list[str]:
 
     if not (DSH_DIR / "README.zh-CN.md").exists():
         errors.append("dsh/README.zh-CN.md missing (bilingual index required)")
+    if (DSH_DIR / "usage.md").exists() and not (DSH_DIR / "usage.zh-CN.md").exists():
+        errors.append("dsh/usage.zh-CN.md missing (bilingual usage doc required)")
 
     for bundle in bundles:
         for fname in ("README.md", "README.zh-CN.md"):
@@ -199,8 +201,59 @@ def check_publish(bundle: Path) -> list[str]:
     return errors
 
 
+def count_md_headings(text: str) -> int:
+    """Count ATX headings at level 2+ (the section skeleton of a doc)."""
+    return sum(1 for line in text.splitlines() if re.match(r"^#{2,}\s", line))
+
+
+def count_fences(text: str) -> int:
+    """Count fenced code blocks (leading ``` line per block)."""
+    return sum(1 for line in text.splitlines() if line.strip().startswith("```"))
+
+
+def doc_pairs() -> list[tuple[Path, Path]]:
+    """(en, zh) documentation pairs under dsh/ to keep in structural parity."""
+    pairs = [
+        (DSH_DIR / "README.md", DSH_DIR / "README.zh-CN.md"),
+        (DSH_DIR / "usage.md", DSH_DIR / "usage.zh-CN.md"),
+    ]
+    for bundle in sorted(p for p in DSH_DIR.iterdir() if (p / "package.json").exists()):
+        pairs.append((bundle / "README.md", bundle / "README.zh-CN.md"))
+    return pairs
+
+
+def check_translation_parity() -> list[str]:
+    """Enforce structural parity between each English/Chinese doc pair.
+
+    Translations legitimately differ in wording, so exact heading text cannot be
+    compared; instead compare the section skeleton (ATX heading count) and the
+    fenced-code block count. A drift in either means a section was added/removed
+    or a snippet was misplaced in only one language.
+    """
+    errors: list[str] = []
+    for en, zh in doc_pairs():
+        if not en.exists() or not zh.exists():
+            continue  # existence is enforced by validate_docs
+        etxt = en.read_text(encoding="utf-8")
+        ztxt = zh.read_text(encoding="utf-8")
+        rel = en.relative_to(DSH_DIR)
+        eh, zhc = count_md_headings(etxt), count_md_headings(ztxt)
+        if eh != zhc:
+            errors.append(
+                f"{rel}: section heading count differs — EN {eh} vs zh {zhc} "
+                f"(add/translate the section in both languages)"
+            )
+        ef, zf = count_fences(etxt), count_fences(ztxt)
+        if ef != zf:
+            errors.append(
+                f"{rel}: fenced-code-block count differs — EN {ef} vs zh {zf}"
+            )
+    return errors
+
+
 def main() -> int:
     publish = "--publish-check" in sys.argv
+    parity = "--check-translation-parity" in sys.argv
     if not DSH_DIR.exists():
         print(f"(no {DSH_DIR.relative_to(REPO)}/ directory — nothing to verify)")
         return 0
@@ -215,13 +268,19 @@ def main() -> int:
     if publish:
         for bundle in bundles:
             all_errors.extend(check_publish(bundle))
+    if parity:
+        all_errors.extend(check_translation_parity())
     if all_errors:
         print("DSH bundle validation FAILED:", file=sys.stderr)
         for e in all_errors:
             print("  - " + e, file=sys.stderr)
         return 1
-    mode = "structure + docs + publish-check" if publish else "structure + docs"
-    print(f"All {len(bundles)} DSH bundle(s) OK ({mode}).")
+    checks = ["structure", "docs"]
+    if publish:
+        checks.append("publish-check")
+    if parity:
+        checks.append("translation-parity")
+    print(f"All {len(bundles)} DSH bundle(s) OK ({' + '.join(checks)}).")
     return 0
 
 

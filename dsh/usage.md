@@ -1,6 +1,6 @@
 # Using the Cue DSH bundles — usage & FAQ
 
-**English** · 中文
+**[English](usage.md)** · [中文](usage.zh-CN.md)
 
 Two publishable bundles make the Cue Omni Reader available to a DeepSeek Harness
 profile, then let you harden it:
@@ -9,15 +9,6 @@ profile, then let you harden it:
 |---|---|---|
 | [`@cueai/dsh-omni-reader`](../cue-omni-reader) | Wire the audited Omni Reader MCP server → tools `mcp__omni__*` | always |
 | [`@cueai/dsh-omni-reader-guard`](../cue-omni-reader-guard) | Optional `tools/pre-execute` guard (SSRF / allow-list / consent) | optional, after the above |
-
-## 中文
-
-| 包 | 作用 |
-|---|---|
-| `@cueai/dsh-omni-reader` | 把审校版 Omni Reader MCP server 接进 DSH → 工具 `mcp__omni__*` |
-| `@cueai/dsh-omni-reader-guard` | 可选护栏(SSRF / 白名单 / 同意),安装在 wiring 之后 |
-
----
 
 ## Install
 

@@ -13,7 +13,7 @@
 
 bundle 声明 `dsh.bundle.patch`;`dsh plugin` 识别后会自动加入 profile 的 bundle 层栈。DSH 自己桥接 MCP server(`@deepseek-ai/dsh-mcp-client`),所以 bundle 很薄:只声明 server 行与其配置,不含解析器、协议驱动或 MCP client。
 
-> 安装、配置与排障见 [`usage.md`](usage.md)(EN · 中文)。
+> 安装、配置与排障见 [usage.md](usage.md)(EN)·[中文](usage.zh-CN.md)。
 
 ## 组合包列表
 
