@@ -1,6 +1,6 @@
 # DSH bundles
 
-**English** · 中文
+**[English](README.md)** · [中文](README.zh-CN.md)
 
 This directory holds **DeepSeek Harness (DSH) bundles** — small composition
 packages that, when installed into a DSH profile, make a Cue capability (or any

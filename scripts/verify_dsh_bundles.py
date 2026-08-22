@@ -117,14 +117,18 @@ def validate_bundle(bundle: Path) -> list[str]:
 
 
 def validate_docs(bundles: list[Path]) -> list[str]:
-    """Doc-consistency: every bundle has a README; the dsh/ index covers them."""
+    """Doc-consistency: bilingual READMEs and the dsh/ index covers them."""
     errors: list[str] = []
     index = DSH_DIR / "README.md"
     index_text = index.read_text(encoding="utf-8") if index.exists() else ""
 
+    if not (DSH_DIR / "README.zh-CN.md").exists():
+        errors.append("dsh/README.zh-CN.md missing (bilingual index required)")
+
     for bundle in bundles:
-        if not (bundle / "README.md").exists():
-            errors.append(f"{bundle.name}: bundle has no README.md (a distributable needs docs)")
+        for fname in ("README.md", "README.zh-CN.md"):
+            if not (bundle / fname).exists():
+                errors.append(f"{bundle.name}: bundle has no {fname} (bilingual docs required)")
 
     for bundle in bundles:
         # the index table links each bundle by its folder name, e.g. [name](name)

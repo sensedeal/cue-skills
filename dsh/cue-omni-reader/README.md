@@ -1,6 +1,6 @@
 # @cueai/dsh-omni-reader
 
-**English** · 中文
+**[English](README.md)** · [中文](README.zh-CN.md)
 
 A [DeepSeek Harness](https://github.com/deepseek-harness) **bundle** that registers the
 audited **Cue Omni Reader** MCP server so its tools surface as native `mcp__omni__*`
@@ -15,16 +15,6 @@ authorized local document, audio, or video source into content.
 > The skill-facing guidance (same capability, agent-loadable instructions) ships
 > separately in this repo as [`cue-omni-reader/`](../../cue-omni-reader). Install
 > both to get the tools **and** the guided flow.
-
-## 中文简介
-
-`@cueai/dsh-omni-reader` 是一个 **DeepSeek Harness bundle**,把审校版的 **Cue Omni Reader MCP 服务**接进 Harness,让它的工具以原生 `mcp__omni__*` 形式暴露给模型。它只是薄组成层——DSH 通过 `@deepseek-ai/dsh-mcp-client` 桥接 MCP,本包只负责声明 server 行及其配置,不含自定义解析器或 MCP driver。
-
-- **前置**:Node ≥ 20.12;到 <https://cuecue.cn/hub/api-key> 取 `CUE_API_KEY`(新账号有免费额度)。
-- **安装**:`dsh plugin --profile web add @cueai/dsh-omni-reader`(声明了 `dsh.bundle` 会自动进入 profile 的 bundle 层栈),或一次性 `dsh web --patch ./dsh/cue-omni-reader/cordis.patch.yml`。
-- **配置**:密钥与允许根都走环境变量(`CUE_API_KEY`、`OMNI_ALLOWED_ROOTS`,默认 `process.cwd()`),不写死在文件里。
-- **安全**:Omni 可解析**任意 URL**,属任意网络/费用面。请把 `OMNI_ALLOWED_ROOTS` 收到最必要目录,并在交给无人值守 agent 前对 URL 解析做确认。
-- **版本钉死** `@cueai/omni-reader-mcp@1.5.2`(审校版,不用 implicit `latest`)。
 
 ## Prerequisites
 

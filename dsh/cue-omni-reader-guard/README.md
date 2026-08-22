@@ -1,6 +1,6 @@
 # @cueai/dsh-omni-reader-guard
 
-**English** · 中文
+**[English](README.md)** · [中文](README.zh-CN.md)
 
 An optional **DeepSeek Harness** bundle that hardens the Omni Reader `parse` tool.
 It registers a `tools/pre-execute` listener that gates `mcp__omni__parse` so a
