@@ -17,6 +17,10 @@ A **skill** is a portable instruction bundle that any AI agent ([Claude Code](ht
 
 More skills will be added here as Cue's surface grows.
 
+## DSH bundles
+
+This repo also ships [DeepSeek Harness](https://github.com/deepseek-harness) **bundles** under [`dsh/`](./dsh) — thin composition packages that wire a Cue MCP server into a DSH profile so its tools surface natively (e.g. `mcp__omni__parse`). A skill is agent-loadable *instructions*; a bundle is a *composition package* (`package.json` + `cordis.patch.yml`) for the Harness. Install one with `dsh plugin --profile web add <pkg>`; see [`dsh/README.md`](./dsh) and the [`cue-omni-reader` bundle](./dsh/cue-omni-reader).
+
 ## What is Cue / What is a buddy
 
 [Cue](https://cuecue.cn) is a **Deep Research Agent + Intelligence Sentinel** platform for high-precision finance and business workflows. It picks tools from 300+ professional data sources (A-share / HK / US equity disclosures, fund AMAC registries, business registries, court records, regulatory feeds, sell-side research, capital flow data), cross-validates findings across sources, and produces structured, source-cited reports in minutes instead of hours.

@@ -156,3 +156,22 @@ jobs:
           python-version: "3.12"
       - name: Run playbook generator regression
         run: python3 scripts/test_gen_scene_skills.py
+
+  # ============================================================
+  # DSH bundle validation (dsh/<bundle>/). Guards that each bundle's
+  # package.json declares dsh.bundle.patch, the patch parses, and every
+  # insert row's plugin is declared in the package dependencies.
+  # ============================================================
+
+  verify-dsh-bundles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate DSH bundles
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 scripts/verify_dsh_bundles.py

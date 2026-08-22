@@ -1,0 +1,24 @@
+# @cueai/dsh-omni-reader — register the audited Cue Omni Reader MCP server.
+#
+# Apply one of:
+#   dsh plugin --profile web add @cueai/dsh-omni-reader   # npm/git/path/tarball spec
+#   dsh web --patch ./dsh/cue-omni-reader/cordis.patch.yml  # one-off
+#   or merge this single `insert` into your profile's cordis.patch.yml.
+#
+# The Bridge version is pinned (never an implicit `latest`). Runtime needs
+# Node >= 20.12 and a CUE_API_KEY configured via the environment (set it in
+# $DSH_HOME/.env or export it before launching dsh). Secrets never go in this
+# file; local reads are bounded by OMNI_ALLOWED_ROOTS.
+- insert:
+    - id: mcp-omni
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: omni
+        transport: stdio
+        command: npx
+        args: ['-y', '@cueai/omni-reader-mcp@1.5.2']
+        cwd: !!js process.cwd()
+        env:
+          CUE_API_KEY: !!js process.env.CUE_API_KEY
+          # Configurable, never hardcoded: explicit root wins, else the dsh cwd.
+          OMNI_ALLOWED_ROOTS: !!js 'process.env.OMNI_ALLOWED_ROOTS || process.cwd()'

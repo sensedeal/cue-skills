@@ -17,6 +17,10 @@
 
 Cue surface 扩展会陆续在这里加新 skill。
 
+## DSH 组合包
+
+本仓库还提供 [DeepSeek Harness](https://github.com/deepseek-harness) 的 **bundle(组合包)**,位于 [`dsh/`](./dsh):把 Cue 的 MCP server 接进 DSH profile,让它的工具以原生形式暴露(如 `mcp__omni__parse`)。skill 是可被 agent 加载的**指令包**;bundle 是面向 Harness 的**组合包**(`package.json` + `cordis.patch.yml`)。安装:`dsh plugin --profile web add <pkg>`;详见 [`dsh/README.md`](./dsh) 与 [`cue-omni-reader` 的 bundle](./dsh/cue-omni-reader)。
+
 ## Cue 是什么 / 搭子是什么
 
 [Cue](https://cuecue.cn) 是面向高精度金融与商业场景的 **Deep Research Agent + Intelligence Sentinel** 平台。从 300+ 专业数据源（A 股/港股/美股披露 / 工商 / 司法 / 监管 / 资金流 / 行业研报 / 政府采购）里挑工具、多源交叉验证,几分钟产出带源引用的结构化报告——不杜撰、可回查。
