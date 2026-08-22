@@ -38,6 +38,8 @@ Bridge setup flags, native-adapter source, and trusted rollback semantics are [p
 
 A client-side synchronous timeout does not prove backend failure. If no operation is recoverable, a replacement submission may duplicate work or billing and requires confirmation. The source-only Bridge avoids unsupported `wait` arguments; tool surfaces that publish `wait` may select the asynchronous path explicitly.
 
+Pure-music or otherwise speech-free audio can be transcribed as speech-like dialogue: the parse chain has no music/VAD gate, so an instrumental track may return hallucinated speaker turns (observed 2026-08-22 with SoundHelix fixtures on WorkBuddy). Treat transcripts of expected-music sources as unreliable — confirm the audio actually contains speech before citing its transcript.
+
 ## I1 parameter unification (2026-08-20 sync)
 
 Owner-decided unification of the two parse surfaces (the remote omni-reader MCP and the Bridge):
