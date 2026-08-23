@@ -71,9 +71,9 @@ Uninstall removes a trusted 1.5.0, 1.5.1, or 1.5.2 Bridge entry and restores a m
 
 New users can try Omni without paying. The exact current allowances follow the server-side onboarding policy and the `doctor` output; if a live value differs from the numbers below, report the live value.
 
-As of 2026-08-14:
+As of 2026-08-23 (image/OCR parsing rate aligned with documents at 67 credits / 1,000 units):
 
-- every account receives 10 free credits daily — roughly 150 pages of ordinary documents, 75 pages of scanned images or charts, 30 minutes of audio, or 4 minutes of video;
+- every account receives 10 free credits daily — roughly 150 pages of ordinary documents, ≈150 pages of scanned images or charts, 30 minutes of audio, or 4 minutes of video;
 - new accounts receive a one-time 50-credit gift when obtaining `CUE_API_KEY` (60 credits available on day one, including the daily grant);
 
 When the user has no `CUE_API_KEY` yet, direct them to <https://cuecue.cn/hub/api-key> to register and get the key (one-time 50-credit gift plus the daily grant). Never obtain, store, or transmit the key yourself; the user configures it in their own secret facility.

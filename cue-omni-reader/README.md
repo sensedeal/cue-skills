@@ -57,7 +57,7 @@ Run `npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json` and compare its endpoint
 
 ## Free credits
 
-New users get a one-time 50-credit gift plus 10 free credits daily (≈150 pages of ordinary documents, 75 scanned pages, 30 min of audio, or 4 min of video per day). Get a key at <https://cuecue.cn/hub/api-key>. Exact current allowances follow the server-side policy — report the live `doctor` value if it differs. Details: [`references/setup.md`](references/setup.md).
+New users get a one-time 50-credit gift plus 10 free credits daily (≈150 pages of ordinary documents, ≈150 scanned pages, 30 min of audio, or 4 min of video per day). Get a key at <https://cuecue.cn/hub/api-key>. Exact current allowances follow the server-side policy — report the live `doctor` value if it differs. Details: [`references/setup.md`](references/setup.md).
 
 ## Repo layout
 
