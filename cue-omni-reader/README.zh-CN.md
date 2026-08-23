@@ -57,7 +57,7 @@ npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json
 
 ## 免费额度
 
-新用户一次性 50 积分赠礼 + 每天 10 免费积分（约每天 150 页普通文档 / 75 页扫描件 / 30 分钟音频 / 4 分钟视频）。key 在 <https://cuecue.cn/hub/api-key> 获取。确切额度以服务端策略为准——与 live `doctor` 输出不同时报告 live 值。细节：[`references/setup.md`](references/setup.md)。
+新用户一次性 50 积分赠礼 + 每天 10 免费积分（约每天 150 页普通文档 / 约 150 页扫描件 / 30 分钟音频 / 4 分钟视频）。key 在 <https://cuecue.cn/hub/api-key> 获取。确切额度以服务端策略为准——与 live `doctor` 输出不同时报告 live 值。细节：[`references/setup.md`](references/setup.md)。
 
 ## 目录结构
 
