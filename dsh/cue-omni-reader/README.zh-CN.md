@@ -75,7 +75,7 @@ dsh --profile web --dump-config      # 应包含一个 `mcp-omni` 行
 ## 版本
 
 - Bridge 固定:**`@cueai/omni-reader-mcp@1.5.2`**(审校版;永远不用隐式 `latest`)。
-- `@deepseek-ai/dsh-mcp-client` 是依赖(声明为 `^0.1.1-rc.2`);如需要,对齐到你所跑的 Harness 版本。
+- `@deepseek-ai/dsh-mcp-client` 是 **peer** 依赖(声明为 `^0.1.1-rc.2`),由 Harness profile 提供;如需要,对齐到你所跑的 Harness 版本。
 
 ## 回滚
 
