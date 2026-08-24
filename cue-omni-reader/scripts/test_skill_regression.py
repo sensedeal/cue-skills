@@ -12,6 +12,9 @@ _HERE = Path(__file__).resolve().parent
 _SKILL_DIR = _HERE.parent
 _REPO_ROOT = _SKILL_DIR.parent
 _SKILL_MD = _SKILL_DIR / "SKILL.md"
+_SKILL_ZH_MD = _SKILL_DIR / "SKILL.zh-CN.md"
+_README_MD = _SKILL_DIR / "README.md"
+_README_ZH_MD = _SKILL_DIR / "README.zh-CN.md"
 _SETUP_MD = _SKILL_DIR / "references" / "setup.md"
 _COMPAT_MD = _SKILL_DIR / "references" / "compatibility.md"
 _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
@@ -426,7 +429,7 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.3\.4"$', re.M),
+            re.compile(r'^\s*version:\s*"0\.3\.5"$', re.M),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
@@ -444,8 +447,8 @@ class TestSkillMd(unittest.TestCase):
         ):
             self.assertIn(tool, self.md)
         self.assertNotIn("mcp" + "__", self.md)
-        # 850: seven-tool list sits at 800 words; keep the thinness guard above it
-        self.assertLess(len(self.md.split()), 850, "SKILL.md is no longer thin")
+        # 900: stage-aware diagnostics sit at 894 words; preserve a tight thinness guard
+        self.assertLess(len(self.md.split()), 900, "SKILL.md is no longer thin")
 
     def test_source_handling_preserves_the_security_boundary(self) -> None:
         self.assertIn("Only HTTP(S) strings are URLs", self.md)
@@ -594,8 +597,24 @@ class TestSkillMd(unittest.TestCase):
 
 class TestReferences(unittest.TestCase):
     def setUp(self) -> None:
+        self.skill = _required_text(self, _SKILL_MD)
+        self.skill_zh = _required_text(self, _SKILL_ZH_MD)
+        self.readme = _required_text(self, _README_MD)
+        self.readme_zh = _required_text(self, _README_ZH_MD)
         self.setup = _required_text(self, _SETUP_MD)
         self.compat = _required_text(self, _COMPAT_MD)
+
+    def test_network_diagnostics_are_stage_aware_and_do_not_publish_internal_hosts(
+        self,
+    ) -> None:
+        doctor = "npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json"
+        for document in (self.skill, self.skill_zh, self.readme, self.readme_zh):
+            self.assertIn("CUBE_UNAVAILABLE", document)
+            self.assertIn("IIIS_UNAVAILABLE", document)
+            self.assertIn("CUBE_PROTOCOL_ERROR", document)
+            self.assertIn(doctor, document)
+            self.assertNotIn("cubefile.ai.iiis.co", document)
+        self.assertNotIn("cubefile.ai.iiis.co", self.compat)
 
     def test_setup_pins_the_audited_bridge_and_node(self) -> None:
         pin = _bridge_pin(self.setup)
