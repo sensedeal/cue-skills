@@ -53,6 +53,8 @@ Cue surface 扩展会陆续在这里加新 skill。
 
 **`cue-omni-reader`** 不带运行时解析脚本。加载其 `SKILL.md` 并连接官方 Omni MCP surface；已有 URL 工具无需本地安装，本地文件则在最小目录授权确认后使用已审核 Bridge。
 
+**`cue-data-mcp`** 不带运行时代码。加载其 `SKILL.md`，让 agent 从匿名 `/api/mcp-catalog` 发现 live 数据域，再按每个域的 routing DTO 直连。self-contained，无需兄弟目录。
+
 **`playbook/`** 场景 skill 把实际跑研究委托给 `cue-research` 的 runner,后者又复用 `cue-buddy` 的脚本——所以要把三者(`playbook/<场景>`、`cue-research`、`cue-buddy`)装在同一父目录下作兄弟目录。
 
 > **有免费积分可试**:每个 Cue 账号都送免费积分——**首次注册 50 分,之后每天再免费 10 分**。所以只要申请 API key(用 `cue` CLI 登录),就能先用免费额度跑深度研究、不花钱也能试。每次深度研究仍会消耗积分;skill 跑之前都会先跟你确认再花。

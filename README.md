@@ -53,6 +53,8 @@ See [`cue-buddy/README.md`](./cue-buddy/README.md) for the full skill walkthroug
 
 **`cue-omni-reader`** ships no runtime parser scripts. Load its `SKILL.md` and connect an official Omni MCP surface. Existing URL tools need no local install; local files use the audited Bridge after minimum-root confirmation.
 
+**`cue-data-mcp`** ships no runtime code. Load its `SKILL.md` and let the agent discover the live data domains from the anonymous `/api/mcp-catalog`, then connect through each domain's routing DTO. Self-contained: no sibling folders required.
+
 The **`playbook/`** scene skills delegate the actual research run to `cue-research`'s runner, which in turn reuses `cue-buddy`'s scripts — so install all three (`playbook/<scene>`, `cue-research`, `cue-buddy`) as siblings under the same parent dir.
 
 > **Free credits to try**: every Cue account comes with free credits — **50 on first sign-up, plus 10 free every day**. So once you apply for an API key (sign in via the `cue` CLI), you can run deep research on the free tier before spending anything. Each deep-research run still consumes credits; the skills always confirm with you before spending.
