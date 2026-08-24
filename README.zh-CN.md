@@ -6,6 +6,17 @@
 
 **skill** 是一份可移植的指令包,任何 AI agent（[Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills) / Codex CLI / Gemini CLI / OpenClaw 等）都能 load 它来获得新能力——无需改 agent 本身。这个仓库收纳 Cue 对外维护的 skills。
 
+## DSH 用户:安装 Cue Omni Reader 组合包
+
+在用 [DeepSeek Harness](https://github.com/deepseek-harness)?把两个 Cue bundle 加进 profile,即可获得 Cue Omni Reader 的原生 `mcp__omni__*` 工具:
+
+```sh
+dsh plugin --profile web add @cueai/dsh-omni-reader
+dsh plugin --profile web add @cueai/dsh-omni-reader-guard   # 可选 SSRF/同意护栏
+```
+
+重启 dsh;模型即可见 `mcp__omni__parse` / `…get_parse_status` / `…read_result` / `…read_outline` / `…save_result` / `…cancel_parse` / `…discard_result`。`CUE_API_KEY`(可选 `OMNI_ALLOWED_ROOTS`)在 `$DSH_HOME/.env` 里设置。指引:[`dsh/`](./dsh)·[`usage.md`](./dsh/usage.md)。
+
 ## 仓库内 skill 列表
 
 | Skill | 用途 | 状态 |

@@ -6,6 +6,17 @@ Open-source agent skills published by [Cue](https://cuecue.cn) (sensedeal).
 
 A **skill** is a portable instruction bundle that any AI agent ([Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills), Codex CLI, Gemini CLI, …) can load to gain a new capability — without modifying the agent itself. This repo collects the skills Cue maintains for public use.
 
+## DSH users: install the Cue Omni Reader bundles
+
+Running [DeepSeek Harness](https://github.com/deepseek-harness)? Add the two Cue bundles to a profile and get Cue Omni Reader as native `mcp__omni__*` tools:
+
+```sh
+dsh plugin --profile web add @cueai/dsh-omni-reader
+dsh plugin --profile web add @cueai/dsh-omni-reader-guard   # optional SSRF/consent guard
+```
+
+Restart dsh; the model then sees `mcp__omni__parse` / `…get_parse_status` / `…read_result` / `…read_outline` / `…save_result` / `…cancel_parse` / `…discard_result`. Set `CUE_API_KEY` (+ optional `OMNI_ALLOWED_ROOTS`) via `$DSH_HOME/.env`. Guide: [`dsh/`](./dsh) · [`usage.md`](./dsh/usage.md).
+
 ## Skills in this repo
 
 | Skill | Purpose | Status |
