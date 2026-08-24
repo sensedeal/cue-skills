@@ -114,7 +114,7 @@ class CueDataMcpSkillRegression(unittest.TestCase):
         # raw JSON-RPC path for agents without an MCP client
         self.assertIn("tools/list", self.setup)
         self.assertIn("tools/call", self.setup)
-        self.assertIn("$API_KEY", self.setup)
+        self.assertIn("$CUE_API_KEY", self.setup)
         # troubleshooting table covers the 406/401 pitfalls
         self.assertIn("406", self.setup)
         self.assertIn("401", self.setup)

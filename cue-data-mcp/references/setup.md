@@ -4,7 +4,7 @@
 - **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/hub/api-key>
 - **Live domains:** 15 data domains (~104 tools) as of 2026-08-24; the catalog response is authoritative and may change at any time
 
-The catalog returns everything an agent needs to connect: per live domain, a `routing` object with the exact `url`, `transport` (`streamable-http`), `protocol_version` (`2025-03-26`), and required `headers` (`Authorization: Bearer <API_KEY>`, `Accept: application/json, text/event-stream`). Always read routing from the catalog at session start; never reuse a stale connection string.
+The catalog returns everything an agent needs to connect: per live domain, a `routing` object with the exact `url`, `transport` (`streamable-http`), `protocol_version` (`2025-03-26`), and required `headers` (`Authorization: Bearer <CUE_API_KEY>`, `Accept: application/json, text/event-stream`). Always read routing from the catalog at session start; never reuse a stale connection string.
 
 ## Credential rules
 
@@ -32,25 +32,25 @@ Standard MCP clients (Cursor, Claude Desktop, Cherry Studio, Trae) can be config
 
 ## Connecting without an MCP client
 
-An agent without MCP client support can call the endpoint directly over JSON-RPC. With `API_KEY` set in the agent's own secret facility:
+An agent without MCP client support can call the endpoint directly over JSON-RPC. With `CUE_API_KEY` set in the agent's own secret facility:
 
 ```sh
 # discover tools
 curl -sS https://mcp.cuecue.cn/api/<group>/mcp/ \
-  -H "Authorization: Bearer $API_KEY" \
+  -H "Authorization: Bearer $CUE_API_KEY" \
   -H "Accept: application/json, text/event-stream" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 
 # call a tool by its schema from tools/list
 curl -sS https://mcp.cuecue.cn/api/<group>/mcp/ \
-  -H "Authorization: Bearer $API_KEY" \
+  -H "Authorization: Bearer $CUE_API_KEY" \
   -H "Accept: application/json, text/event-stream" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"<tool_name>","arguments":{...}}}'
 ```
 
-Do not embed `$API_KEY` values in skill files, logs, or generated JSON; keep them in the secret facility and reference them.
+Do not embed `$CUE_API_KEY` values in skill files, logs, or generated JSON; keep them in the secret facility and reference them.
 
 ## Troubleshooting
 
