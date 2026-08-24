@@ -48,12 +48,13 @@ npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json
 
 ## 网络诊断
 
-`CUBE_PROTOCOL_ERROR` 通常**不是** Bridge 的 bug——是客户端环境与 Omni 服务端点之间的 DNS/路由错配。先查：
+先运行 `npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json`，再按结构化错误码诊断，并严格区分控制面与上传阶段：
 
-- `cubefile.ai.iiis.co` 解析到的地址是否是你的网络真正可达的？(私有/公网 DNS 分流会让同一主机名映射到不同 IP——核对记录与当前网络一致)
-- 是否有 HTTP(S) 代理截断了连接？某些环境把 MCP 流量导向代理，会破坏 MCP stdio/HTTP 传输。
+- `CUBE_UNAVAILABLE` 是文件上传前的 Cube 控制面失败；绝不能用 IIIS DNS 或上传端点探针解释它。
+- `IIIS_UNAVAILABLE` 才是 Cube 已创建 grant 后的上传阶段失败。
+- `CUBE_PROTOCOL_ERROR` 是响应契约不匹配，不是通用 DNS 诊断。
 
-跑 `npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json`，把它的端点报告和你的实际网络路径对照。更多客户端与服务证据：[`references/compatibility.md`](references/compatibility.md)。
+只依据 `doctor` 报告的端点与兼容性事实；不要猜主机名或端口，也不要把内部上传入口当作常规用户排障项。更多客户端与服务证据：[`references/compatibility.md`](references/compatibility.md)。
 
 ## 免费额度
 
@@ -74,7 +75,7 @@ cue-omni-reader/
 │   └── ...                 # Bridge 版本、客户端实跑、审计
 └── scripts/
     ├── sync_bridge_pin.py         # 每版 Bridge 一键同步 pin
-    └── test_skill_regression.py   # 29 个 skill 回归测试
+    └── test_skill_regression.py   # 30 个 skill 回归测试
 ```
 
 ## 依赖

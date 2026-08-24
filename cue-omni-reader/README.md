@@ -48,12 +48,13 @@ The 1.5.2 setup generates a working Windows entry automatically (spawn goes thro
 
 ## Network diagnostics
 
-`CUBE_PROTOCOL_ERROR` is usually **not** a Bridge bug — it is a DNS/routing mismatch between the client's environment and the Omni service endpoints. First check:
+Run `npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json` first, then diagnose by structured error code and keep the control-plane and upload stages separate:
 
-- Does `cubefile.ai.iiis.co` resolve to the address your network actually reaches? (A private vs public DNS split maps the same hostname to different IPs — verify the record matches the network you are on.)
-- Is an HTTP(S) proxy intercepting the connection? Some environments route MCP traffic through a proxy that breaks the MCP stdio/HTTP transport.
+- `CUBE_UNAVAILABLE` is a Cube control-plane failure before any file upload. Do not diagnose it through IIIS DNS or upload-endpoint probes.
+- `IIIS_UNAVAILABLE` is an upload-stage failure after Cube created a grant.
+- `CUBE_PROTOCOL_ERROR` is a response-contract mismatch, not a generic DNS diagnosis.
 
-Run `npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json` and compare its endpoint report against your actual network path. Further client/service evidence: [`references/compatibility.md`](references/compatibility.md).
+Use only the endpoint and compatibility facts `doctor` reports; do not guess a hostname or port, and do not expose an internal upload endpoint as routine user troubleshooting. Further client/service evidence: [`references/compatibility.md`](references/compatibility.md).
 
 ## Free credits
 
@@ -74,7 +75,7 @@ cue-omni-reader/
 │   └── ...                 # Bridge releases, client runs, audits
 └── scripts/
     ├── sync_bridge_pin.py         # One-command pin sync per Bridge release
-    └── test_skill_regression.py   # 29 skill regression tests
+    └── test_skill_regression.py   # 30 skill regression tests
 ```
 
 ## Dependencies

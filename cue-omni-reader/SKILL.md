@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.3.4"
+  version: "0.3.5"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -46,6 +46,8 @@ If the user asks to stop an active operation, call `cancel_parse` with the saved
 ## Truthful error handling
 
 A tool-level error is not an MCP disconnection. Preserve structured authentication, billing, parser, retryability, and cleanup facts. Report the billing facts returned for this operation; do not auto-retry a billing denial. Do not claim a source is unsupported merely because one fetch or parser attempt failed.
+
+Run `npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json` first. Diagnose by stage: `CUBE_UNAVAILABLE` is a pre-upload Cube control-plane failure; `IIIS_UNAVAILABLE` is a post-grant upload failure; `CUBE_PROTOCOL_ERROR` is a response-contract mismatch. Use only reported endpoint facts—never explain Cube errors with IIIS probes or guess or publish internal hosts or ports.
 
 ## Public tools
 
