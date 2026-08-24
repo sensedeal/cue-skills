@@ -16,7 +16,7 @@ cue-research 只带**一个薄运行时脚本**——`scripts/research_run.py`�
 
 **仿写 / mimic**（仅自由式）：`--mimic-url <URL>` 或 `--mimic-file <path>` 让自由式报告模仿参考页面/样本文档的**写作风格与结构**（文件会上传换取 `file_hash`；后端把它解析成文本）。设计成一次性（`need_confirm=False`）以免打断后台执行；mimic 模仿风格，不复制结论。与搭子 `--template-id` 互斥。
 
-状态：v0.3.5 — 见 `SKILL.md`。
+状态：v0.3.6 — 见 `SKILL.md`。
 
 > **v0.3.4 路径整合：** 运行时文件（报告 / 日志 / run）统一落在一个解析根 `<root>` = `python3 ../cue-buddy/scripts/cue_api.py root`（默认 `~/.cue`；home 不可写时回退 agent cwd 或临时目录——可移植，Windows 上不依赖 `/tmp/`）。报告从 `~/cue-reports/` 迁到 `<root>/reports/`——**旧报告在 `~/cue-reports/` 不自动搬**；新 run 走新默认路径。进度日志从 shell `> ./cue-run.log` 重定向改为 runner 自带的 `--log`（tee），启动与收尾的 Bash 调用共用同一条解析器选定的路径，不再硬编码。设 `CUE_HOME` 可整体迁移。
 

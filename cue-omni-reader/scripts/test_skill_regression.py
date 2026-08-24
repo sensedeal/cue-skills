@@ -429,7 +429,7 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.3\.5"$', re.M),
+            re.compile(r'^\s*version:\s*"0\.3\.6"$', re.M),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
@@ -1294,7 +1294,7 @@ class TestRepositoryIntegration(unittest.TestCase):
 
     def test_ci_matrix_runs_the_new_skill_on_both_python_versions(self) -> None:
         self.assertIn(
-            "skill: [cue-buddy, cue-research, cue-omni-reader]",
+            "skill: [cue-buddy, cue-research, cue-omni-reader, cue-data-mcp]",
             self.workflow,
         )
         self.assertIn('python-version: ["3.12", "3.13"]', self.workflow)

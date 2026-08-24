@@ -1,6 +1,6 @@
 # Cue Omni Reader compatibility
 
-- Skill version: `0.3.5`
+- Skill version: `0.3.6`
 - Bridge version: `1.5.2`
 - Evidence date: 2026-08-11 (Bridge 1.2.0 pin: 2026-08-14; Bridge 1.2.1 pin: 2026-08-14; Bridge 1.2.2 pin: 2026-08-15; Bridge 1.3.0 pin: 2026-08-17; Bridge 1.3.1 pin: 2026-08-18; Bridge 1.3.2 pin: 2026-08-18; Bridge 1.3.3 pin: 2026-08-18; Bridge 1.4.0 pin: 2026-08-19; Bridge 1.4.1 pin: 2026-08-19; I1 parameter-unification sync: 2026-08-20; Bridge 1.5.0 pin: 2026-08-20; Bridge 1.5.1 pin: 2026-08-20; Bridge 1.5.2 pin: 2026-08-21; Skill 0.3.5 stage-aware diagnostics correction: 2026-08-24)
 
