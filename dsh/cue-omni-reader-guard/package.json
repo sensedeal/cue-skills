@@ -1,6 +1,6 @@
 {
   "name": "@cueai/dsh-omni-reader-guard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DSH bundle: a tools/pre-execute guard that blocks SSRF (private/loopback/link-local/metadata) and enforces an allow-list or explicit consent for the Cue Omni Reader parse tool.",
   "license": "MIT",
   "type": "module",
@@ -9,7 +9,7 @@
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
   "dependencies": {},
   "peerDependencies": {
-    "@deepseek-ai/dsh-tools": "*"
+    "@deepseek-ai/dsh-tools": "^0.1.1-rc.2"
   },
   "engines": { "node": ">=20.12" },
   "keywords": ["dsh", "deepseek-harness", "mcp", "omni-reader", "guard", "ssrf"]
