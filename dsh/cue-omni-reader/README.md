@@ -92,8 +92,7 @@ dsh --profile web --dump-config      # the tree should include an `mcp-omni` row
 ## Versioning
 
 - Bridge pin: **`@cueai/omni-reader-mcp@1.5.2`** (audited; never an implicit `latest`).
-- `@deepseek-ai/dsh-mcp-client` is a dependency (declared as `^0.1.1-rc.2`); align it
-  to the Harness release you run if needed.
+- `@deepseek-ai/dsh-mcp-client` is a **peer** dependency (declared as `^0.1.1-rc.2`); the Harness profile provides it. Align it to the Harness release you run if needed.
 
 ## Rollback
 
