@@ -17,6 +17,10 @@ dsh plugin --profile web add @cueai/dsh-omni-reader-guard   # 可选 SSRF/同意
 
 重启 dsh;模型即可见 `mcp__omni__parse` / `…get_parse_status` / `…read_result` / `…read_outline` / `…save_result` / `…cancel_parse` / `…discard_result`。`CUE_API_KEY`(可选 `OMNI_ALLOWED_ROOTS`)在 `$DSH_HOME/.env` 里设置。指引:[`dsh/`](./dsh)·[`usage.md`](./dsh/usage.md)。
 
+## DSH 组合包
+
+本仓库还提供 [DeepSeek Harness](https://github.com/deepseek-harness) 的 **bundle(组合包)**,位于 [`dsh/`](./dsh):把 Cue 的 MCP server 接进 DSH profile,让它的工具以原生形式暴露(如 `mcp__omni__parse`)。skill 是可被 agent 加载的**指令包**;bundle 是面向 Harness 的**组合包**(`package.json` + `cordis.patch.yml`)。安装:`dsh plugin --profile web add <pkg>`;详见 [`dsh/README.md`](./dsh) 与 [`cue-omni-reader` 的 bundle](./dsh/cue-omni-reader)。
+
 ## 仓库内 skill 列表
 
 | Skill | 用途 | 状态 |
@@ -27,10 +31,6 @@ dsh plugin --profile web add @cueai/dsh-omni-reader-guard   # 可选 SSRF/同意
 | [`playbook/`](./playbook) — **playbook 场景 skills** | [Cue 搭子广场](https://cuecue.cn/playbook)每个场景一个可供 agent 加载的 `SKILL.md`(投资研究 / 信贷尽调 / 财富投顾 / 全球宏观 …)。加载后你的 agent 就能跑该场景的 Cue 深度研究:运行时查 **live** `/api/playbook` 取该场景**当前**搭子 → 选一个 → 确认 credits → 跑 → 返回带来源报告。**运行时查 live、不烤 `template_id`**,搭子增删改自动反映、无需重生成。由 [`scripts/gen_scene_skills.py`](./scripts/gen_scene_skills.py) 自动生成。两种用法:与 `cue-research`/`cue-buddy` 一起整包装,**或**单独发到第三方 skill 市场——单场景 skill **自带自举**(本机若无 runner 则克隆本仓获取,GitHub 不通走 Gitee 镜像)。 | 自动生成 |
 
 Cue surface 扩展会陆续在这里加新 skill。
-
-## DSH 组合包
-
-本仓库还提供 [DeepSeek Harness](https://github.com/deepseek-harness) 的 **bundle(组合包)**,位于 [`dsh/`](./dsh):把 Cue 的 MCP server 接进 DSH profile,让它的工具以原生形式暴露(如 `mcp__omni__parse`)。skill 是可被 agent 加载的**指令包**;bundle 是面向 Harness 的**组合包**(`package.json` + `cordis.patch.yml`)。安装:`dsh plugin --profile web add <pkg>`;详见 [`dsh/README.md`](./dsh) 与 [`cue-omni-reader` 的 bundle](./dsh/cue-omni-reader)。
 
 ## Cue 是什么 / 搭子是什么
 
