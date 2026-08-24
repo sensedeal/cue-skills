@@ -70,7 +70,9 @@ class CueDataMcpSkillRegression(unittest.TestCase):
         self.assertIn("Never hardcode tool names", self.md)
         self.assertIn("406", self.md)
         # only the <group> placeholder form may appear, never a real group path
+        # (setup.md included: it is the likeliest spot for a future concrete endpoint)
         self.assertNotRegex(self.md, re.compile(r"mcp\.cuecue\.cn/api/[a-z_]+/mcp"))
+        self.assertNotRegex(self.setup, re.compile(r"mcp\.cuecue\.cn/api/[a-z_]+/mcp"))
 
     def test_scope_boundary_excludes_omni_reader(self) -> None:
         self.assertIn("15 data domains", self.md)
