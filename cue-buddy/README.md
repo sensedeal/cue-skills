@@ -48,7 +48,7 @@ Agent: [reads SKILL.md → triggers +author flow]
 
 ## Status
 
-**v0.3.5** — current (exact version in `SKILL.md` frontmatter). Cross-agent verified: the detailed write-up ([`docs/verification-reports/2026-05-20-gemini-cli.md`](./docs/verification-reports/2026-05-20-gemini-cli.md)) documents the v0.1.0 Gemini CLI run that drove the `+test` long-stream replay-fallback hardening (Claude Code + Codex CLI verified alongside); v0.2.0 added live cross-agent runs (real tasks against the production API) on Hermes, OpenClaw, and Kimi. Since then: v0.3.3 unified versioning with cue-research, v0.3.4 consolidated all runtime files under a single writable root (`CUE_HOME`), v0.3.5 enforces business-language user queries in the validator.
+**v0.3.6** — current (exact version in `SKILL.md` frontmatter). Cross-agent verified: the detailed write-up ([`docs/verification-reports/2026-05-20-gemini-cli.md`](./docs/verification-reports/2026-05-20-gemini-cli.md)) documents the v0.1.0 Gemini CLI run that drove the `+test` long-stream replay-fallback hardening (Claude Code + Codex CLI verified alongside); v0.2.0 added live cross-agent runs (real tasks against the production API) on Hermes, OpenClaw, and Kimi. Since then: v0.3.3 unified versioning with cue-research, v0.3.4 consolidated all runtime files under a single writable root (`CUE_HOME`), v0.3.6 enforces business-language user queries in the validator.
 
 ## Who this is for
 
