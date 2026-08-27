@@ -16,7 +16,7 @@
         serverName: omni
         transport: stdio
         command: npx
-        args: ['-y', '@cueai/omni-reader-mcp@1.5.2']
+        args: ['-y', '@cueai/omni-reader-mcp@1.5.5']
         cwd: !!js process.cwd()
         env:
           CUE_API_KEY: !!js process.env.CUE_API_KEY

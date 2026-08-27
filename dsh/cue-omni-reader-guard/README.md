@@ -19,7 +19,8 @@ Before a `mcp__omni__parse` call dispatches, the guard classifies the `source`:
 | **local path** inside an explicitly configured `allowedRoots` | **allow** |
 | **local path** outside `allowedRoots`, or no `allowedRoots` set | **deny** (fail-closed) |
 
-Every other tool passes through untouched (the guard keys on `mcp__omni__parse`).
+Every other tool passes through untouched (the guard keys on `mcp__omni__parse`). It gates
+the `source` argument **and** the `url` alias (Bridge 1.5+ accepts exactly one of the two).
 
 ## Install
 

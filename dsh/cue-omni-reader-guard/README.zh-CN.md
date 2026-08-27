@@ -16,7 +16,7 @@
 | **显式配置的 `allowedRoots` 内的本地路径** | **allow** |
 | **`allowedRoots` 之外的本地路径,或未配置 `allowedRoots`** | **deny**(fail-closed) |
 
-其它工具原样放行(护栏只针对 `mcp__omni__parse`)。
+其它工具原样放行(护栏只针对 `mcp__omni__parse`)。它同时门控 `source` 参数与 `url` 别名(Bridge 1.5+ 二者只取其一)。
 
 ## 安装
 
