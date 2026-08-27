@@ -20,6 +20,10 @@ _COMPAT_MD = _SKILL_DIR / "references" / "compatibility.md"
 _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
+_EXPECTED_SKILL_VERSION = "0.3.7"
+_EXPECTED_BRIDGE_VERSION = "1.5.5"
+_CURRENT_PUBLICATION_REPORT = "2026-08-26-bridge-1.5.5-published.md"
+_STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
     r"(?P<balance_key_quote>[\"']?)"
@@ -429,7 +433,10 @@ class TestSkillMd(unittest.TestCase):
             self.assertNotIn(workflow_word, description.group(1).lower())
         self.assertRegex(
             self.fm,
-            re.compile(r'^\s*version:\s*"0\.3\.6"$', re.M),
+            re.compile(
+                rf'^\s*version:\s*"{re.escape(_EXPECTED_SKILL_VERSION)}"$',
+                re.M,
+            ),
         )
         self.assertIn('bins: ["node"]', self.fm)
         self.assertIn('envOptional: ["CUE_API_KEY"]', self.fm)
@@ -604,26 +611,71 @@ class TestReferences(unittest.TestCase):
         self.setup = _required_text(self, _SETUP_MD)
         self.compat = _required_text(self, _COMPAT_MD)
 
-    def test_network_diagnostics_are_stage_aware_and_do_not_publish_internal_hosts(
+    def test_network_diagnostics_are_stage_aware_and_do_not_publish_internal_names(
         self,
     ) -> None:
-        doctor = "npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json"
-        for document in (self.skill, self.skill_zh, self.readme, self.readme_zh):
+        doctor = (
+            f"npx -y @cueai/omni-reader-mcp@{_EXPECTED_BRIDGE_VERSION} doctor --json"
+        )
+        english = (self.skill, self.readme)
+        chinese = (self.skill_zh, self.readme_zh)
+        active_documents = (*english, *chinese, self.setup, self.compat)
+
+        for document in (*english, *chinese):
             self.assertIn("CUBE_UNAVAILABLE", document)
-            self.assertIn("IIIS_UNAVAILABLE", document)
             self.assertIn("CUBE_PROTOCOL_ERROR", document)
             self.assertIn(doctor, document)
+        for document in english:
+            self.assertIn("secure upload stage", document)
+        for document in chinese:
+            self.assertIn("安全上传阶段", document)
+        for document in active_documents:
+            self.assertNotRegex(document, _STANDALONE_IIIS)
             self.assertNotIn("cubefile.ai.iiis.co", document)
-        self.assertNotIn("cubefile.ai.iiis.co", self.compat)
+
+    def test_doctor_limits_its_claim_to_control_configuration_facts(self) -> None:
+        english = (self.readme, self.setup)
+        chinese = (self.readme_zh,)
+        for document in (*english, *chinese):
+            self.assertNotIn("endpoint compatibility", document)
+            self.assertNotIn("端点兼容性", document)
+            self.assertNotIn("endpoint and compatibility facts", document)
+            self.assertNotIn("端点与兼容性事实", document)
+        for document in english:
+            self.assertIn(
+                "only authenticated Cube control/configuration facts",
+                document,
+            )
+            self.assertIn("The granted data plane is not probed", document)
+            self.assertIn(
+                "only a real local-file parse validates the route end-to-end",
+                document,
+            )
+        for document in chinese:
+            self.assertIn("仅检查已鉴权的 Cube 控制面/配置事实", document)
+            self.assertIn("不会探测已授权数据平面", document)
+            self.assertIn("只有真实本地文件 parse 才能端到端验证该路由", document)
+
+    def test_active_documents_pin_the_exact_current_bridge(self) -> None:
+        pin = f"@cueai/omni-reader-mcp@{_EXPECTED_BRIDGE_VERSION}"
+        for document in (
+            self.skill,
+            self.skill_zh,
+            self.readme,
+            self.readme_zh,
+            self.setup,
+        ):
+            pins = re.findall(r"@cueai/omni-reader-mcp@\d+\.\d+\.\d+", document)
+            self.assertTrue(pins, "active document has no Bridge package pin")
+            self.assertEqual(
+                set(pins),
+                {pin},
+                "every active Bridge package reference must use the current audited pin",
+            )
 
     def test_setup_pins_the_audited_bridge_and_node(self) -> None:
-        pin = _bridge_pin(self.setup)
-        pins = re.findall(r"@cueai/omni-reader-mcp@\d+\.\d+\.\d+", self.setup)
-        self.assertEqual(
-            set(pins),
-            {pin},
-            "every Bridge spec reference in setup.md must use the same audited pin",
-        )
+        pin = f"@cueai/omni-reader-mcp@{_EXPECTED_BRIDGE_VERSION}"
+        self.assertEqual(_bridge_pin(self.setup), pin)
         self.assertIn("Node.js 20.12", self.setup)
         self.assertIn(f"npx -y {pin} setup", self.setup)
         self.assertIn(f"npx -y {pin} doctor --json", self.setup)
@@ -631,6 +683,19 @@ class TestReferences(unittest.TestCase):
         self.assertRegex(
             self.setup,
             re.compile(r"never.*implicit `latest`", re.I),
+        )
+
+    def test_setup_documents_exact_trusted_uninstall_entries(self) -> None:
+        expected = (
+            "Uninstall removes a normal trusted 1.5.4 or 1.5.5 Bridge entry; it "
+            "also removes the exact broken bare-npx Windows entry written by 1.5.1. "
+            "It explicitly rejects a 1.5.2 entry and restores a matching trusted "
+            "URL-only entry when available."
+        )
+        self.assertIn(expected, self.setup)
+        self.assertNotIn(
+            "Uninstall removes a trusted 1.5.0, 1.5.1, or 1.5.2 Bridge entry",
+            self.setup,
         )
 
     def test_setup_documents_safe_client_and_root_behavior(self) -> None:
@@ -677,16 +742,23 @@ class TestReferences(unittest.TestCase):
         )
 
     def test_versions_match_across_skill_setup_and_current_reports(self) -> None:
-        skill = _required_text(self, _SKILL_MD)
         skill_version = re.search(
             r'^\s*version:\s*"([^"]+)"$',
-            _frontmatter(self, skill),
+            _frontmatter(self, self.skill),
+            re.M,
+        ).group(1)
+        skill_zh_version = re.search(
+            r'^\s*version:\s*"([^"]+)"$',
+            _frontmatter(self, self.skill_zh),
             re.M,
         ).group(1)
         bridge_version = re.search(
             r"@cueai/omni-reader-mcp@(\d+\.\d+\.\d+)",
             self.setup,
         ).group(1)
+        self.assertEqual(skill_version, _EXPECTED_SKILL_VERSION)
+        self.assertEqual(skill_zh_version, _EXPECTED_SKILL_VERSION)
+        self.assertEqual(bridge_version, _EXPECTED_BRIDGE_VERSION)
         self.assertIn(f"Skill version: `{skill_version}`", self.compat)
         self.assertIn(f"Bridge version: `{bridge_version}`", self.compat)
 
@@ -712,15 +784,35 @@ class TestReferences(unittest.TestCase):
             report = _required_text(self, _REPORTS_DIR / name)
             self.assertIn("1.1.2", report, f"historical Bridge version changed in {name}")
 
-        published = sorted(_REPORTS_DIR.glob("*bridge-*-published.md"))
-        self.assertTrue(published, "no bridge-*-published.md report found")
-        current = _required_text(self, published[-1])
+        current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
         self.assertIn(f"v{skill_version}", current)
         self.assertIn(bridge_version, current)
 
         for name in ("2026-08-18-bridge-1.3.1-published.md", "2026-08-18-bridge-1.3.2-published.md"):
             report = _required_text(self, _REPORTS_DIR / name)
             self.assertIn(f"v{skill_version}", report)
+
+    def test_current_publication_report_records_verified_1_5_5_release(self) -> None:
+        current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
+        report_index = _required_text(self, _REPORTS_DIR / "README.md")
+        for fact in (
+            "e9a18b60e2398d904df58654515ed945a48a33a0",
+            "2b99ef2ab9cbb462821f75f0dd427ed03770d010",
+            "60 files, 111726 bytes",
+            "90371dab0722ee17a24d4de7bb11070ee429f341a50b032b37c7159d2b8eac48",
+            "sha512-Pwv52BEipxkANdifr0efyeBtYrt2cjhzHa2MO5TBsKbVCfLT0Lu/vGO80neLkfi+b1eWCd7WZXZxqbhCz4TC3g==",
+            "mcp, model-context-protocol, omni-reader, document-parsing, pdf, ocr, url-parsing, local-files, audio, video, ai-agents",
+            "installed/latest=1.5.5",
+            "status=current",
+            "api_key=absent",
+            "onboarding=current",
+            "reload_required=false",
+            "local/public tarballs byte-equal",
+            "runtime vulnerabilities = 0",
+            "no production parse/credits",
+        ):
+            self.assertIn(fact, current)
+        self.assertIn(_CURRENT_PUBLICATION_REPORT, report_index)
 
     def test_compatibility_evidence_is_scoped(self) -> None:
         self.assertIn("Evidence date: 2026-08-11", self.compat)
@@ -1283,6 +1375,7 @@ class TestRepositoryIntegration(unittest.TestCase):
         )
         self.assertIsNotNone(english)
         self.assertIsNotNone(chinese)
+        self.assertEqual(version, _EXPECTED_SKILL_VERSION)
         self.assertEqual(version, english.group(1))
         self.assertEqual(version, chinese.group(1))
 
@@ -1403,6 +1496,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-08-18-bridge-1.3.2-published.md",
             "docs/verification-reports/2026-08-18-bridge-1.3.3-published.md",
             "docs/verification-reports/2026-08-19-bridge-1.4.1-published.md",
+            "docs/verification-reports/2026-08-26-bridge-1.5.5-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",

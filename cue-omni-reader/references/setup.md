@@ -1,6 +1,6 @@
 # Omni Reader setup reference
 
-- **Audited package:** `@cueai/omni-reader-mcp@1.5.2`
+- **Audited package:** `@cueai/omni-reader-mcp@1.5.5`
 - **Runtime:** Node.js 20.12 or newer
 - **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/hub/api-key>
 
@@ -22,7 +22,7 @@ Do not paste an API key into chat, command arguments, skill files, logs, or gene
 Never use an implicit `latest`:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.5.2 setup
+npx -y @cueai/omni-reader-mcp@1.5.5 setup
 ```
 
 The interactive setup supports native configuration for Hermes, Cursor, and Claude Desktop. Choose **Other** for another client. Generic setup prints a reviewed stdio entry; apply it through that client's documented MCP configuration mechanism. Do not invent a configuration path or claim a client adapter is supported when it has not been verified.
@@ -32,9 +32,9 @@ The setup, root, and rollback contract was separately audited against packaged B
 Supported non-interactive native-adapter examples:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.5.2 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.5.2 setup --client cursor --add-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.5.2 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.5.5 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.5.5 setup --client cursor --add-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.5.5 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
 ```
 
 Use `--allowed-root` to replace the explicit additional-root set with one minimum directory. Use `--add-root` to append one minimum directory to roots already configured for that client. Both require an absolute path and cannot be combined.
@@ -52,20 +52,20 @@ After changing roots, reload or restart the MCP client so it receives the new en
 Run:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json
+npx -y @cueai/omni-reader-mcp@1.5.5 doctor --json
 ```
 
-Verify package version, key presence, root safety, endpoint compatibility, cache/artifact mode, and the client reload instruction. Reload or restart the client, then verify these tools are visible: `parse`, `get_parse_status`, `cancel_parse`, `read_result`, `read_outline`, `discard_result`, and `save_result`.
+`doctor` checks package version, key presence, root safety, cache/artifact mode, and the client reload instruction; it reports only authenticated Cube control/configuration facts. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. Reload or restart the client, then verify these tools are visible: `parse`, `get_parse_status`, `cancel_parse`, `read_result`, `read_outline`, `discard_result`, and `save_result`.
 
 `doctor --json` must not reveal the API key, a private source path, or source content.
 
 ## Roll back
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.5.2 uninstall --yes --json
+npx -y @cueai/omni-reader-mcp@1.5.5 uninstall --yes --json
 ```
 
-Uninstall removes a trusted 1.5.0, 1.5.1, or 1.5.2 Bridge entry and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
+Uninstall removes a normal trusted 1.5.4 or 1.5.5 Bridge entry; it also removes the exact broken bare-npx Windows entry written by 1.5.1. It explicitly rejects a 1.5.2 entry and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
 
 ## Free credits and onboarding
 

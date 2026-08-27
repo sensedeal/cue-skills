@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "当用户需要外部 AI agent 通过 Cue Omni Reader 解析或理解一个 HTTP(S) URL 或已授权的本地文档、音频、视频源时使用。触发词：解析/读取 URL、本地文档、音频、视频、OCR、PDF、网页内容。"
 license: MIT
 metadata:
-  version: "0.3.6"
+  version: "0.3.7"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -47,7 +47,7 @@ metadata:
 
 工具级错误不是 MCP 断连。保留结构化的鉴权、计费、解析器、可重试性与清理事实。报告本次操作返回的计费事实；不要自动重试计费拒绝。不要仅仅因为一次抓取或解析尝试失败就声称来源不受支持。
 
-先运行 `npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json`。按阶段诊断：`CUBE_UNAVAILABLE` 是上传前的 Cube 控制面失败；`IIIS_UNAVAILABLE` 是 grant 创建后的上传失败；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据它报告的端点事实——绝不用 IIIS 探针解释 Cube 错误，也绝不猜测或发布内部主机名、端口。
+先运行 `npx -y @cueai/omni-reader-mcp@1.5.5 doctor --json`。按阶段诊断：`CUBE_UNAVAILABLE` 是上传前的控制面失败；grant 创建后的失败表示安全上传阶段没有完成；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据它报告的端点事实——绝不用上传阶段探针解释控制面错误，也绝不猜测或发布内部主机名、端口。
 
 ## 公共工具
 

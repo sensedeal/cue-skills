@@ -23,38 +23,38 @@
 Node.js 20.12+ is required. Never use an implicit `latest`:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.5.2 setup
+npx -y @cueai/omni-reader-mcp@1.5.5 setup
 ```
 
 Interactive setup supports Hermes, Cursor, and Claude Desktop natively; choose **Other** for any other client. Then verify:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json
+npx -y @cueai/omni-reader-mcp@1.5.5 doctor --json
 ```
 
-`doctor` checks package version, key presence, root safety, endpoint compatibility, cache/artifact mode, and the client reload instruction — without revealing the API key or private paths. Roll back with `npx -y @cueai/omni-reader-mcp@1.5.2 uninstall --yes --json` (restores a trusted URL-only entry when available).
+`doctor` checks package version, key presence, root safety, cache/artifact mode, and the client reload instruction; it reports only authenticated Cube control/configuration facts. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. It does not reveal the API key or private paths. Roll back with `npx -y @cueai/omni-reader-mcp@1.5.5 uninstall --yes --json` (restores a trusted URL-only entry when available).
 
 Full setup rules (consent, allowed roots, non-interactive examples, rollback): [`references/setup.md`](references/setup.md).
 
 ## Windows
 
-The 1.5.2 setup generates a working Windows entry automatically (spawn goes through `cmd /d /c npx`, which resolves the `npx.cmd` ENOENT that produced WorkBuddy's `MCP error -32000: Connection closed`). Three runnable config shapes:
+The current setup generates a working Windows entry automatically (spawn goes through `cmd /d /c npx`, which resolves the `npx.cmd` ENOENT that produced WorkBuddy's `MCP error -32000: Connection closed`). Three runnable config shapes:
 
 1. **Generated setup entry** (default, recommended) — platform-correct spawn with trust validation
-2. **`npx` shell form** — `npx -y @cueai/omni-reader-mcp@1.5.2` from a shell that resolves `.cmd`
+2. **`npx` shell form** — `npx -y @cueai/omni-reader-mcp@1.5.5` from a shell that resolves `.cmd`
 3. **`node` + absolute path** — `node "<absolute-path-to>/dist/index.js"`; most robust when npx itself is unavailable
 
 **Use a stable path**, never a session-timestamped cache directory — a changing path breaks the MCP client's saved config after each cache sweep.
 
 ## Network diagnostics
 
-Run `npx -y @cueai/omni-reader-mcp@1.5.2 doctor --json` first, then diagnose by structured error code and keep the control-plane and upload stages separate:
+Run `npx -y @cueai/omni-reader-mcp@1.5.5 doctor --json` first, then diagnose by structured error code and keep the control-plane and upload stages separate:
 
-- `CUBE_UNAVAILABLE` is a Cube control-plane failure before any file upload. Do not diagnose it through IIIS DNS or upload-endpoint probes.
-- `IIIS_UNAVAILABLE` is an upload-stage failure after Cube created a grant.
+- `CUBE_UNAVAILABLE` is a control-plane failure before any file upload. Do not diagnose it through upload-stage endpoint probes.
+- A failure after grant creation means the secure upload stage did not complete.
 - `CUBE_PROTOCOL_ERROR` is a response-contract mismatch, not a generic DNS diagnosis.
 
-Use only the endpoint and compatibility facts `doctor` reports; do not guess a hostname or port, and do not expose an internal upload endpoint as routine user troubleshooting. Further client/service evidence: [`references/compatibility.md`](references/compatibility.md).
+Use only authenticated Cube control/configuration facts `doctor` reports. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. Do not guess a hostname or port, and do not expose an internal upload endpoint as routine user troubleshooting. Further client/service evidence: [`references/compatibility.md`](references/compatibility.md).
 
 ## Free credits
 
