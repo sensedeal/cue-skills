@@ -1,6 +1,6 @@
 # @cueai/dsh-omni-reader
 
-**[English](README.md)** · [中文](README.zh-CN.md)
+**[English](https://github.com/sensedeal/cue-skills/blob/main/dsh/cue-omni-reader/README.md)** · [中文](https://github.com/sensedeal/cue-skills/blob/main/dsh/cue-omni-reader/README.zh-CN.md)
 
 A [DeepSeek Harness](https://github.com/deepseek-harness) **bundle** that registers the
 audited **Cue Omni Reader** MCP server so its tools surface as native `mcp__omni__*`

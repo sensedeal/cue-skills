@@ -1,6 +1,6 @@
 {
   "name": "@cueai/dsh-cue-data-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DSH bundle: exposes Cue's public data MCP services (regulatory, macro, disclosures, market data, statute, holdings, entity, academic, IPO, ESOP, buyback, footnote, fact index) as native mcp__cue_<domain>__* tools.",
   "license": "MIT",
   "type": "module",
