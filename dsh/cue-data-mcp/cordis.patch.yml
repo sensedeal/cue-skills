@@ -1,0 +1,141 @@
+# @cueai/dsh-cue-data-mcp — expose Cue's public data MCP services as DSH tools.
+#
+# One `@deepseek-ai/dsh-mcp-client` instance per live data domain (streamable-http);
+# the model sees `mcp__cue_<domain>__<tool>`. URLs are Cue's own fixed endpoints,
+# so no SSRF guard is needed — only `CUE_API_KEY` is required (via env).
+- insert:
+    - id: mcp-cue_regulatory
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_regulatory
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/regulatory/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_regulatory_cn
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_regulatory_cn
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/regulatory_cn/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_macro
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_macro
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/macro/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_disclosure
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_disclosure
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/disclosure/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_disclosure_cn
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_disclosure_cn
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/disclosure_cn/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_margin
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_margin
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/margin/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_statute
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_statute
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/statute/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_institutional
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_institutional
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/institutional/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_entity_data
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_entity_data
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/entity_data/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_academic
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_academic
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/academic/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_fr_fact_index
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_fr_fact_index
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/fr_fact_index/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_ipo
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_ipo
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/ipo/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_esop
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_esop
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/esop/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_buyback
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_buyback
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/buyback/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
+    - id: mcp-cue_fr_footnote
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: cue_fr_footnote
+        transport: streamable-http
+        url: https://mcp.cuecue.cn/api/fr_footnote/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.CUE_API_KEY}`'
+          Accept: "application/json, text/event-stream"
