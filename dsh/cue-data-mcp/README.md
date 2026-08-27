@@ -1,6 +1,6 @@
 # @cueai/dsh-cue-data-mcp
 
-**[English](README.md)** · [中文](README.zh-CN.md)
+**[English](https://github.com/sensedeal/cue-skills/blob/main/dsh/cue-data-mcp/README.md)** · [中文](https://github.com/sensedeal/cue-skills/blob/main/dsh/cue-data-mcp/README.zh-CN.md)
 
 A [DeepSeek Harness](https://github.com/deepseek-harness) **bundle** that exposes
 Cue's public **data** MCP services as native `mcp__cue_<domain>__*` tools in any
