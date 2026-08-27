@@ -21,6 +21,7 @@ bundle 声明 `dsh.bundle.patch`;`dsh plugin` 识别后会自动加入 profile �
 |---|---|---|
 | [`cue-omni-reader/`](cue-omni-reader) | 接入审校版 **Cue Omni Reader** MCP server → 工具 `mcp__omni__parse`、`…read_result`、`…save_result` 等 | `@cueai/dsh-omni-reader` |
 | [`cue-omni-reader-guard/`](cue-omni-reader-guard) | 可选加固:`tools/pre-execute` 护栏,拒绝 SSRF(私网/保留主机),并对 `mcp__omni__parse` 施加白名单/同意 | `@cueai/dsh-omni-reader-guard` |
+| [`cue-data-mcp/`](cue-data-mcp) | 把 Cue 的**公开数据** MCP 服务(制裁/监管/宏观/披露/法规/持仓/主体/学术/IPO/ESOP/回购/脚注/事实索引…)以原生 `mcp__cue_<domain>__*` 暴露(15 域 / ~104 工具,streamable-http) | `@cueai/dsh-cue-data-mcp` |
 
 ## 安装与使用
 
