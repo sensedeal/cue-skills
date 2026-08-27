@@ -161,12 +161,13 @@ export function classifySource(source, rawOpts = {}) {
 }
 
 // Decide for a DSH tool execution: only Omni parse calls are gated; every
-// other tool is allowed through untouched.
+// other tool is allowed through untouched. The parse tool accepts exactly one
+// of `source`/`url` (the url alias, Bridge 1.5+), so gate on either.
 export function decideTool(exec, rawOpts = {}) {
   if (!exec || exec.name !== 'mcp__omni__parse') {
     return { kind: 'allow' }
   }
-  const source = exec.arguments && exec.arguments.source
+  const source = exec.arguments && (exec.arguments.source ?? exec.arguments.url)
   if (source === undefined || source === null) {
     return { kind: 'allow' } // no source argument; let the bridge schema handle it
   }

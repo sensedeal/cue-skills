@@ -28,7 +28,7 @@ CUE_API_KEY=sk-...                    # 必填 —— 来自 https://cuecue.cn/h
 OMNI_ALLOWED_ROOTS=/home/you/workspace  # 可选;默认 dsh cwd
 ```
 
-Bridge **固定为 `@cueai/omni-reader-mcp@1.5.2`**(审校版;永不用隐式 `latest`)。要求 Node ≥ 20.12。
+Bridge **固定为 `@cueai/omni-reader-mcp@1.5.5`**(审校版;永不用隐式 `latest`)。要求 Node ≥ 20.12。
 
 ## 配置 guard 包(默认 fail-closed)
 

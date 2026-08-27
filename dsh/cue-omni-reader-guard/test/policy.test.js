@@ -101,4 +101,7 @@ test('decideTool: only mcp__omni__parse is gated', () => {
   assert.equal(decideTool({ name: 'mcp__omni__parse', arguments: { source: 'http://127.0.0.1/' } }, opts).kind, 'deny')
   assert.equal(decideTool({ name: 'mcp__omni__parse', arguments: { source: 'http://evil.com/' } }, opts).kind, 'deny')
   assert.equal(decideTool({ name: 'mcp__omni__parse', arguments: {} }, opts).kind, 'allow') // no source
+  // Bridge 1.5+ `url` alias — exactly one of source/url; gate on either.
+  assert.equal(decideTool({ name: 'mcp__omni__parse', arguments: { url: 'http://127.0.0.1/' } }, opts).kind, 'deny')
+  assert.equal(decideTool({ name: 'mcp__omni__parse', arguments: { url: 'https://evil.com/' } }, opts).kind, 'deny')
 })

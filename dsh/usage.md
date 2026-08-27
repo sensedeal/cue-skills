@@ -32,7 +32,7 @@ CUE_API_KEY=sk-...                    # required — from https://cuecue.cn/hub/
 OMNI_ALLOWED_ROOTS=/home/you/workspace  # optional; defaults to the dsh cwd
 ```
 
-The Bridge is **pinned to `@cueai/omni-reader-mcp@1.5.2`** (audited; never an
+The Bridge is **pinned to `@cueai/omni-reader-mcp@1.5.5`** (audited; never an
 implicit `latest`). Requires Node ≥ 20.12.
 
 ## Configure the guard bundle (defaults are fail-closed)
