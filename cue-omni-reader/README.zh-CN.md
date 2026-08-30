@@ -18,21 +18,27 @@
 - `get_parse_status` / `cancel_parse` — 轮询与取消在途操作
 - `read_result` / `read_outline` / `discard_result` / `save_result` — **仅 Bridge 本地**的 artifact 工具（远端表面绝不暴露）
 
+## 结果交付
+
+直接回答时使用 inline；否则读取 retained result。定位一个章节时先 `read_outline`，再 `read_result(cursor)`——目录导航不要求先 `save_result`。读取全部内容要跟随 `next_cursor` 直到消失；需要交付文件时用 `save_result`。保存、章节导航、多份文档或严格控制上下文时选择 `result_delivery="artifact"`。多来源采用有界的独立 parse 调用，各自保留 handle。
+
+客户端能力必须有证据。Tasks、Roots、宿主超时或 cwd/workspace 行为未知时，分别回退到普通 parse/status 轮询、进程 cwd 加显式 roots、Bridge 有界 status wait，以及不自动扩大根目录。
+
 ## 安装审计版 Bridge
 
 需要 Node.js 20.12+。绝不用隐式 `latest`：
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.5.5 setup
+npx -y @cueai/omni-reader-mcp@1.6.0 setup
 ```
 
 交互式 setup 原生支持 Hermes、Cursor、Claude Desktop；其他客户端选 **Other**。然后验证：
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.5.5 doctor --json
+npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json
 ```
 
-`doctor` 检查包版本、key 是否存在、根目录安全性、缓存/artifact 模式与客户端重载指引；它仅检查已鉴权的 Cube 控制面/配置事实。它不会探测已授权数据平面；只有真实本地文件 parse 才能端到端验证该路由。它不泄露 API key 或私有路径。回滚：`npx -y @cueai/omni-reader-mcp@1.5.5 uninstall --yes --json`（可用时恢复受信任的 URL-only 条目）。
+`doctor` 检查包版本、key 是否存在、根目录安全性、缓存/artifact 模式与客户端重载指引；它仅检查已鉴权的 Cube 控制面/配置事实。它不会探测已授权数据平面；只有真实本地文件 parse 才能端到端验证该路由。它不泄露 API key 或私有路径。回滚：`npx -y @cueai/omni-reader-mcp@1.6.0 uninstall --yes --json`（可用时恢复受信任的 URL-only 条目）。
 
 完整 setup 规则（同意、允许根目录、非交互示例、回滚）：[`references/setup.md`](references/setup.md)。
 
@@ -41,14 +47,14 @@ npx -y @cueai/omni-reader-mcp@1.5.5 doctor --json
 当前 setup 会**自动生成可用的 Windows 条目**（spawn 走 `cmd /d /c npx`，解决了 WorkBuddy `MCP error -32000: Connection closed` 背后的 `npx.cmd` ENOENT）。三种可运行形态：
 
 1. **生成的 setup 条目**（默认，推荐）——平台正确的 spawn + 信任校验
-2. **`npx` shell 形态** —— 在能解析 `.cmd` 的 shell 里跑 `npx -y @cueai/omni-reader-mcp@1.5.5`
+2. **`npx` shell 形态** —— 在能解析 `.cmd` 的 shell 里跑 `npx -y @cueai/omni-reader-mcp@1.6.0`
 3. **`node` + 绝对路径** —— `node "<绝对路径>/dist/index.js"`；npx 本身不可用时最稳
 
 **务必用稳定路径**，不要用 session 时间戳目录——路径一变，MCP 客户端保存的配置在每次缓存清扫后就失效。
 
 ## 网络诊断
 
-先运行 `npx -y @cueai/omni-reader-mcp@1.5.5 doctor --json`，再按结构化错误码诊断，并严格区分控制面与上传阶段：
+先运行 `npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json`，再按结构化错误码诊断，并严格区分控制面与上传阶段：
 
 - `CUBE_UNAVAILABLE` 是文件上传前的控制面失败；绝不能用上传阶段的端点探针解释它。
 - grant 创建后的失败表示安全上传阶段没有完成。
@@ -58,7 +64,7 @@ npx -y @cueai/omni-reader-mcp@1.5.5 doctor --json
 
 ## 免费额度
 
-新用户一次性 50 积分赠礼 + 每天 10 免费积分（约每天 150 页普通文档 / 约 150 页扫描件 / 30 分钟音频 / 4 分钟视频）。key 在 <https://cuecue.cn/hub/api-key> 获取。确切额度以服务端策略为准——与 live `doctor` 输出不同时报告 live 值。细节：[`references/setup.md`](references/setup.md)。
+新用户可以试用 Omni；key 在 <https://cuecue.cn/hub/api-key> 获取。当前额度以服务端 onboarding 策略和 live `doctor` 输出为权威，不要把页数或媒体时长换算复制进指引。细节：[`references/setup.md`](references/setup.md)。
 
 ## 目录结构
 
@@ -75,7 +81,7 @@ cue-omni-reader/
 │   └── ...                 # Bridge 版本、客户端实跑、审计
 └── scripts/
     ├── sync_bridge_pin.py         # 每版 Bridge 一键同步 pin
-    └── test_skill_regression.py   # 30 个 skill 回归测试
+    └── test_skill_regression.py   # Skill 回归测试
 ```
 
 ## 依赖

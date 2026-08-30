@@ -17,3 +17,4 @@ A resolved incident may explain why a stable rule exists, but it must not remain
 ## Publication confirmations
 
 - [Bridge 1.5.5](2026-08-26-bridge-1.5.5-published.md) — package publication, artifact, doctor, and clean-consumer evidence.
+- [Bridge 1.6.0](2026-08-30-bridge-1.6.0-published.md) — byte-identical registry publication, exact Cube admission, and one bounded production result-delivery acceptance identity.

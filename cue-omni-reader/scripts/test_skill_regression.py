@@ -20,9 +20,9 @@ _COMPAT_MD = _SKILL_DIR / "references" / "compatibility.md"
 _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
-_EXPECTED_SKILL_VERSION = "0.3.7"
-_EXPECTED_BRIDGE_VERSION = "1.5.5"
-_CURRENT_PUBLICATION_REPORT = "2026-08-26-bridge-1.5.5-published.md"
+_EXPECTED_SKILL_VERSION = "0.4.0"
+_EXPECTED_BRIDGE_VERSION = "1.6.0"
+_CURRENT_PUBLICATION_REPORT = "2026-08-30-bridge-1.6.0-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
@@ -551,6 +551,61 @@ class TestSkillMd(unittest.TestCase):
             re.compile(r"claim deletion only after.*confirmed", re.I | re.S),
         )
 
+    def test_result_delivery_decision_table_is_explicit(self) -> None:
+        for line in (
+            "Answer directly → inline when present; otherwise `read_result`",
+            "Find one section → `read_outline` → `read_result(cursor)`",
+            "Read all content → `read_result` until no `next_cursor`",
+            "Deliver a file → `save_result`",
+        ):
+            self.assertIn(line, self.md)
+        self.assertIn('`result_delivery="artifact"`', self.md)
+        for use_case in ("saving", "section navigation", "multiple documents", "strict context control"):
+            self.assertIn(use_case, self.md)
+        self.assertRegex(
+            self.md,
+            re.compile(r"`read_outline`.*does not require.*`save_result`", re.I | re.S),
+        )
+        self.assertRegex(
+            self.md,
+            re.compile(r"bounded concurrent independent `parse` calls", re.I),
+        )
+
+    def test_unknown_client_capabilities_have_safe_fallbacks(self) -> None:
+        for capability in ("Tasks unknown", "Roots unknown", "Host timeout unknown", "Cwd/workspace unknown"):
+            self.assertIn(capability, self.md)
+        self.assertRegex(self.md, re.compile(r"Tasks unknown.*ordinary `parse`.*`get_parse_status`", re.S))
+        self.assertRegex(self.md, re.compile(r"Roots unknown.*process cwd.*explicit roots", re.I | re.S))
+        self.assertRegex(self.md, re.compile(r"Host timeout unknown.*20-second status wait", re.S))
+        self.assertRegex(self.md, re.compile(r"Cwd/workspace unknown.*do not widen", re.I | re.S))
+
+    def test_same_source_reuse_is_scoped_to_recoverable_or_retained_records(self) -> None:
+        self.assertRegex(
+            self.md,
+            re.compile(
+                r"Same-source retries.*reuse only.*recoverable.*retained-completed records",
+                re.I | re.S,
+            ),
+        )
+        self.assertRegex(
+            self.md,
+            re.compile(
+                r"failed.*canceled.*expired.*out-of-window.*may create.*bill.*new operation",
+                re.I | re.S,
+            ),
+        )
+        self.assertRegex(
+            self.md,
+            re.compile(
+                r"reusable record.*`auto`→`artifact`.*without a second operation",
+                re.I | re.S,
+            ),
+        )
+        self.assertNotIn(
+            "A same-source, same-representation retry reuses the durable identity",
+            self.md,
+        )
+
     def test_content_only_fallback_preserves_state_and_document_bytes(self) -> None:
         self.assertRegex(
             self.md,
@@ -673,6 +728,89 @@ class TestReferences(unittest.TestCase):
                 "every active Bridge package reference must use the current audited pin",
             )
 
+    def test_english_and_chinese_result_guidance_is_semantically_aligned(self) -> None:
+        english = (
+            "Answer directly → inline when present; otherwise `read_result`",
+            "Find one section → `read_outline` → `read_result(cursor)`",
+            "Read all content → `read_result` until no `next_cursor`",
+            "Deliver a file → `save_result`",
+        )
+        chinese = (
+            "直接回答 → 有 inline 就直接用；否则 `read_result`",
+            "定位一个章节 → `read_outline` → `read_result(cursor)`",
+            "读取全部内容 → 反复 `read_result`，直到没有 `next_cursor`",
+            "交付文件 → `save_result`",
+        )
+        for line in english:
+            self.assertIn(line, self.skill)
+        for line in chinese:
+            self.assertIn(line, self.skill_zh)
+        for token in (
+            '`result_delivery="artifact"`',
+            "read_outline",
+            "save_result",
+            "multiple documents",
+            "bounded concurrent independent `parse` calls",
+            "Tasks unknown",
+            "Roots unknown",
+            "Host timeout unknown",
+            "Cwd/workspace unknown",
+        ):
+            self.assertIn(token, self.skill)
+        for token in (
+            '`result_delivery="artifact"`',
+            "read_outline",
+            "save_result",
+            "多份文档",
+            "有界并发的独立 `parse` 调用",
+            "Tasks 未知",
+            "Roots 未知",
+            "宿主超时未知",
+            "cwd/workspace 关系未知",
+        ):
+            self.assertIn(token, self.skill_zh)
+
+    def test_english_and_chinese_retry_reuse_boundaries_are_aligned(self) -> None:
+        for token in (
+            "Same-source retries reuse only",
+            "recoverable",
+            "retained-completed records",
+            "failed",
+            "canceled",
+            "expired",
+            "out-of-window",
+            "may create and bill a new operation",
+        ):
+            self.assertIn(token, self.skill)
+        for token in (
+            "同来源重试只复用",
+            "可恢复",
+            "仍保留的已完成记录",
+            "失败",
+            "已取消",
+            "已过期",
+            "超出交付窗口",
+            "可能新建 operation 并计费",
+        ):
+            self.assertIn(token, self.skill_zh)
+
+    def test_active_guidance_has_no_copied_rate_conversions(self) -> None:
+        active = "\n".join((self.skill, self.skill_zh, self.readme, self.readme_zh, self.setup))
+        for copied in (
+            "150 pages",
+            "150 页",
+            "30 minutes of audio",
+            "30 分钟音频",
+            "4 minutes of video",
+            "4 分钟视频",
+            "67 credits / 1,000",
+        ):
+            self.assertNotIn(copied, active)
+
+    def test_readmes_do_not_hardcode_the_regression_count(self) -> None:
+        self.assertNotRegex(self.readme, r"#\s*\d+\s+skill regression tests")
+        self.assertNotRegex(self.readme_zh, r"#\s*\d+\s*个 skill 回归测试")
+
     def test_setup_pins_the_audited_bridge_and_node(self) -> None:
         pin = f"@cueai/omni-reader-mcp@{_EXPECTED_BRIDGE_VERSION}"
         self.assertEqual(_bridge_pin(self.setup), pin)
@@ -687,14 +825,13 @@ class TestReferences(unittest.TestCase):
 
     def test_setup_documents_exact_trusted_uninstall_entries(self) -> None:
         expected = (
-            "Uninstall removes a normal trusted 1.5.4 or 1.5.5 Bridge entry; it "
-            "also removes the exact broken bare-npx Windows entry written by 1.5.1. "
-            "It explicitly rejects a 1.5.2 entry and restores a matching trusted "
-            "URL-only entry when available."
+            "Uninstall removes a normal trusted 1.5.5 or 1.6.0 Bridge entry; it "
+            "also removes the exact broken bare-npx Windows entry written by 1.5.1 "
+            "and restores a matching trusted URL-only entry when available."
         )
         self.assertIn(expected, self.setup)
         self.assertNotIn(
-            "Uninstall removes a trusted 1.5.0, 1.5.1, or 1.5.2 Bridge entry",
+            "Uninstall removes a normal trusted 1.5.4 or 1.5.5 Bridge entry",
             self.setup,
         )
 
@@ -792,24 +929,26 @@ class TestReferences(unittest.TestCase):
             report = _required_text(self, _REPORTS_DIR / name)
             self.assertIn(f"v{skill_version}", report)
 
-    def test_current_publication_report_records_verified_1_5_5_release(self) -> None:
+    def test_current_publication_report_records_verified_1_6_0_release(self) -> None:
         current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
         for fact in (
-            "e9a18b60e2398d904df58654515ed945a48a33a0",
-            "2b99ef2ab9cbb462821f75f0dd427ed03770d010",
-            "60 files, 111726 bytes",
-            "90371dab0722ee17a24d4de7bb11070ee429f341a50b032b37c7159d2b8eac48",
-            "sha512-Pwv52BEipxkANdifr0efyeBtYrt2cjhzHa2MO5TBsKbVCfLT0Lu/vGO80neLkfi+b1eWCd7WZXZxqbhCz4TC3g==",
-            "mcp, model-context-protocol, omni-reader, document-parsing, pdf, ocr, url-parsing, local-files, audio, video, ai-agents",
-            "installed/latest=1.5.5",
-            "status=current",
-            "api_key=absent",
-            "onboarding=current",
-            "reload_required=false",
-            "local/public tarballs byte-equal",
-            "runtime vulnerabilities = 0",
-            "no production parse/credits",
+            "adc0799921800a71ac3becfd98d8573c622edb7f",
+            "138281fedaec5bf24f4c80a0b9a9fd7324b0c935",
+            "2ed2483c3ed5dbf768e298591122783a774b6585e5da3340f482387106ed6c4d",
+            "sha512-JiPRIzsq5rJ2CbrEcO0cKFFtcbh3mhM01hGh9GqScLS8JPb+gAqEnJT6xq6FlVDCQCoVlNHp4lXrrLauMn6g7g==",
+            "registry tarball byte-identical",
+            "versions=[\"1.5.5\",\"1.6.0\"]",
+            "exactly one billable parse identity",
+            "one v4 journal record",
+            "COMPLETED",
+            "result_delivery_effective=artifact",
+            "outline coverage=complete, nodes=3",
+            "INVALID_RESULT_CURSOR",
+            "navigation left the journal unchanged",
+            "no reset, backfill, or replay",
+            "native WorkBuddy skill loading remains unverified",
+            "cue-skill publication remains owner-gated",
         ):
             self.assertIn(fact, current)
         self.assertIn(_CURRENT_PUBLICATION_REPORT, report_index)
@@ -1497,6 +1636,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-08-18-bridge-1.3.3-published.md",
             "docs/verification-reports/2026-08-19-bridge-1.4.1-published.md",
             "docs/verification-reports/2026-08-26-bridge-1.5.5-published.md",
+            "docs/verification-reports/2026-08-30-bridge-1.6.0-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
