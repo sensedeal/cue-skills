@@ -10,17 +10,15 @@
 
 `cue-omni-reader` plugs into any AI agent (Claude Code, Codex CLI, Gemini CLI, WorkBuddy, etc.) and tells it how to use the official Omni MCP tools to turn a source into content: a URL, or a local file the user has authorized. The MCP package and its active tool schemas are authoritative; the skill only instructs the agent how to drive them — recoverable operations, artifact reading, cleanup, truthful billing/error handling.
 
-**One provider, both sources.** Omni is one logical provider: `parse(source)` covers an HTTP(S) URL *or* an authorized local path. The **Bridge** (`@cueai/omni-reader-mcp`) is that same provider installed locally — never a second connector. Install the Bridge as the default; a remote-only connection covers URLs with no local install, but cannot read local files.
+**One provider, one first call.** Use `parse` as the only first call for both HTTP(S) URLs and local paths; do not ask the user to choose a local, remote, upload, or URL mode. The **Bridge** (`@cueai/omni-reader-mcp`) is that same provider installed locally — never a second connector. Install the Bridge as the default; a remote-only connection covers URLs with no local install, but cannot read local files.
 
-## Public tools (seven)
+## Protocol boundary
 
-- `parse` — URL or authorized local source → Markdown content (recoverable operation after the foreground budget)
-- `get_parse_status` / `cancel_parse` — poll and cancel an in-flight operation
-- `read_result` / `read_outline` / `discard_result` / `save_result` — **Bridge-local** artifact tools (never exposed on the remote surface)
+Remote-only exposes exactly `parse`, `get_parse_status`, and `cancel_parse`. Bridge exposes the same three plus `read_result`, `read_outline`, `discard_result`, and `save_result`. Only `parse` is a first call; the other six are continuation and lifecycle primitives selected from structured state, not modes for the user to choose. Choose continuation tools from the structured result; never present the tool list as a menu for the user.
 
 ## Result delivery
 
-Use inline content for a direct answer; otherwise read the retained result. For one section, call `read_outline` then `read_result(cursor)`—outline navigation does not require `save_result`. Read all content until `next_cursor` is absent, and use `save_result` when the deliverable is a file. Select `result_delivery="artifact"` for saving, section navigation, multiple documents, or strict context control. Multiple sources are bounded independent parse calls with separate handles.
+Use inline content for a direct answer; otherwise read the retained result. For one section, call `read_outline` then `read_result(cursor)`—outline navigation does not require `save_result`. Read all content until `next_cursor` is absent, and use `save_result` when the deliverable is a file. Text output is Markdown and may retain headings, lists, GFM tables, or raw HTML tables; it lacks grounding/layout sidecars, not all structure. An empty outline means no recognized headings, not that the text has no structure. Select `result_delivery="artifact"` for saving, section navigation, multiple documents, or strict context control. Multiple sources are bounded independent parse calls with separate handles.
 
 Client capabilities are evidence-based. When Tasks, Roots, host timeout, or cwd/workspace behavior is unknown, fall back to ordinary parse/status polling, process cwd plus explicit roots, Bridge's bounded status wait, and no automatic root widening.
 
@@ -57,6 +55,10 @@ The current setup generates a working Windows entry automatically (spawn goes th
 Run `npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json` first, then diagnose by structured error code and keep the control-plane and upload stages separate:
 
 - `CUBE_UNAVAILABLE` is a control-plane failure before any file upload. Do not diagnose it through upload-stage endpoint probes.
+- `OMNI_NOT_ENTITLED` / HTTP 403 is the account-entitlement signal.
+- `DIRECT_UPLOAD_DISABLED` (legacy) or `DIRECT_UPLOAD_UNAVAILABLE` means the direct-upload route/capability is unavailable, not that the account is disabled or text-only.
+- `DETAIL_CAPABILITIES_UNAVAILABLE` means grounded/layout is not advertised; text remains Markdown and may retain headings, lists, and tables.
+- `UNSUPPORTED_DETAIL` means the requested representation/profile is unavailable; do not retry unchanged or describe the account as text-only.
 - A failure after grant creation means the secure upload stage did not complete.
 - `CUBE_PROTOCOL_ERROR` is a response-contract mismatch, not a generic DNS diagnosis.
 

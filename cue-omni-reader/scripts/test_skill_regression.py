@@ -454,8 +454,8 @@ class TestSkillMd(unittest.TestCase):
         ):
             self.assertIn(tool, self.md)
         self.assertNotIn("mcp" + "__", self.md)
-        # 900: stage-aware diagnostics sit at 894 words; preserve a tight thinness guard
-        self.assertLess(len(self.md.split()), 900, "SKILL.md is no longer thin")
+        # 1000: unified parse/error guidance sits below this; preserve a tight guard.
+        self.assertLess(len(self.md.split()), 1000, "SKILL.md is no longer thin")
 
     def test_source_handling_preserves_the_security_boundary(self) -> None:
         self.assertIn("Only HTTP(S) strings are URLs", self.md)
@@ -463,6 +463,38 @@ class TestSkillMd(unittest.TestCase):
         self.assertRegex(self.md, re.compile(r"Do not pre-read.*base64", re.S))
         self.assertIn("`file://`", self.md)
         self.assertIn("public temporary upload", self.md)
+
+    def test_parse_is_the_only_first_call_and_continuations_are_automatic(self) -> None:
+        self.assertIn(
+            "Use `parse` as the only first call for both HTTP(S) URLs and local paths",
+            self.md,
+        )
+        self.assertIn(
+            "do not ask the user to choose a local, remote, upload, or URL mode",
+            self.md,
+        )
+        self.assertIn(
+            "Choose continuation tools from the structured result",
+            self.md,
+        )
+        self.assertIn(
+            "never present the tool list as a menu for the user",
+            self.md,
+        )
+
+    def test_text_output_retains_textual_structure(self) -> None:
+        self.assertIn(
+            "Text output is Markdown and may retain headings, lists, GFM tables, or raw HTML tables",
+            self.md,
+        )
+        self.assertIn(
+            "it lacks grounding/layout sidecars, not all structure",
+            self.md,
+        )
+        self.assertIn(
+            "An empty outline means no recognized headings, not that the text has no structure",
+            self.md,
+        )
 
     def test_bootstrap_requires_confirmation_and_minimum_root(self) -> None:
         self.assertRegex(
@@ -687,6 +719,78 @@ class TestReferences(unittest.TestCase):
         for document in active_documents:
             self.assertNotRegex(document, _STANDALONE_IIIS)
             self.assertNotIn("cubefile.ai.iiis.co", document)
+
+    def test_unified_parse_guidance_and_error_semantics_are_bilingual(self) -> None:
+        english = (self.skill, self.readme)
+        chinese = (self.skill_zh, self.readme_zh)
+
+        for document in english:
+            self.assertIn(
+                "Use `parse` as the only first call for both HTTP(S) URLs and local paths",
+                document,
+            )
+            self.assertIn(
+                "Choose continuation tools from the structured result",
+                document,
+            )
+            self.assertIn(
+                "Text output is Markdown and may retain headings, lists, GFM tables, or raw HTML tables",
+                document,
+            )
+            self.assertIn(
+                "An empty outline means no recognized headings, not that the text has no structure",
+                document,
+            )
+            self.assertIn("OMNI_NOT_ENTITLED", document)
+            self.assertIn("DIRECT_UPLOAD_DISABLED", document)
+            self.assertIn("DIRECT_UPLOAD_UNAVAILABLE", document)
+            self.assertIn("DETAIL_CAPABILITIES_UNAVAILABLE", document)
+            self.assertIn("UNSUPPORTED_DETAIL", document)
+            self.assertIn("HTTP 403 is the account-entitlement signal", document)
+            self.assertIn("not that the account is disabled or text-only", document)
+            self.assertIn("do not retry unchanged", document)
+
+        for document in chinese:
+            self.assertIn("`parse` 是 HTTP(S) URL 与本地路径唯一的首次调用", document)
+            self.assertIn("根据结构化结果选择后续工具", document)
+            self.assertIn("文本输出是 Markdown", document)
+            self.assertIn("GFM 表格或原始 HTML 表格", document)
+            self.assertIn("空 outline 只表示没有识别到标题", document)
+            self.assertIn("OMNI_NOT_ENTITLED", document)
+            self.assertIn("DIRECT_UPLOAD_DISABLED", document)
+            self.assertIn("DIRECT_UPLOAD_UNAVAILABLE", document)
+            self.assertIn("DETAIL_CAPABILITIES_UNAVAILABLE", document)
+            self.assertIn("UNSUPPORTED_DETAIL", document)
+            self.assertIn("HTTP 403 才是账号 entitlement 信号", document)
+            self.assertIn("不表示账号被禁用或账号只能使用 text", document)
+            self.assertIn("不要原样重试", document)
+
+    def test_physical_tool_sets_are_fixed_but_not_user_modes(self) -> None:
+        self.assertIn(
+            "Remote-only exposes exactly `parse`, `get_parse_status`, and `cancel_parse`",
+            self.skill,
+        )
+        self.assertIn(
+            "Bridge exposes the same three plus `read_result`, `read_outline`, `discard_result`, and `save_result`",
+            self.skill,
+        )
+        self.assertIn(
+            "Only `parse` is a first call; the other six are continuation and lifecycle primitives",
+            self.skill,
+        )
+        self.assertNotIn("## Public tools", self.skill)
+        self.assertNotIn("## Public tools (seven)", self.readme)
+        self.assertIn(
+            "仅远端表面恰好暴露 `parse`、`get_parse_status`、`cancel_parse`",
+            self.skill_zh,
+        )
+        self.assertIn(
+            "Bridge 暴露同样三个工具，再加 `read_result`、`read_outline`、`discard_result`、`save_result`",
+            self.skill_zh,
+        )
+        self.assertIn("只有 `parse` 是首次调用", self.skill_zh)
+        self.assertNotIn("## 公共工具", self.skill_zh)
+        self.assertNotIn("## 公共工具（七个）", self.readme_zh)
 
     def test_doctor_limits_its_claim_to_control_configuration_facts(self) -> None:
         english = (self.readme, self.setup)
