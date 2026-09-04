@@ -48,9 +48,14 @@ Cue surface 扩展会陆续在这里加新 skill。
 
 `cue-buddy` 是 self-contained:入口 `SKILL.md` + 支持的 `references/` + stdlib-only `scripts/`。`cue-research` **也已自洽**——把共享 Cue 客户端(`cue_api` / `sse_report` / `paths`)vendor 进自己的 `scripts/`,可独立运行(无需 sibling `cue-buddy`)。
 
-**Claude Code**:把 skill 文件夹 copy 到 `~/.claude/skills/`,或用 `/use-skill <path>` 引用。具体安装看 skill 自己的 README。**装 `cue-research` 时,把 `cue-buddy` 装在它旁边**(同一父目录),共享脚本才能被找到。
+一条命令装好 skill(`skills` CLI 会列出全部;`--skill` 挑一个):
 
-**其他 agent**:把 `<skill>/SKILL.md` 当 system instruction load。skill 的脚本尽量 stdlib-only。
+```sh
+npx skills add sensedeal/cue-skills                       # 默认:列出 cue-buddy、cue-research、cue-omni-reader、cue-data-mcp
+npx skills add sensedeal/cue-skills --skill cue-research   # 只加一个
+```
+
+**手动安装**:把 skill 文件夹 copy 到 `~/.claude/skills/`(Claude Code),或用 `/use-skill <path>`;其他 agent 把 `<skill>/SKILL.md` 当 system instruction load。每个 skill 都自洽——`cue-buddy`/`cue-research` 自带运行时,`cue-omni-reader`/`cue-data-mcp` 是薄指令层。
 
 **`cue-omni-reader`** 不带运行时解析脚本。加载其 `SKILL.md` 并连接官方 Omni MCP surface；已有 URL 工具无需本地安装，本地文件则在最小目录授权确认后使用已审核 Bridge。
 
