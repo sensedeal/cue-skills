@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "当用户需要外部 AI agent 通过 Cue Omni Reader 解析或理解一个 HTTP(S) URL 或已授权的本地文档、音频、视频源时使用。触发词：解析/读取 URL、本地文档、音频、视频、OCR、PDF、网页内容。"
 license: MIT
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -63,12 +63,13 @@ Tasks、Roots、宿主超时及 cwd/workspace 行为，只能依据客户端直�
 
 工具级错误不是 MCP 断连。保留鉴权、计费、解析器、可重试性、operation 与清理事实。只报告本次 operation 返回的计费事实；仅在 `retryable=true` 时重试。绝不估算费用或复制页数/媒体时长换算。
 
-先运行 `npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json`。`CUBE_UNAVAILABLE` 是上传前的控制面失败；grant 后失败属于安全上传阶段；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据已报告的端点事实——绝不猜测或发布内部主机名、端口。
+先运行 `npx -y @cueai/omni-reader-mcp@1.7.1 doctor --json`。`CUBE_UNAVAILABLE` 是上传前的控制面失败；grant 后失败属于安全上传阶段；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据已报告的端点事实——绝不猜测或发布内部主机名、端口。
 
 - `OMNI_NOT_ENTITLED` / HTTP 403 才是账号 entitlement 信号。
 - `DIRECT_UPLOAD_DISABLED`（旧版）或 `DIRECT_UPLOAD_UNAVAILABLE` 表示直传路由/能力不可用，不表示账号被禁用或账号只能使用 text。
 - `DETAIL_CAPABILITIES_UNAVAILABLE` 表示服务未声明 grounded/layout；text 仍是 Markdown，可保留标题、列表和表格。
 - `UNSUPPORTED_DETAIL` 表示请求的 representation/profile 不可用；不要原样重试，也不要把账号描述成只能使用 text。
+- `BRIDGE_UPGRADE_REQUIRED` 表示服务不接受当前 Bridge 版本执行本地文件直传。安装最新已发布版本的 `@cueai/omni-reader-mcp`，然后只重试一次。如果已经运行最新已发布版本，不要重新安装或重试；运行 `doctor --json`，并请服务运维方核验 Bridge admission。
 
 ## 协议边界
 

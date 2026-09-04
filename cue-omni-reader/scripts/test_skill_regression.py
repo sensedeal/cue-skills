@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 import unittest
@@ -20,9 +21,9 @@ _COMPAT_MD = _SKILL_DIR / "references" / "compatibility.md"
 _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
-_EXPECTED_SKILL_VERSION = "0.4.0"
-_EXPECTED_BRIDGE_VERSION = "1.6.0"
-_CURRENT_PUBLICATION_REPORT = "2026-08-30-bridge-1.6.0-published.md"
+_EXPECTED_SKILL_VERSION = "0.5.0"
+_EXPECTED_BRIDGE_VERSION = "1.7.1"
+_CURRENT_PUBLICATION_REPORT = "2026-09-04-bridge-1.7.1-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
@@ -720,6 +721,30 @@ class TestReferences(unittest.TestCase):
             self.assertNotRegex(document, _STANDALONE_IIIS)
             self.assertNotIn("cubefile.ai.iiis.co", document)
 
+    def test_bridge_upgrade_guidance_avoids_a_circular_reinstall(self) -> None:
+        for document in (self.skill, self.readme):
+            self.assertIn("BRIDGE_UPGRADE_REQUIRED", document)
+            self.assertIn("install the latest published", document.lower())
+            self.assertRegex(
+                document,
+                re.compile(
+                    r"already running the latest published release.*do not reinstall or retry"
+                    r".*doctor --json.*service operator.*Bridge admission",
+                    re.I | re.S,
+                ),
+            )
+        for document in (self.skill_zh, self.readme_zh):
+            self.assertIn("BRIDGE_UPGRADE_REQUIRED", document)
+            self.assertIn("安装最新已发布版本", document)
+            self.assertRegex(
+                document,
+                re.compile(
+                    r"已经运行最新已发布版本.*不要重新安装或重试"
+                    r".*doctor --json.*服务运维方.*Bridge admission",
+                    re.S,
+                ),
+            )
+
     def test_unified_parse_guidance_and_error_semantics_are_bilingual(self) -> None:
         english = (self.skill, self.readme)
         chinese = (self.skill_zh, self.readme_zh)
@@ -929,13 +954,13 @@ class TestReferences(unittest.TestCase):
 
     def test_setup_documents_exact_trusted_uninstall_entries(self) -> None:
         expected = (
-            "Uninstall removes a normal trusted 1.5.5 or 1.6.0 Bridge entry; it "
+            "Uninstall removes a normal trusted 1.7.0 or 1.7.1 Bridge entry; it "
             "also removes the exact broken bare-npx Windows entry written by 1.5.1 "
             "and restores a matching trusted URL-only entry when available."
         )
         self.assertIn(expected, self.setup)
         self.assertNotIn(
-            "Uninstall removes a normal trusted 1.5.4 or 1.5.5 Bridge entry",
+            "Uninstall removes a normal trusted 1.5.5 or 1.6.0 Bridge entry",
             self.setup,
         )
 
@@ -1031,25 +1056,27 @@ class TestReferences(unittest.TestCase):
 
         for name in ("2026-08-18-bridge-1.3.1-published.md", "2026-08-18-bridge-1.3.2-published.md"):
             report = _required_text(self, _REPORTS_DIR / name)
-            self.assertIn(f"v{skill_version}", report)
+            self.assertIn("v0.4.0", report)
+            self.assertNotIn("v0.5.0", report)
 
-    def test_current_publication_report_records_verified_1_6_0_release(self) -> None:
+    def test_current_publication_report_records_verified_1_7_1_release(self) -> None:
         current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
         for fact in (
-            "adc0799921800a71ac3becfd98d8573c622edb7f",
-            "138281fedaec5bf24f4c80a0b9a9fd7324b0c935",
-            "2ed2483c3ed5dbf768e298591122783a774b6585e5da3340f482387106ed6c4d",
-            "sha512-JiPRIzsq5rJ2CbrEcO0cKFFtcbh3mhM01hGh9GqScLS8JPb+gAqEnJT6xq6FlVDCQCoVlNHp4lXrrLauMn6g7g==",
+            "833237f883f15745ecbcc92b2469c308d96d4b12",
+            "42d146fbc2858a25f94737fec41c2b72d8325df5",
+            "4eb180caf17ace090bcd1344cfa29204809da95c",
+            "8db1dd7b8fb5707bb7591c7178c7424064594e8deb32902074236fc72694536f",
+            "sha512-WH0x1mRvfmpbYbcFAepoXJj544Ln3Pkjppy9IV8ju+mUpfQq/ayk9uGMUsYShs9EnRySJX6MbITbN2eE42F+bQ==",
             "registry tarball byte-identical",
-            "versions=[\"1.5.5\",\"1.6.0\"]",
-            "exactly one billable parse identity",
-            "one v4 journal record",
-            "COMPLETED",
-            "result_delivery_effective=artifact",
-            "outline coverage=complete, nodes=3",
-            "INVALID_RESULT_CURSOR",
-            "navigation left the journal unchanged",
+            "64 files",
+            "versions=[\"1.5.5\",\"1.6.0\",\"1.7.0\",\"1.7.1\"]",
+            "BRIDGE_UPGRADE_REQUIRED",
+            "already running the latest published release",
+            "do not reinstall or retry",
+            "doctor --json",
+            "Bridge admission",
+            "no production parse or billing call",
             "no reset, backfill, or replay",
             "native WorkBuddy skill loading remains unverified",
             "cue-skill publication remains owner-gated",
@@ -1635,6 +1662,36 @@ class TestRepositoryIntegration(unittest.TestCase):
         )
         self.assertIn('python-version: ["3.12", "3.13"]', self.workflow)
 
+    def test_dsh_bundle_pins_bridge_1_7_1_without_bumping_the_guard(self) -> None:
+        bundle = _REPO_ROOT / "dsh" / "cue-omni-reader"
+        package = json.loads(_required_text(self, bundle / "package.json"))
+        guard = json.loads(
+            _required_text(
+                self,
+                _REPO_ROOT / "dsh" / "cue-omni-reader-guard" / "package.json",
+            )
+        )
+        self.assertEqual(package["version"], "0.1.5")
+        self.assertEqual(guard["version"], "0.1.4")
+
+        documents = (
+            bundle / "cordis.patch.yml",
+            bundle / "README.md",
+            bundle / "README.zh-CN.md",
+            _REPO_ROOT / "dsh" / "usage.md",
+            _REPO_ROOT / "dsh" / "usage.zh-CN.md",
+        )
+        pins = []
+        for document in documents:
+            pins.extend(
+                re.findall(
+                    r"@cueai/omni-reader-mcp@\d+\.\d+\.\d+",
+                    _required_text(self, document),
+                )
+            )
+        self.assertEqual(len(pins), 7)
+        self.assertEqual(set(pins), {"@cueai/omni-reader-mcp@1.7.1"})
+
 
 class TestSecurityAndLayout(unittest.TestCase):
     def test_sensitive_content_detector_covers_common_formats(self) -> None:
@@ -1741,6 +1798,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-08-19-bridge-1.4.1-published.md",
             "docs/verification-reports/2026-08-26-bridge-1.5.5-published.md",
             "docs/verification-reports/2026-08-30-bridge-1.6.0-published.md",
+            "docs/verification-reports/2026-09-04-bridge-1.7.1-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",

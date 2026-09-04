@@ -1,6 +1,6 @@
 {
   "name": "@cueai/dsh-omni-reader",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "DSH bundle: registers the audited Cue Omni Reader MCP server so its tools surface as mcp__omni__* in any DeepSeek Harness profile.",
   "license": "MIT",
   "type": "module",

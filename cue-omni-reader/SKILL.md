@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -63,12 +63,13 @@ Classify Tasks, Roots, host timeout, and cwd/workspace only from direct client e
 
 A tool-level error is not an MCP disconnection. Preserve authentication, billing, parser, retryability, operation, and cleanup facts. Report billing facts returned for this operation; retry only when `retryable=true`. Never estimate charges or rates.
 
-Run `npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json` first. `CUBE_UNAVAILABLE` is pre-upload control-plane failure; post-grant failure is secure upload stage; `CUBE_PROTOCOL_ERROR` is contract mismatch. Use reported facts only; never publish internal hosts or ports.
+Run `npx -y @cueai/omni-reader-mcp@1.7.1 doctor --json` first. `CUBE_UNAVAILABLE` is pre-upload control-plane failure; post-grant failure is secure upload stage; `CUBE_PROTOCOL_ERROR` is contract mismatch. Use reported facts only; never publish internal hosts or ports.
 
 - `OMNI_NOT_ENTITLED` / HTTP 403 is the account-entitlement signal.
 - `DIRECT_UPLOAD_DISABLED` (legacy) or `DIRECT_UPLOAD_UNAVAILABLE` means the direct-upload route/capability is unavailable, not that the account is disabled or text-only.
 - `DETAIL_CAPABILITIES_UNAVAILABLE` means grounded/layout is not advertised; text remains Markdown and may retain headings, lists, and tables.
 - `UNSUPPORTED_DETAIL` means the requested representation/profile is unavailable; do not retry unchanged or describe the account as text-only.
+- `BRIDGE_UPGRADE_REQUIRED`: install the latest published `@cueai/omni-reader-mcp` release and retry once. If already running the latest published release, do not reinstall or retry; run `doctor --json` and ask the service operator to verify Bridge admission.
 
 ## Protocol boundary
 
