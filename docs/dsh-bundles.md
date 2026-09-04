@@ -21,8 +21,9 @@ config — it ships no parser, protocol driver, or MCP client.
 |---|---|---|
 | [`cue-omni-reader`](../dsh/cue-omni-reader) | `@cueai/dsh-omni-reader` | Wires the audited **Cue Omni Reader** MCP server → tools `mcp__omni__parse`, `…get_parse_status`, `…read_result`, `…read_outline`, `…save_result`, etc. |
 | [`cue-omni-reader-guard`](../dsh/cue-omni-reader-guard) | `@cueai/dsh-omni-reader-guard` | Optional `tools/pre-execute` guard: denies SSRF (private/reserved hosts), enforces an allow-list or consent for `mcp__omni__parse`. Fail-closed on an empty `allowedRoots`. |
+| [`cue-data-mcp`](../dsh/cue-data-mcp) | `@cueai/dsh-cue-data-mcp` | Exposes Cue's **public data** MCP services (regulatory, macro, disclosures, statute, holdings, entity, academic, IPO, ESOP, buyback, footnote, fact index) as native `mcp__cue_<domain>__*` tools (15 domains / ~104 tools) via streamable-http. |
 
-Both are `@cueai/*` (public scope), MIT, and ship `README.zh-CN.md` alongside
+All three are `@cueai/*` (public scope), MIT, and ship `README.zh-CN.md` alongside
 the English README.
 
 ## Distribution & validation

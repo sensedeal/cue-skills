@@ -9,12 +9,14 @@ profile, then let you harden it:
 |---|---|---|
 | [`@cueai/dsh-omni-reader`](../cue-omni-reader) | Wire the audited Omni Reader MCP server → tools `mcp__omni__*` | always |
 | [`@cueai/dsh-omni-reader-guard`](../cue-omni-reader-guard) | Optional `tools/pre-execute` guard (SSRF / allow-list / consent) | optional, after the above |
+| [`@cueai/dsh-cue-data-mcp`](../cue-data-mcp) | Exposes Cue's public data MCP services → tools `mcp__cue_<domain>__*` (15 domains / ~104 tools) | optional |
 
 ## Install
 
 ```sh
 dsh plugin --profile web add @cueai/dsh-omni-reader
 dsh plugin --profile web add @cueai/dsh-omni-reader-guard   # optional
+dsh plugin --profile web add @cueai/dsh-cue-data-mcp        # optional (data tools)
 dsh --profile web --dump-config            # confirm mcp-omni + guard rows
 ```
 
