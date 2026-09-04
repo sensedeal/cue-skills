@@ -6,16 +6,17 @@ Open-source agent skills published by [Cue](https://cuecue.cn) (sensedeal).
 
 A **skill** is a portable instruction bundle that any AI agent ([Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills), Codex CLI, Gemini CLI, …) can load to gain a new capability — without modifying the agent itself. This repo collects the skills Cue maintains for public use.
 
-## DSH users: install the Cue Omni Reader bundles
+## DSH users: install the Cue Deep Research bundles
 
-Running [DeepSeek Harness](https://github.com/deepseek-harness)? Add the two Cue bundles to a profile and get Cue Omni Reader as native `mcp__omni__*` tools:
+Running [DeepSeek Harness](https://github.com/deepseek-harness)? Add the three Cue bundles to a profile and get Cue as native `mcp__omni__*` (parse/read) and `mcp__cue_*` (financial/regulatory data) tools:
 
 ```sh
-dsh plugin --profile web add @cueai/dsh-omni-reader
-dsh plugin --profile web add @cueai/dsh-omni-reader-guard   # optional SSRF/consent guard
+dsh plugin --profile web add @cueai/dsh-omni-reader            # Omni Reader parse/read tools
+dsh plugin --profile web add @cueai/dsh-omni-reader-guard      # optional SSRF/consent guard
+dsh plugin --profile web add @cueai/dsh-cue-data-mcp           # Cue public data MCP (15 domains / ~104 tools)
 ```
 
-Restart dsh; the model then sees `mcp__omni__parse` / `…get_parse_status` / `…read_result` / `…read_outline` / `…save_result` / `…cancel_parse` / `…discard_result`. Set `CUE_API_KEY` (+ optional `OMNI_ALLOWED_ROOTS`) via `$DSH_HOME/.env`. Guide: [`dsh/`](./dsh) · [`usage.md`](./dsh/usage.md).
+Restart dsh; the model then sees `mcp__omni__parse` / `…get_parse_status` / `…read_result` / `…read_outline` / `…save_result` / `…cancel_parse` / `…discard_result` and `mcp__cue_<domain>__*` data tools. Set `CUE_API_KEY` (+ optional `OMNI_ALLOWED_ROOTS`) via `$DSH_HOME/.env`. Guide: [`dsh/`](./dsh) · [`usage.md`](./dsh/usage.md).
 
 ## DSH bundles
 

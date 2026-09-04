@@ -8,12 +8,14 @@
 |---|---|---|
 | [`@cueai/dsh-omni-reader`](../cue-omni-reader) | 接入审校版 Omni Reader MCP server → 工具 `mcp__omni__*` | 必装 |
 | [`@cueai/dsh-omni-reader-guard`](../cue-omni-reader-guard) | 可选 `tools/pre-execute` 护栏(SSRF / 白名单 / 同意) | 可选,装在其上 |
+| [`@cueai/dsh-cue-data-mcp`](../cue-data-mcp) | 暴露 Cue 的公开数据 MCP 服务 → 工具 `mcp__cue_<domain>__*`(15 域 / ~104 工具) | 可选 |
 
 ## 安装
 
 ```sh
 dsh plugin --profile web add @cueai/dsh-omni-reader
 dsh plugin --profile web add @cueai/dsh-omni-reader-guard   # 可选
+dsh plugin --profile web add @cueai/dsh-cue-data-mcp        # 可选(数据工具)
 dsh --profile web --dump-config            # 确认 mcp-omni + guard 行
 ```
 
