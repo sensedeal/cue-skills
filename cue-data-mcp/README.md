@@ -36,7 +36,7 @@ Full client-config shapes, raw JSON-RPC examples, and a troubleshooting table (4
 
 ## Free credits
 
-Every Cue account receives 10 free credits daily — roughly **16 data queries per day** at 0.625 credits per data call — and new accounts get a one-time 50-credit gift when obtaining `CUE_API_KEY` (~96 queries on day one). Get a key at <https://cuecue.cn/hub/api-key>. Exact current allowances follow the server-side billing policy — report the live value if it differs.
+Every Cue account receives 10 free credits daily — roughly **16 data queries per day** at 0.625 credits per data call — and new accounts get a one-time 500-credit gift when obtaining `CUE_API_KEY` (~816 queries on day one). Get a key at <https://cuecue.cn/hub/api-key>. Exact current allowances follow the server-side billing policy — report the live value if it differs.
 
 ## Repo layout
 

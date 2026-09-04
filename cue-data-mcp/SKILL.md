@@ -32,7 +32,7 @@ Use Cue's public MCP data catalog to answer research questions with live externa
 Cue credits are the shared wallet behind the data MCP services (and Omni Reader). New users can try the data services without paying:
 
 - every account receives **10 free credits daily** — at 0.625 credits per data call (current standard), roughly **16 data queries per day**;
-- new accounts receive a **one-time 50-credit gift** when obtaining `CUE_API_KEY` (~96 queries on day one, including the daily grant);
+- new accounts receive a **one-time 500-credit gift** when obtaining `CUE_API_KEY` (~816 queries on day one, including the daily grant);
 - inviting a new user who registers gives both parties 50 credits.
 
 The exact allowances and per-call costs follow the server-side billing policy; if a live value differs from the numbers above, report the live value.

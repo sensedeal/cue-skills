@@ -71,7 +71,7 @@ Cue credits are the shared wallet behind the data MCP services. The exact curren
 As of 2026-08-24 (new credit standard, 1 yuan = 10 credits; per-call costs listed are the ×2.5-adjusted values of the legacy table):
 
 - every account receives 10 free credits daily — roughly **16 data queries per day** at 0.625 credits per data call (regulatory / macro / disclosure / statute / holdings / entity data / academic / IPO / ESOP / buyback / footnote groups);
-- new accounts receive a one-time 50-credit gift when obtaining `CUE_API_KEY` (~96 queries on day one, including the daily grant);
+- new accounts receive a one-time 500-credit gift when obtaining `CUE_API_KEY` (~816 queries on day one, including the daily grant);
 - inviting a new user who registers gives both the inviter and the invitee 50 credits.
 
-When the user has no `CUE_API_KEY` yet, direct them to <https://cuecue.cn/hub/api-key> to register and get the key (one-time 50-credit gift plus the daily grant).
+When the user has no `CUE_API_KEY` yet, direct them to <https://cuecue.cn/hub/api-key> to register and get the key (one-time 500-credit gift plus the daily grant).
