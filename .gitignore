@@ -29,3 +29,6 @@ buddy-run-*.md
 
 # Local Claude Code state (never commit)
 .claude/
+
+# local MCP client config (not repo content)
+.mcp.json
