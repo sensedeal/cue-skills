@@ -1,6 +1,6 @@
 {
   "name": "@cueai/dsh-omni-reader-guard",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "DSH bundle: a tools/pre-execute guard that blocks SSRF (private/loopback/link-local/metadata) and enforces an allow-list or explicit consent for the Cue Omni Reader parse tool.",
   "license": "MIT",
   "type": "module",
@@ -26,6 +26,7 @@
     "mcp",
     "omni-reader",
     "guard",
-    "ssrf"
+    "ssrf",
+    "dsh-plugin"
   ]
 }
