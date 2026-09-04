@@ -6,6 +6,8 @@
 
 **skill** 是一份可移植的指令包,任何 AI agent（[Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills) / Codex CLI / Gemini CLI / OpenClaw 等）都能 load 它来获得新能力——无需改 agent 本身。这个仓库收纳 Cue 对外维护的 skills。
 
+> **第一次来?** 先看 [为什么用 Cue](docs/landing.zh-CN.md) · [English](docs/landing.md)——能亲验的带引研究,以及如何免费试。
+
 ## 安装
 
 ```sh

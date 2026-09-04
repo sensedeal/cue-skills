@@ -6,6 +6,8 @@ Open-source agent skills published by [Cue](https://cuecue.cn) (sensedeal).
 
 A **skill** is a portable instruction bundle that any AI agent ([Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills), Codex CLI, Gemini CLI, …) can load to gain a new capability — without modifying the agent itself. This repo collects the skills Cue maintains for public use.
 
+> **New here?** Read **[Why Cue](docs/landing.md)** · [中文](docs/landing.zh-CN.md) — source-cited research you can verify, and how to try it free.
+
 ## Install
 
 ```sh
