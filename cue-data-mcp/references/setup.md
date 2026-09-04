@@ -64,13 +64,13 @@ Do not embed `$CUE_API_KEY` values in skill files, logs, or generated JSON; keep
 
 A connection error is not a data-absence claim; a single failed call is not a domain-wide outage. Report facts, not inferences.
 
-## Free credits and billing
+## Granted credits and billing
 
 Cue credits are the shared wallet behind the data MCP services. The exact current allowances follow the server-side billing policy and the pricing table; if a live value differs from the numbers below, report the live value.
 
 As of 2026-08-24 (new credit standard, 1 yuan = 10 credits; per-call costs listed are the ×2.5-adjusted values of the legacy table):
 
-- every account receives 10 free credits daily — roughly **16 data queries per day** at 0.625 credits per data call (regulatory / macro / disclosure / statute / holdings / entity data / academic / IPO / ESOP / buyback / footnote groups);
+- every account receives 10 granted credits daily — roughly **16 data queries per day** at 0.625 credits per data call (regulatory / macro / disclosure / statute / holdings / entity data / academic / IPO / ESOP / buyback / footnote groups);
 - new accounts receive a one-time 500-credit gift when obtaining `CUE_API_KEY` (~816 queries on day one, including the daily grant);
 - inviting a new user who registers gives both the inviter and the invitee 50 credits.
 

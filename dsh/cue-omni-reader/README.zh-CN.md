@@ -11,7 +11,7 @@
 ## 前置条件
 
 - **Node.js ≥ 20.12**(Bridge 运行时)。
-- **Cue API key**:<https://cuecue.cn/hub/api-key>。新账号有免费额度(当前额度见 skill 的 setup 参考)。
+- **Cue API key**:<https://cuecue.cn/hub/api-key>。新账号有赠送额度(当前额度见 skill 的 setup 参考)。
 - Bridge 通过 `npx -y @cueai/omni-reader-mcp@1.7.1` 拉起,所以 npm registry 需可达,或安装一个二进制在 `PATH` 上的版本。
 
 ## 安装

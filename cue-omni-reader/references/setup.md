@@ -69,7 +69,7 @@ npx -y @cueai/omni-reader-mcp@1.7.1 uninstall --yes --json
 
 Uninstall removes a normal trusted 1.7.0 or 1.7.1 Bridge entry; it also removes the exact broken bare-npx Windows entry written by 1.5.1 and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
 
-## Free credits and onboarding
+## Granted credits and onboarding
 
 New users can try Omni without paying. The server-side onboarding policy and live `doctor` output are the authority for current allowances; do not copy static page, image, audio, or video conversions into guidance.
 

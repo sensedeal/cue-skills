@@ -27,11 +27,11 @@ Use Cue's public MCP data catalog to answer research questions with live externa
 - **Never paste the API key into chat, command arguments, skill files, logs, or generated JSON.** The user configures `CUE_API_KEY` in their own secret facility; the agent never obtains, stores, or transmits it. If a key has appeared in chat, ask the user to rotate it before continuing.
 - **Report failures truthfully.** A connection error is not a data-absence claim; a tool error is not a domain-wide outage. Retry only what the error says is retryable. Never report a domain as unsupported because one call failed.
 
-## Free credits and billing
+## Granted credits and billing
 
 Cue credits are the shared wallet behind the data MCP services (and Omni Reader). New users can try the data services without paying:
 
-- every account receives **10 free credits daily** — at 0.625 credits per data call (current standard), roughly **16 data queries per day**;
+- every account receives **10 granted credits daily** — at 0.625 credits per data call (current standard), roughly **16 data queries per day**;
 - new accounts receive a **one-time 500-credit gift** when obtaining `CUE_API_KEY` (~816 queries on day one, including the daily grant);
 - inviting a new user who registers gives both parties 50 credits.
 

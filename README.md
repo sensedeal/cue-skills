@@ -69,7 +69,7 @@ Preferred install is at the top of this README (`npx skills add`). The `skills` 
 
 The **`playbook/`** scene skills delegate the actual research run to `cue-research`'s runner, which in turn reuses `cue-buddy`'s scripts — so install all three (`playbook/<scene>`, `cue-research`, `cue-buddy`) as siblings under the same parent dir.
 
-> **Free credits to try**: every Cue account comes with free credits — **500 on first sign-up, plus 10 free every day**. So once you apply for an API key (sign in via the `cue` CLI), you can run deep research on the free tier before spending anything. Each deep-research run still consumes credits; the skills always confirm with you before spending.
+> **Credit grant to start**: every Cue account gets **500 credits on signup, plus 10 more each day**. Once you apply for an API key (sign in via the `cue` CLI) you can start — data queries and initial research draw from this grant, and each deep-research run still consumes credits, so the skills always confirm with you before spending.
 
 ## Contributing
 
