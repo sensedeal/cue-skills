@@ -6,6 +6,15 @@ Open-source agent skills published by [Cue](https://cuecue.cn) (sensedeal).
 
 A **skill** is a portable instruction bundle that any AI agent ([Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills), Codex CLI, Gemini CLI, …) can load to gain a new capability — without modifying the agent itself. This repo collects the skills Cue maintains for public use.
 
+## Install
+
+```sh
+npx skills add sensedeal/cue-skills                       # default: lists cue-buddy, cue-research, cue-omni-reader, cue-data-mcp
+npx skills add sensedeal/cue-skills --skill cue-research   # add one skill
+```
+
+See [Using a skill](#using-a-skill) for manual install and per-skill notes. DSH users: jump to [DSH bundles](#dsh-users-install-the-cue-deep-research-bundles).
+
 ## DSH users: install the Cue Deep Research bundles
 
 Running [DeepSeek Harness](https://github.com/deepseek-harness)? Add the three Cue bundles to a profile and get Cue as native `mcp__omni__*` (parse/read) and `mcp__cue_*` (financial/regulatory data) tools:
@@ -48,12 +57,7 @@ See [`cue-buddy/README.md`](./cue-buddy/README.md) for the full skill walkthroug
 
 `cue-buddy` is self-contained: an entrypoint `SKILL.md`, supporting `references/`, and stdlib-only `scripts/`. `cue-research` is **self-contained too** — it vendors the shared Cue client (`cue_api` / `sse_report` / `paths`) in its own `scripts/`, so it runs standalone (no sibling `cue-buddy` required).
 
-Install a skill with one command (the `skills` CLI lists every skill; `--skill` picks one):
-
-```sh
-npx skills add sensedeal/cue-skills                       # default: lists cue-buddy, cue-research, cue-omni-reader, cue-data-mcp
-npx skills add sensedeal/cue-skills --skill cue-research   # add one skill
-```
+Preferred install is at the top of this README (`npx skills add`). The `skills` CLI lists every skill; `--skill` picks one.
 
 **Manual install**: copy the skill folder into `~/.claude/skills/` (Claude Code) or reference it via `/use-skill <path>`; other agents load `<skill>/SKILL.md` as a system instruction. Each skill is self-contained — `cue-buddy`/`cue-research` vendor their runtime, `cue-omni-reader`/`cue-data-mcp` are thin instruction layers.
 

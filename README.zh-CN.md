@@ -6,6 +6,15 @@
 
 **skill** 是一份可移植的指令包,任何 AI agent（[Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills) / Codex CLI / Gemini CLI / OpenClaw 等）都能 load 它来获得新能力——无需改 agent 本身。这个仓库收纳 Cue 对外维护的 skills。
 
+## 安装
+
+```sh
+npx skills add sensedeal/cue-skills                       # 默认:列出 cue-buddy、cue-research、cue-omni-reader、cue-data-mcp
+npx skills add sensedeal/cue-skills --skill cue-research   # 只加一个
+```
+
+手动安装与各 skill 说明见 [如何使用 skill](#如何使用-skill)。DSH 用户直接看 [DSH 组合包](#dsh-用户安装-cue-深度研究组合包)。
+
 ## DSH 用户:安装 Cue 深度研究组合包
 
 在用 [DeepSeek Harness](https://github.com/deepseek-harness)?把三个 Cue bundle 加进 profile,即可获得 Cue 的原生 `mcp__omni__*`(解析/读取)与 `mcp__cue_*`(金融/监管数据)工具:
@@ -48,12 +57,7 @@ Cue surface 扩展会陆续在这里加新 skill。
 
 `cue-buddy` 是 self-contained:入口 `SKILL.md` + 支持的 `references/` + stdlib-only `scripts/`。`cue-research` **也已自洽**——把共享 Cue 客户端(`cue_api` / `sse_report` / `paths`)vendor 进自己的 `scripts/`,可独立运行(无需 sibling `cue-buddy`)。
 
-一条命令装好 skill(`skills` CLI 会列出全部;`--skill` 挑一个):
-
-```sh
-npx skills add sensedeal/cue-skills                       # 默认:列出 cue-buddy、cue-research、cue-omni-reader、cue-data-mcp
-npx skills add sensedeal/cue-skills --skill cue-research   # 只加一个
-```
+推荐安装见文首「安装」(`npx skills add`)。`skills` CLI 会列出全部;`--skill` 挑一个。
 
 **手动安装**:把 skill 文件夹 copy 到 `~/.claude/skills/`(Claude Code),或用 `/use-skill <path>`;其他 agent 把 `<skill>/SKILL.md` 当 system instruction load。每个 skill 都自洽——`cue-buddy`/`cue-research` 自带运行时,`cue-omni-reader`/`cue-data-mcp` 是薄指令层。
 
