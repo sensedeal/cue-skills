@@ -6,6 +6,8 @@
 
 **skill** 是一份可移植的指令包,任何 AI agent（[Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills) / Codex CLI / Gemini CLI / OpenClaw 等）都能 load 它来获得新能力——无需改 agent 本身。这个仓库收纳 Cue 对外维护的 skills。
 
+> **第一次来?** 先看 [为什么用 Cue](docs/landing.zh-CN.md) · [English](docs/landing.md)——能亲验的带引研究,以及如何免费试。
+
 ## 安装
 
 ```sh
@@ -67,7 +69,7 @@ Cue surface 扩展会陆续在这里加新 skill。
 
 **`playbook/`** 场景 skill 把实际跑研究委托给 `cue-research` 的 runner,后者又复用 `cue-buddy` 的脚本——所以要把三者(`playbook/<场景>`、`cue-research`、`cue-buddy`)装在同一父目录下作兄弟目录。
 
-> **有免费积分可试**:每个 Cue 账号都送免费积分——**首次注册 50 分,之后每天再免费 10 分**。所以只要申请 API key(用 `cue` CLI 登录),就能先用免费额度跑深度研究、不花钱也能试。每次深度研究仍会消耗积分;skill 跑之前都会先跟你确认再花。
+> **有免费积分可试**:每个 Cue 账号都送免费积分——**首次注册 500 分,之后每天再免费 10 分**。所以只要申请 API key(用 `cue` CLI 登录),就能先用免费额度跑深度研究、不花钱也能试。每次深度研究仍会消耗积分;skill 跑之前都会先跟你确认再花。
 
 ## 贡献
 
