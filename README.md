@@ -46,11 +46,16 @@ See [`cue-buddy/README.md`](./cue-buddy/README.md) for the full skill walkthroug
 
 ## Using a skill
 
-`cue-buddy` is self-contained: an entrypoint `SKILL.md`, supporting `references/`, and stdlib-only `scripts/`. `cue-research` ships **no runtime scripts of its own** — it reuses cue-buddy's (`cue_api` / `sse_report`), so it must be installed **alongside `cue-buddy` as a sibling folder**.
+`cue-buddy` is self-contained: an entrypoint `SKILL.md`, supporting `references/`, and stdlib-only `scripts/`. `cue-research` is **self-contained too** — it vendors the shared Cue client (`cue_api` / `sse_report` / `paths`) in its own `scripts/`, so it runs standalone (no sibling `cue-buddy` required).
 
-**Claude Code**: copy the skill folder into `~/.claude/skills/` or reference it via `/use-skill <path>`. See per-skill README for exact installation. **For `cue-research`, install `cue-buddy` next to it** (same parent dir) so its shared scripts resolve.
+Install a skill with one command (the `skills` CLI lists every skill; `--skill` picks one):
 
-**Other agents**: load `<skill>/SKILL.md` as a system instruction. The skill's scripts are stdlib-only Python where possible.
+```sh
+npx skills add sensedeal/cue-skills                       # default: lists cue-buddy, cue-research, cue-omni-reader, cue-data-mcp
+npx skills add sensedeal/cue-skills --skill cue-research   # add one skill
+```
+
+**Manual install**: copy the skill folder into `~/.claude/skills/` (Claude Code) or reference it via `/use-skill <path>`; other agents load `<skill>/SKILL.md` as a system instruction. Each skill is self-contained — `cue-buddy`/`cue-research` vendor their runtime, `cue-omni-reader`/`cue-data-mcp` are thin instruction layers.
 
 **`cue-omni-reader`** ships no runtime parser scripts. Load its `SKILL.md` and connect an official Omni MCP surface. Existing URL tools need no local install; local files use the audited Bridge after minimum-root confirmation.
 

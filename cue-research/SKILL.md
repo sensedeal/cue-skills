@@ -22,9 +22,9 @@ Cue's tool surface covers **public data sources only** (business registry / cour
 
 ## Setup
 
-**Dependency**: this skill has a single thin runtime script `scripts/research_run.py` (run + fetch report + save to disk); it and all other calls import shared primitives from the sibling `../cue-buddy/scripts` (see "Import convention" below). Therefore **`cue-buddy` must be installed as a sibling directory of this skill** (e.g. both under `~/.claude/skills/`) — installing only cue-research fails at import time.
+**Dependency**: this skill is **self-contained**. `scripts/research_run.py` (run + fetch report + save to disk) and all other calls import shared primitives from **this skill's own `scripts/`** — the shared Cue client (`cue_api` / `sse_report` / `paths`) is vendored locally, so **no sibling `cue-buddy` is required** (see "Import convention" below).
 
-It shares the cue-buddy API-key configuration (`CUE_API_KEY` env or `~/.cue/config.json`). See the "Setup" section of [`../cue-buddy/SKILL.md`](../cue-buddy/SKILL.md).
+It shares the Cue API-key configuration (`CUE_API_KEY` env or `~/.cue/config.json`). See the "Setup" section of the Cue API's docs.
 
 ## Invocation convention (verbs)
 
@@ -197,7 +197,7 @@ Translation details: present the **task_requirement** of `▶ agent=… task=<re
 1. Read the background stdout tail. `RESULT ok` → read `--output` and deliver; `RESULT empty` → next steps per diagnostics.
 2. No `RESULT` in stdout (task running long / recall never came) → **actively replay by conv_id to fetch the report** (no credits; if the backend finished, the report must exist):
    ```python
-   import sys; sys.path.insert(0, "<repo>/cue-buddy/scripts")
+   import sys; sys.path.insert(0, "<repo>/cue-research/scripts")
    from cue_api import replay
    from sse_report import extract_reporter_content
    events = list(replay("<conv_id>", max_seconds=60))
@@ -310,22 +310,22 @@ Same source as cue-buddy: the API key never appears in output/logs/commits; a ke
 | `+save` | Stage 6 handoff | handoff to cue-buddy's `generate_template` + `validate_template` + `cue_api.create_template` |
 | `+upgrade` | Upgrade the skill itself | `python3 ../cue-buddy/scripts/update_skill.py --skill cue-research` (interactive) / add `--silent-check` (session-start lightweight) |
 
-This skill's only runtime script is **`scripts/research_run.py`** — a **thin orchestration** over the `../cue-buddy/scripts/` shared primitives (`cue_api` + `sse_report`), doing exactly "start chat_stream → fetch report live → fall back to replay when empty → save to disk", **copying no primitives** (avoids version drift with cue-buddy). `scripts/test_skill_regression.py` only does structure/import self-checks. **Don't hand-write a chat_stream event loop in prose** — that was exactly the root cause of early reporter-content misses being misdiagnosed as "the parser is broken"; always go through `research_run.py`.
+This skill's only runtime script is **`scripts/research_run.py`** — a **thin orchestration** over the vendored Cue client (`cue_api` + `sse_report`) in this skill's `scripts/`, doing exactly "start chat_stream → fetch report live → fall back to replay when empty → save to disk". The client is **vendored locally**, so the skill is self-contained. `scripts/test_skill_regression.py` only does structure/import self-checks. **Don't hand-write a chat_stream event loop in prose** — that was exactly the root cause of early reporter-content misses being misdiagnosed as "the parser is broken"; always go through `research_run.py`.
 
 ### Import convention (runtime bootstrap)
 
-**Running/fetching always goes through `research_run.py`** (it already handles sys.path + chat_stream + replay + save internally); the agent does **not** hand-write chat_stream/replay loops. The only things the agent imports **directly** are Stage 2-3 matching + Stage 4b rewrite (read-only, fast, foreground). `cue_api` / `sse_report` aren't on the default import path (they live in sibling `cue-buddy/scripts/`); those two call classes start with:
+**Running/fetching always goes through `research_run.py`** (it already handles sys.path + chat_stream + replay + save internally); the agent does **not** hand-write chat_stream/replay loops. The only things the agent imports **directly** are Stage 2-3 matching + Stage 4b rewrite (read-only, fast, foreground). `cue_api` / `sse_report` aren't on the default import path (they live in this skill's `scripts/`); those two call classes start with:
 
 ```python
 import sys
 from pathlib import Path
-# cue-research/<...>  →  cue-skills/cue-buddy/scripts
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cue-buddy" / "scripts"))
+# cue-research/<...>  →  cue-skills/cue-research/scripts
+sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 
 from cue_api import search_templates, rewrite     # Stage 2-3 matching / Stage 4b pre-rewrite
 ```
 
-When the agent runs via Bash `python3 -c "..."`, use the absolute path instead: `sys.path.insert(0, "<repo>/cue-buddy/scripts")`. Avoidance point: never copy-paste `cue_api.py` under cue-research/ — it would drift from cue-buddy's version.
+When the agent runs via Bash `python3 -c "..."`, use the absolute path instead: `sys.path.insert(0, "<repo>/cue-research/scripts")`. Avoidance point: never copy-paste `cue_api.py` under cue-research/ — it would drift from cue-buddy's version.
 
 ## Compatibility
 
