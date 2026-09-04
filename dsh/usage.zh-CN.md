@@ -2,7 +2,7 @@
 
 **[English](usage.md)** · [中文](usage.zh-CN.md)
 
-两个可发布的 bundle,把 Cue Omni Reader 接入 DeepSeek Harness profile,并让你给它加固:
+三个可发布的 bundle,把 Cue 接入 DeepSeek Harness profile —— Omni Reader(解析/读取)、其加固护栏、Cue 的公开数据 MCP(金融/监管):
 
 | 包 | 作用 | 安装 |
 |---|---|---|
@@ -75,4 +75,4 @@ config:
 
 ## 许可 / scope
 
-两个包都是 `@cueai/*`(公开 scope)且 MIT;自带测试与 CI(`verify-dsh-bundles`)保证改动可被门禁拦截。
+三个包都是 `@cueai/*`(公开 scope)且 MIT;自带测试与 CI(`verify-dsh-bundles`)保证改动可被门禁拦截。

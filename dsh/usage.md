@@ -2,8 +2,8 @@
 
 **[English](usage.md)** · [中文](usage.zh-CN.md)
 
-Two publishable bundles make the Cue Omni Reader available to a DeepSeek Harness
-profile, then let you harden it:
+Three publishable bundles bring Cue to a DeepSeek Harness profile — Omni Reader
+(parse/read), its hardening guard, and Cue's public data MCP (financial/regulatory):
 
 | Package | Purpose | Install |
 |---|---|---|
@@ -94,5 +94,5 @@ run the repo checks: `node --test dsh/cue-omni-reader-guard/test/policy.test.js`
 
 ## Licensing / scope
 
-Both bundles are `@cueai/*` (public scope) and MIT; ship tests and CI
+All three bundles are `@cueai/*` (public scope) and MIT; ship tests and CI
 (`verify-dsh-bundles`) so changes stay gated.
