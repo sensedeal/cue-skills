@@ -27,16 +27,16 @@ Client capabilities are evidence-based. When Tasks, Roots, host timeout, or cwd/
 Node.js 20.12+ is required. Never use an implicit `latest`:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.6.0 setup
+npx -y @cueai/omni-reader-mcp@1.7.1 setup
 ```
 
 Interactive setup supports Hermes, Cursor, and Claude Desktop natively; choose **Other** for any other client. Then verify:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json
+npx -y @cueai/omni-reader-mcp@1.7.1 doctor --json
 ```
 
-`doctor` checks package version, key presence, root safety, cache/artifact mode, and the client reload instruction; it reports only authenticated Cube control/configuration facts. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. It does not reveal the API key or private paths. Roll back with `npx -y @cueai/omni-reader-mcp@1.6.0 uninstall --yes --json` (restores a trusted URL-only entry when available).
+`doctor` checks package version, key presence, root safety, cache/artifact mode, and the client reload instruction; it reports only authenticated Cube control/configuration facts. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. It does not reveal the API key or private paths. Roll back with `npx -y @cueai/omni-reader-mcp@1.7.1 uninstall --yes --json` (restores a trusted URL-only entry when available).
 
 Full setup rules (consent, allowed roots, non-interactive examples, rollback): [`references/setup.md`](references/setup.md).
 
@@ -45,14 +45,14 @@ Full setup rules (consent, allowed roots, non-interactive examples, rollback): [
 The current setup generates a working Windows entry automatically (spawn goes through `cmd /d /c npx`, which resolves the `npx.cmd` ENOENT that produced WorkBuddy's `MCP error -32000: Connection closed`). Three runnable config shapes:
 
 1. **Generated setup entry** (default, recommended) — platform-correct spawn with trust validation
-2. **`npx` shell form** — `npx -y @cueai/omni-reader-mcp@1.6.0` from a shell that resolves `.cmd`
+2. **`npx` shell form** — `npx -y @cueai/omni-reader-mcp@1.7.1` from a shell that resolves `.cmd`
 3. **`node` + absolute path** — `node "<absolute-path-to>/dist/index.js"`; most robust when npx itself is unavailable
 
 **Use a stable path**, never a session-timestamped cache directory — a changing path breaks the MCP client's saved config after each cache sweep.
 
 ## Network diagnostics
 
-Run `npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json` first, then diagnose by structured error code and keep the control-plane and upload stages separate:
+Run `npx -y @cueai/omni-reader-mcp@1.7.1 doctor --json` first, then diagnose by structured error code and keep the control-plane and upload stages separate:
 
 - `CUBE_UNAVAILABLE` is a control-plane failure before any file upload. Do not diagnose it through upload-stage endpoint probes.
 - `OMNI_NOT_ENTITLED` / HTTP 403 is the account-entitlement signal.
@@ -61,6 +61,7 @@ Run `npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json` first, then diagnose by 
 - `UNSUPPORTED_DETAIL` means the requested representation/profile is unavailable; do not retry unchanged or describe the account as text-only.
 - A failure after grant creation means the secure upload stage did not complete.
 - `CUBE_PROTOCOL_ERROR` is a response-contract mismatch, not a generic DNS diagnosis.
+- `BRIDGE_UPGRADE_REQUIRED` means the service does not accept the running Bridge release for direct local-file parsing. Install the latest published `@cueai/omni-reader-mcp` release, then retry once. If already running the latest published release, do not reinstall or retry; run `doctor --json` and ask the service operator to verify Bridge admission.
 
 Use only authenticated Cube control/configuration facts `doctor` reports. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. Do not guess a hostname or port, and do not expose an internal upload endpoint as routine user troubleshooting. Further client/service evidence: [`references/compatibility.md`](references/compatibility.md).
 

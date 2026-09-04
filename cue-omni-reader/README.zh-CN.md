@@ -27,16 +27,16 @@
 需要 Node.js 20.12+。绝不用隐式 `latest`：
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.6.0 setup
+npx -y @cueai/omni-reader-mcp@1.7.1 setup
 ```
 
 交互式 setup 原生支持 Hermes、Cursor、Claude Desktop；其他客户端选 **Other**。然后验证：
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json
+npx -y @cueai/omni-reader-mcp@1.7.1 doctor --json
 ```
 
-`doctor` 检查包版本、key 是否存在、根目录安全性、缓存/artifact 模式与客户端重载指引；它仅检查已鉴权的 Cube 控制面/配置事实。它不会探测已授权数据平面；只有真实本地文件 parse 才能端到端验证该路由。它不泄露 API key 或私有路径。回滚：`npx -y @cueai/omni-reader-mcp@1.6.0 uninstall --yes --json`（可用时恢复受信任的 URL-only 条目）。
+`doctor` 检查包版本、key 是否存在、根目录安全性、缓存/artifact 模式与客户端重载指引；它仅检查已鉴权的 Cube 控制面/配置事实。它不会探测已授权数据平面；只有真实本地文件 parse 才能端到端验证该路由。它不泄露 API key 或私有路径。回滚：`npx -y @cueai/omni-reader-mcp@1.7.1 uninstall --yes --json`（可用时恢复受信任的 URL-only 条目）。
 
 完整 setup 规则（同意、允许根目录、非交互示例、回滚）：[`references/setup.md`](references/setup.md)。
 
@@ -45,14 +45,14 @@ npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json
 当前 setup 会**自动生成可用的 Windows 条目**（spawn 走 `cmd /d /c npx`，解决了 WorkBuddy `MCP error -32000: Connection closed` 背后的 `npx.cmd` ENOENT）。三种可运行形态：
 
 1. **生成的 setup 条目**（默认，推荐）——平台正确的 spawn + 信任校验
-2. **`npx` shell 形态** —— 在能解析 `.cmd` 的 shell 里跑 `npx -y @cueai/omni-reader-mcp@1.6.0`
+2. **`npx` shell 形态** —— 在能解析 `.cmd` 的 shell 里跑 `npx -y @cueai/omni-reader-mcp@1.7.1`
 3. **`node` + 绝对路径** —— `node "<绝对路径>/dist/index.js"`；npx 本身不可用时最稳
 
 **务必用稳定路径**，不要用 session 时间戳目录——路径一变，MCP 客户端保存的配置在每次缓存清扫后就失效。
 
 ## 网络诊断
 
-先运行 `npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json`，再按结构化错误码诊断，并严格区分控制面与上传阶段：
+先运行 `npx -y @cueai/omni-reader-mcp@1.7.1 doctor --json`，再按结构化错误码诊断，并严格区分控制面与上传阶段：
 
 - `CUBE_UNAVAILABLE` 是文件上传前的控制面失败；绝不能用上传阶段的端点探针解释它。
 - `OMNI_NOT_ENTITLED` / HTTP 403 才是账号 entitlement 信号。
@@ -61,6 +61,7 @@ npx -y @cueai/omni-reader-mcp@1.6.0 doctor --json
 - `UNSUPPORTED_DETAIL` 表示请求的 representation/profile 不可用；不要原样重试，也不要把账号描述成只能使用 text。
 - grant 创建后的失败表示安全上传阶段没有完成。
 - `CUBE_PROTOCOL_ERROR` 是响应契约不匹配，不是通用 DNS 诊断。
+- `BRIDGE_UPGRADE_REQUIRED` 表示服务不接受当前 Bridge 版本执行本地文件直传。安装最新已发布版本的 `@cueai/omni-reader-mcp`，然后只重试一次。如果已经运行最新已发布版本，不要重新安装或重试；运行 `doctor --json`，并请服务运维方核验 Bridge admission。
 
 只依据 `doctor` 报告的已鉴权 Cube 控制面/配置事实。它不会探测已授权数据平面；只有真实本地文件 parse 才能端到端验证该路由。不要猜主机名或端口，也不要把内部上传入口当作常规用户排障项。更多客户端与服务证据：[`references/compatibility.md`](references/compatibility.md)。
 

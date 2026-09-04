@@ -21,7 +21,7 @@ authorized local document, audio, or video source into content.
 - **Node.js ≥ 20.12** (the Bridge runtime).
 - A **Cue API key** from <https://cuecue.cn/hub/api-key>. New accounts get free
   credits (see the skill's setup reference for current allowances).
-- The Bridge is spawned via `npx -y @cueai/omni-reader-mcp@1.5.5`, so the npm registry
+- The Bridge is spawned via `npx -y @cueai/omni-reader-mcp@1.7.1`, so the npm registry
   must be reachable, or pin an install whose binary is on `PATH`.
 
 ## Install
@@ -91,7 +91,7 @@ dsh --profile web --dump-config      # the tree should include an `mcp-omni` row
 
 ## Versioning
 
-- Bridge pin: **`@cueai/omni-reader-mcp@1.5.5`** (audited; never an implicit `latest`).
+- Bridge pin: **`@cueai/omni-reader-mcp@1.7.1`** (audited; never an implicit `latest`).
 - `@deepseek-ai/dsh-mcp-client` is a **peer** dependency (declared as `^0.1.1-rc.2`); the Harness profile provides it. Align it to the Harness release you run if needed.
 
 ## Rollback

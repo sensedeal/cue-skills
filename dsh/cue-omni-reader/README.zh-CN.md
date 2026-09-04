@@ -12,7 +12,7 @@
 
 - **Node.js ≥ 20.12**(Bridge 运行时)。
 - **Cue API key**:<https://cuecue.cn/hub/api-key>。新账号有免费额度(当前额度见 skill 的 setup 参考)。
-- Bridge 通过 `npx -y @cueai/omni-reader-mcp@1.5.5` 拉起,所以 npm registry 需可达,或安装一个二进制在 `PATH` 上的版本。
+- Bridge 通过 `npx -y @cueai/omni-reader-mcp@1.7.1` 拉起,所以 npm registry 需可达,或安装一个二进制在 `PATH` 上的版本。
 
 ## 安装
 
@@ -74,7 +74,7 @@ dsh --profile web --dump-config      # 应包含一个 `mcp-omni` 行
 
 ## 版本
 
-- Bridge 固定:**`@cueai/omni-reader-mcp@1.5.5`**(审校版;永远不用隐式 `latest`)。
+- Bridge 固定:**`@cueai/omni-reader-mcp@1.7.1`**(审校版;永远不用隐式 `latest`)。
 - `@deepseek-ai/dsh-mcp-client` 是 **peer** 依赖(声明为 `^0.1.1-rc.2`),由 Harness profile 提供;如需要,对齐到你所跑的 Harness 版本。
 
 ## 回滚
