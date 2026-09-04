@@ -46,7 +46,7 @@ See [`cue-buddy/README.md`](./cue-buddy/README.md) for the full skill walkthroug
 
 ## Using a skill
 
-`cue-buddy` is self-contained: an entrypoint `SKILL.md`, supporting `references/`, and stdlib-only `scripts/`. `cue-research` ships **no runtime scripts of its own** — it reuses cue-buddy's (`cue_api` / `sse_report`), so it must be installed **alongside `cue-buddy` as a sibling folder**.
+`cue-buddy` is self-contained: an entrypoint `SKILL.md`, supporting `references/`, and stdlib-only `scripts/`. `cue-research` is **self-contained too** — it vendors the shared Cue client (`cue_api` / `sse_report` / `paths`) in its own `scripts/`, so it runs standalone (no sibling `cue-buddy` required).
 
 **Claude Code**: copy the skill folder into `~/.claude/skills/` or reference it via `/use-skill <path>`. See per-skill README for exact installation. **For `cue-research`, install `cue-buddy` next to it** (same parent dir) so its shared scripts resolve.
 

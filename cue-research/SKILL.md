@@ -22,9 +22,9 @@ Cue's tool surface covers **public data sources only** (business registry / cour
 
 ## Setup
 
-**Dependency**: this skill has a single thin runtime script `scripts/research_run.py` (run + fetch report + save to disk); it and all other calls import shared primitives from the sibling `../cue-buddy/scripts` (see "Import convention" below). Therefore **`cue-buddy` must be installed as a sibling directory of this skill** (e.g. both under `~/.claude/skills/`) — installing only cue-research fails at import time.
+**Dependency**: this skill is **self-contained**. `scripts/research_run.py` (run + fetch report + save to disk) and all other calls import shared primitives from **this skill's own `scripts/`** — the shared Cue client (`cue_api` / `sse_report` / `paths`) is vendored locally, so **no sibling `cue-buddy` is required** (see "Import convention" below).
 
-It shares the cue-buddy API-key configuration (`CUE_API_KEY` env or `~/.cue/config.json`). See the "Setup" section of [`../cue-buddy/SKILL.md`](../cue-buddy/SKILL.md).
+It shares the Cue API-key configuration (`CUE_API_KEY` env or `~/.cue/config.json`). See the "Setup" section of the Cue API's docs.
 
 ## Invocation convention (verbs)
 

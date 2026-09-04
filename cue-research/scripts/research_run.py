@@ -41,11 +41,10 @@ import sys
 import time
 from pathlib import Path
 
-# Same sys.path bootstrap SKILL.md documents: shared primitives live in the
-# sibling cue-buddy/scripts (cue-research deliberately keeps no copy of them).
+# Self-contained: the shared Cue client (cue_api/sse_report/paths) is vendored
+# locally so cue-research runs standalone — no sibling cue-buddy required.
 _HERE = Path(__file__).resolve().parent
-_BUDDY_SCRIPTS = _HERE.parent.parent / "cue-buddy" / "scripts"
-sys.path.insert(0, str(_BUDDY_SCRIPTS))
+sys.path.insert(0, str(_HERE))
 
 from cue_api import (  # noqa: E402
     CueAPIError,

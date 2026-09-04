@@ -26,9 +26,9 @@ Cue 工具面仅含**公开数据源**(工商/司法/监管/财报/资金流/招
 
 ## 准备
 
-**依赖**:本 skill 只有一个薄运行时脚本 `scripts/research_run.py`(跑+取报告+落盘),它和其余调用都从 sibling `../cue-buddy/scripts` 导入共享原语(见下文"导入约定")。因此 **`cue-buddy` 必须与本 skill 同级目录并装**(例如都在 `~/.claude/skills/` 下)——只装 cue-research 会在 import 时失败。
+**依赖**:本 skill **已自洽**。`scripts/research_run.py`(跑+取报告+落盘)与其余调用都从**本 skill 自己的 `scripts/`** 导入共享原语——共享 Cue 客户端(`cue_api` / `sse_report` / `paths`)已本地 vendor,**无需 sibling `cue-buddy`**(详见下文"导入约定")。
 
-跟 cue-buddy 共用一套 API key 配置(`CUE_API_KEY` env 或 `~/.cue/config.json`)。详见 [`../cue-buddy/SKILL.md`](../cue-buddy/SKILL.md) 的"准备"段。
+共用一套 Cue API key 配置(`CUE_API_KEY` env 或 `~/.cue/config.json`)。详见 Cue API 文档的"准备"段。
 
 ## 调用约定(verbs)
 
