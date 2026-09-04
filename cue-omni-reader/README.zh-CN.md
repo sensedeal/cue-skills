@@ -65,7 +65,7 @@ npx -y @cueai/omni-reader-mcp@1.7.1 doctor --json
 
 只依据 `doctor` 报告的已鉴权 Cube 控制面/配置事实。它不会探测已授权数据平面；只有真实本地文件 parse 才能端到端验证该路由。不要猜主机名或端口，也不要把内部上传入口当作常规用户排障项。更多客户端与服务证据：[`references/compatibility.md`](references/compatibility.md)。
 
-## 免费额度
+## 赠送额度
 
 新用户可以试用 Omni；key 在 <https://cuecue.cn/hub/api-key> 获取。当前额度以服务端 onboarding 策略和 live `doctor` 输出为权威，不要把页数或媒体时长换算复制进指引。细节：[`references/setup.md`](references/setup.md)。
 

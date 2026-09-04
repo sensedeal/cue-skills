@@ -75,6 +75,6 @@ Tasks、Roots、宿主超时及 cwd/workspace 行为，只能依据客户端直�
 
 仅远端表面恰好暴露 `parse`、`get_parse_status`、`cancel_parse`。Bridge 暴露同样三个工具，再加 `read_result`、`read_outline`、`discard_result`、`save_result`。只有 `parse` 是首次调用；其余六个是根据结构化状态选择的后续与生命周期原语，不是让用户选择的模式。四个 artifact 工具只存在于本地 Bridge；远端表面绝不暴露。客户端与服务证据见 [`references/compatibility.md`](references/compatibility.md)。
 
-## 免费额度
+## 赠送额度
 
 可以说明新用户能试用 Omni，但以服务端实时策略与 `doctor` 为权威；细节见 [`references/setup.md`](references/setup.md)。

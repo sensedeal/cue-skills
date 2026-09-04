@@ -65,7 +65,7 @@ Run `npx -y @cueai/omni-reader-mcp@1.7.1 doctor --json` first, then diagnose by 
 
 Use only authenticated Cube control/configuration facts `doctor` reports. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. Do not guess a hostname or port, and do not expose an internal upload endpoint as routine user troubleshooting. Further client/service evidence: [`references/compatibility.md`](references/compatibility.md).
 
-## Free credits
+## Granted credits
 
 New users can try Omni. Get a key at <https://cuecue.cn/hub/api-key>; the server-side onboarding policy and live `doctor` output are the authority for current allowances. Do not copy page or media-duration conversions into guidance. Details: [`references/setup.md`](references/setup.md).
 

@@ -75,6 +75,6 @@ Run `npx -y @cueai/omni-reader-mcp@1.7.1 doctor --json` first. `CUBE_UNAVAILABLE
 
 Remote-only exposes exactly `parse`, `get_parse_status`, and `cancel_parse`. Bridge exposes the same three plus `read_result`, `read_outline`, `discard_result`, and `save_result`. Only `parse` is a first call; the other six are continuation and lifecycle primitives, not user modes. Artifact tools stay Bridge-local. Evidence: [`references/compatibility.md`](references/compatibility.md).
 
-## Free credits
+## Granted credits
 
 New users can try Omni; current policy comes from the live server and `doctor`. Details: [`references/setup.md`](references/setup.md).
