@@ -1660,7 +1660,7 @@ class TestRepositoryIntegration(unittest.TestCase):
         )
         self.assertIn('python-version: ["3.12", "3.13"]', self.workflow)
 
-    def test_dsh_bundle_pins_bridge_1_7_1(self) -> None:
+    def test_dsh_bundle_pins_bridge_version(self) -> None:
         bundle = _REPO_ROOT / "dsh" / "cue-omni-reader"
         package = json.loads(_required_text(self, bundle / "package.json"))
         guard = json.loads(
@@ -1691,7 +1691,10 @@ class TestRepositoryIntegration(unittest.TestCase):
                 )
             )
         self.assertEqual(len(pins), 7)
-        self.assertEqual(set(pins), {"@cueai/omni-reader-mcp@1.7.1"})
+        self.assertEqual(
+            set(pins),
+            {f"@cueai/omni-reader-mcp@{_EXPECTED_BRIDGE_VERSION}"},
+        )
 
 
 class TestSecurityAndLayout(unittest.TestCase):

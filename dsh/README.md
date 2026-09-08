@@ -28,6 +28,8 @@ and its config, and ships no parser, protocol driver, or MCP client.
 | [`cue-omni-reader-guard/`](cue-omni-reader-guard) | Optional hardening: a `tools/pre-execute` guard that denies SSRF (private/reserved hosts) and enforces an allow-list / consent for `mcp__omni__parse`. | `@cueai/dsh-omni-reader-guard` |
 | [`cue-data-mcp/`](cue-data-mcp) | Expose Cue's **public data** MCP services (regulatory, macro, disclosures, statute, holdings, entity, academic, IPO, ESOP, buyback, footnote, fact index…) as native `mcp__cue_<domain>__*` tools (15 domains / ~104 tools) via streamable-http. | `@cueai/dsh-cue-data-mcp` |
 
+The **Omni Reader** wiring bundle pins the audited Bridge `@cueai/omni-reader-mcp@1.7.2` (never an implicit `latest`). To pin another audited release, edit that bundle's `cordis.patch.yml` (see its `README.md`).
+
 ## Install & use
 
 ```sh
