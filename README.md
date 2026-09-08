@@ -67,7 +67,7 @@ Preferred install is at the top of this README (`npx skills add`). The `skills` 
 
 **`cue-data-mcp`** ships no runtime code. Load its `SKILL.md` and let the agent discover the live data domains from the anonymous `/api/mcp-catalog`, then connect through each domain's routing DTO. Self-contained: no sibling folders required.
 
-The **`playbook/`** scene skills delegate the actual research run to `cue-research`'s runner, which in turn reuses `cue-buddy`'s scripts — so install all three (`playbook/<scene>`, `cue-research`, `cue-buddy`) as siblings under the same parent dir.
+The **`playbook/`** scene skills delegate the actual research run to `cue-research`'s runner. `cue-research` is self-contained (it vendors the shared Cue client), so install `playbook/<scene>` + `cue-research` as siblings under the same parent dir; `cue-buddy` is only needed if you also want to author or save buddies.
 
 > **Credit grant to start**: every Cue account gets **500 credits on signup, plus 10 more each day**. Once you apply for an API key (sign in via the `cue` CLI) you can start — data queries and initial research draw from this grant, and each deep-research run still consumes credits, so the skills always confirm with you before spending.
 

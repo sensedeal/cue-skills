@@ -67,7 +67,7 @@ Cue surface 扩展会陆续在这里加新 skill。
 
 **`cue-data-mcp`** 不带运行时代码。加载其 `SKILL.md`，让 agent 从匿名 `/api/mcp-catalog` 发现 live 数据域，再按每个域的 routing DTO 直连。self-contained，无需兄弟目录。
 
-**`playbook/`** 场景 skill 把实际跑研究委托给 `cue-research` 的 runner,后者又复用 `cue-buddy` 的脚本——所以要把三者(`playbook/<场景>`、`cue-research`、`cue-buddy`)装在同一父目录下作兄弟目录。
+**`playbook/`** 场景 skill 把实际跑研究委托给 `cue-research` 的 runner。`cue-research` 已自洽(自带共享 Cue 客户端),所以把 `playbook/<场景>` + `cue-research` 装在同一父目录下作兄弟目录即可;`cue-buddy` 仅在你还想制作/保存搭子时才需要。
 
 > **有赠送积分可先试**:每个 Cue 账号都送赠送积分——**注册送 500 分,之后每天再送 10 分**。申请 API key(用 `cue` CLI 登录)即可开始:数据查询与试探性研究从这里抵扣,每次深度研究仍会消耗积分,skill 跑之前都会先跟你确认再花。
 
