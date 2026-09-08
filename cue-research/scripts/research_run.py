@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """cue-research runner — fire one deep-research run and retrieve the report.
 
-This is a THIN composer over the shared cue-buddy primitives (cue_api +
-sse_report). It does NOT duplicate them — it imports them via the documented
-sys.path pattern, the same one SKILL.md tells the agent to use. Having one
-invocable unit (instead of an agent hand-writing the stream loop from prose)
-is what makes two things clean:
+This is a THIN orchestration over the vendored Cue client primitives (cue_api +
+sse_report), which live in this skill's own scripts/. It does NOT duplicate the
+stream logic — it imports the client via the documented sys.path pattern, the
+same one SKILL.md tells the agent to use. Having one invocable unit (instead of
+an agent hand-writing the stream loop from prose) is what makes two things clean:
 
   1. Background execution. SKILL.md launches this via Bash with
      run_in_background=true; a deep-research run is 3-15 min (60 min server
@@ -27,7 +27,7 @@ Usage:
     python3 research_run.py --query "<question or rewritten mandate>" \
         [--template-id ID] [--conversation-id ID] \
         --output <root>/reports/foo.md [--log <root>/logs/cue-run-<conv_id>.log] [--timeout 3600]
-    (<root> = `python3 ../cue-buddy/scripts/cue_api.py root`; default ~/.cue.
+    (<root> = `python3 scripts/cue_api.py root`; default ~/.cue.
      --output/--log may be omitted - runner defaults to <root>/reports|logs/.)
 
 Exit codes: 0 = report retrieved + saved; 1 = empty/failed (diagnosis printed).

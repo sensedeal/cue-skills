@@ -308,7 +308,7 @@ Same source as cue-buddy: the API key never appears in output/logs/commits; a ke
 | `+match` | Only Stage 2-3 | `cue_api.search_templates` |
 | `+rewrite` | Only /api/rewrite | `cue_api.rewrite` |
 | `+save` | Stage 6 handoff | handoff to cue-buddy's `generate_template` + `validate_template` + `cue_api.create_template` |
-| `+upgrade` | Upgrade the skill itself | `python3 ../cue-buddy/scripts/update_skill.py --skill cue-research` (interactive) / add `--silent-check` (session-start lightweight) |
+| `+upgrade` | Upgrade the skill itself | `python3 scripts/update_skill.py --skill cue-research` (interactive) / add `--silent-check` (session-start lightweight) |
 
 This skill's only runtime script is **`scripts/research_run.py`** — a **thin orchestration** over the vendored Cue client (`cue_api` + `sse_report`) in this skill's `scripts/`, doing exactly "start chat_stream → fetch report live → fall back to replay when empty → save to disk". The client is **vendored locally**, so the skill is self-contained. `scripts/test_skill_regression.py` only does structure/import self-checks. **Don't hand-write a chat_stream event loop in prose** — that was exactly the root cause of early reporter-content misses being misdiagnosed as "the parser is broken"; always go through `research_run.py`.
 
@@ -325,7 +325,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 from cue_api import search_templates, rewrite     # Stage 2-3 matching / Stage 4b pre-rewrite
 ```
 
-When the agent runs via Bash `python3 -c "..."`, use the absolute path instead: `sys.path.insert(0, "<repo>/cue-research/scripts")`. Avoidance point: never copy-paste `cue_api.py` under cue-research/ — it would drift from cue-buddy's version.
+When the agent runs via Bash `python3 -c "..."`, use the absolute path instead: `sys.path.insert(0, "<repo>/cue-research/scripts")`. The shared client (`cue_api` / `sse_report` / `paths`) is **vendored** in this skill's `scripts/`; when cue-buddy's shared client changes, re-vendor it here rather than forking an ad-hoc copy elsewhere.
 
 ## Compatibility
 

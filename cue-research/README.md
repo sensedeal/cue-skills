@@ -8,9 +8,9 @@ Conversational loop: ask a question → skill matches ≤2 candidate buddies fro
 
 A single deep-research run **typically takes 3–15 minutes** (longer for complex subjects), with a **60-minute server-side hard timeout** — set client/agent waits accordingly and don't treat a long-running task as failed.
 
-## Requires cue-buddy alongside
+## Self-contained
 
-cue-research ships **one thin runtime script** — `scripts/research_run.py` (fire a run → retrieve report → save to file), which *composes* `cue_api` / `sse_report` from the sibling [`../cue-buddy/scripts`](../cue-buddy/scripts) (via a `sys.path` bootstrap; see `SKILL.md`) rather than duplicating them. Install **both skills as sibling folders** under the same parent (e.g. both in `~/.claude/skills/`). Installing cue-research alone will fail at import. (The shared primitives are intentionally *not* copied here, to avoid version drift from cue-buddy.)
+cue-research ships its runtime **and its shared Cue client primitives**: `scripts/research_run.py` (fire a run → retrieve report → save to file) plus the vendored `cue_api` / `sse_report` / `paths` inside this skill's own `scripts/`. Install it on its own (e.g. into `~/.claude/skills/cue-research/`); **no sibling `cue-buddy` is required** at import or runtime. The only optional cross-skill touch is the `+save` handoff (Stage 6), which routes to cue-buddy's `+author`/`+create` **only if cue-buddy is installed** — the run itself never needs it.
 
 `research_run.py` runs in the **background** (SKILL.md launches it with `run_in_background`) and treats **replay as the primary report-retrieval path** — long live SSE streams routinely drop the reporter segment, so it extracts from the live stream and falls back to replay (same parser, reads the full record from the backend DB). Patterns borrowed from the `cuecue-deep-research` sibling skill (async + file output).
 
@@ -18,7 +18,7 @@ cue-research ships **one thin runtime script** — `scripts/research_run.py` (fi
 
 Status: v0.3.6 — see `SKILL.md`.
 
-> **v0.3.4 path consolidation:** runtime files (reports / logs / runs) now land under a single resolved root `<root>` = `python3 ../cue-buddy/scripts/cue_api.py root` (default `~/.cue`; falls back to agent cwd or temp if home isn't writable - portable, no `/tmp/` dependency on Windows). Reports moved from `~/cue-reports/` to `<root>/reports/` - **old reports in `~/cue-reports/` are not moved**; new runs go to the new default. The progress log moved from a shell `> ./cue-run.log` redirect to the runner's own `--log` (tee), so launch and completion-tail Bash calls share one resolver-chosen path instead of a hardcoded one. Set `CUE_HOME` to relocate everything.
+> **v0.3.4 path consolidation:** runtime files (reports / logs / runs) now land under a single resolved root `<root>` = `python3 scripts/cue_api.py root` (default `~/.cue`; falls back to agent cwd or temp if home isn't writable - portable, no `/tmp/` dependency on Windows). Reports moved from `~/cue-reports/` to `<root>/reports/` - **old reports in `~/cue-reports/` are not moved**; new runs go to the new default. The progress log moved from a shell `> ./cue-run.log` redirect to the runner's own `--log` (tee), so launch and completion-tail Bash calls share one resolver-chosen path instead of a hardcoded one. Set `CUE_HOME` to relocate everything.
 
 ## License
 

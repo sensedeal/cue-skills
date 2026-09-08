@@ -311,7 +311,7 @@ Stage 5 满意且是 4b 自由式跑时,问用户(**对外文案不出现 verb �
 | `+match` | 只跑 Stage 2-3 | `cue_api.search_templates` |
 | `+rewrite` | 只跑 /api/rewrite | `cue_api.rewrite` |
 | `+save` | Stage 6 handoff | 交给 cue-buddy 的 `generate_template` + `validate_template` + `cue_api.create_template` |
-| `+upgrade` | 升级 skill 自身 | `python3 ../cue-buddy/scripts/update_skill.py --skill cue-research`(交互式) / 加 `--silent-check`(session 启动轻量版) |
+| `+upgrade` | 升级 skill 自身 | `python3 scripts/update_skill.py --skill cue-research`(交互式) / 加 `--silent-check`(session 启动轻量版) |
 
 本 skill 唯一的运行时脚本是 **`scripts/research_run.py`**——它是对**本 skill `scripts/` 内已 vendor 的 Cue 客户端**(`cue_api` + `sse_report`)的**薄编排**,只负责「发起 chat_stream → live 取报告 → 空则 replay 兜底 → 落盘」。客户端**本地 vendor**,故 skill 自洽。`scripts/test_skill_regression.py` 只做结构/import 自检。**别让 agent 在 prose 里手写 chat_stream 事件循环**——那正是早期 reporter-content 取不到、误诊为「解析器坏」的根因;固定走 `research_run.py`。
 
@@ -328,7 +328,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 from cue_api import search_templates, rewrite     # Stage 2-3 匹配 / Stage 4b 自由式前的 rewrite
 ```
 
-如果是 agent 直接通过 Bash 跑 `python3 -c "..."`,改成绝对路径:`sys.path.insert(0, "<repo>/cue-research/scripts")`。规避点:不要在 cue-research/ 下复制粘贴 `cue_api.py`——会跟 cue-buddy 的版本漂移。
+如果是 agent 直接通过 Bash 跑 `python3 -c "..."`,改成绝对路径:`sys.path.insert(0, "<repo>/cue-research/scripts")`。共享客户端(`cue_api` / `sse_report` / `paths`)已 **vendor** 在本 skill 的 `scripts/`;cue-buddy 的共享客户端变更时,重新 vendor 到这里,而不是在别处另存一份。
 
 ## 兼容性
 
