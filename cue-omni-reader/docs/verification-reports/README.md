@@ -20,3 +20,4 @@ A resolved incident may explain why a stable rule exists, but it must not remain
 - [Bridge 1.6.0](2026-08-30-bridge-1.6.0-published.md) — byte-identical registry publication, exact Cube admission, and one bounded production result-delivery acceptance identity.
 - [Bridge 1.7.1](2026-09-04-bridge-1.7.1-published.md) — byte-identical registry publication, non-circular upgrade guidance, exact Cube admission, and production rollout health evidence without a new billable parse.
 - [Bridge 1.7.2](2026-09-06-bridge-1.7.2-published.md) — byte-identical registry publication and reproducible-tarball evidence for a client-side extension-allowlist catch-up; no `cube-mcp` admission-list claim (open follow-up).
+- [Bridge 1.7.3](2026-09-08-bridge-1.7.3-published.md) — byte-identical registry publication and reproducible-tarball evidence for a metadata-only license correction (`UNLICENSED` → `MIT`, version `1.7.2` → `1.7.3`); no tool-surface or `cube-mcp` claim.

@@ -27,16 +27,16 @@
 需要 Node.js 20.12+。绝不用隐式 `latest`：
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.7.2 setup
+npx -y @cueai/omni-reader-mcp@1.7.3 setup
 ```
 
 交互式 setup 原生支持 Hermes、Cursor、Claude Desktop；其他客户端选 **Other**。然后验证：
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.7.2 doctor --json
+npx -y @cueai/omni-reader-mcp@1.7.3 doctor --json
 ```
 
-`doctor` 检查包版本、key 是否存在、根目录安全性、缓存/artifact 模式与客户端重载指引；它仅检查已鉴权的 Cube 控制面/配置事实。它不会探测已授权数据平面；只有真实本地文件 parse 才能端到端验证该路由。它不泄露 API key 或私有路径。回滚：`npx -y @cueai/omni-reader-mcp@1.7.2 uninstall --yes --json`（可用时恢复受信任的 URL-only 条目）。
+`doctor` 检查包版本、key 是否存在、根目录安全性、缓存/artifact 模式与客户端重载指引；它仅检查已鉴权的 Cube 控制面/配置事实。它不会探测已授权数据平面；只有真实本地文件 parse 才能端到端验证该路由。它不泄露 API key 或私有路径。回滚：`npx -y @cueai/omni-reader-mcp@1.7.3 uninstall --yes --json`（可用时恢复受信任的 URL-only 条目）。
 
 完整 setup 规则（同意、允许根目录、非交互示例、回滚）：[`references/setup.md`](references/setup.md)。
 
@@ -45,14 +45,14 @@ npx -y @cueai/omni-reader-mcp@1.7.2 doctor --json
 当前 setup 会**自动生成可用的 Windows 条目**（spawn 走 `cmd /d /c npx`，解决了 WorkBuddy `MCP error -32000: Connection closed` 背后的 `npx.cmd` ENOENT）。三种可运行形态：
 
 1. **生成的 setup 条目**（默认，推荐）——平台正确的 spawn + 信任校验
-2. **`npx` shell 形态** —— 在能解析 `.cmd` 的 shell 里跑 `npx -y @cueai/omni-reader-mcp@1.7.2`
+2. **`npx` shell 形态** —— 在能解析 `.cmd` 的 shell 里跑 `npx -y @cueai/omni-reader-mcp@1.7.3`
 3. **`node` + 绝对路径** —— `node "<绝对路径>/dist/index.js"`；npx 本身不可用时最稳
 
 **务必用稳定路径**，不要用 session 时间戳目录——路径一变，MCP 客户端保存的配置在每次缓存清扫后就失效。
 
 ## 网络诊断
 
-先运行 `npx -y @cueai/omni-reader-mcp@1.7.2 doctor --json`，再按结构化错误码诊断，并严格区分控制面与上传阶段：
+先运行 `npx -y @cueai/omni-reader-mcp@1.7.3 doctor --json`，再按结构化错误码诊断，并严格区分控制面与上传阶段：
 
 - `CUBE_UNAVAILABLE` 是文件上传前的控制面失败；绝不能用上传阶段的端点探针解释它。
 - `OMNI_NOT_ENTITLED` / HTTP 403 才是账号 entitlement 信号。

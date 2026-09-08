@@ -22,8 +22,8 @@ _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
 _EXPECTED_SKILL_VERSION = "0.5.0"
-_EXPECTED_BRIDGE_VERSION = "1.7.2"
-_CURRENT_PUBLICATION_REPORT = "2026-09-06-bridge-1.7.2-published.md"
+_EXPECTED_BRIDGE_VERSION = "1.7.3"
+_CURRENT_PUBLICATION_REPORT = "2026-09-08-bridge-1.7.3-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
@@ -954,13 +954,13 @@ class TestReferences(unittest.TestCase):
 
     def test_setup_documents_exact_trusted_uninstall_entries(self) -> None:
         expected = (
-            "Uninstall removes a normal trusted 1.7.1 or 1.7.2 Bridge entry; it "
+            "Uninstall removes a normal trusted 1.7.2 or 1.7.3 Bridge entry; it "
             "also removes the exact broken bare-npx Windows entry written by 1.5.1 "
             "and restores a matching trusted URL-only entry when available."
         )
         self.assertIn(expected, self.setup)
         self.assertNotIn(
-            "Uninstall removes a normal trusted 1.7.0 or 1.7.1 Bridge entry",
+            "Uninstall removes a normal trusted 1.7.1 or 1.7.2 Bridge entry",
             self.setup,
         )
 
@@ -1059,15 +1059,15 @@ class TestReferences(unittest.TestCase):
             self.assertIn("v0.4.0", report)
             self.assertNotIn("v0.5.0", report)
 
-    def test_current_publication_report_records_verified_1_7_2_release(self) -> None:
+    def test_current_publication_report_records_verified_1_7_3_release(self) -> None:
         current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
         for fact in (
-            "77a6537c1107355951d17c2517f7a44ae8fb468c",
-            "dd160e63ea29f40e792a2685a00659554a67eab3",
-            "38102bee0d49b591f5434ed9d60bd5baf9b1b36f",
-            "099f7493567501000168d323134a11ed2f5e917325e0dac02b87ef1017512c36",
-            "sha512-k1Cmg5blS76tMY9Gx7y0/DDdtHMeGsecu3G+XZFsMSp/DaO/8gfKp4eNl58ZvqJGJj7G1dhuHaCJvsAbyTrcfg==",
+            "7ff4fac738341494ff7e357cf752713bcc6dcd52",
+            "b46836d3241ead98e31aead1713e7121ada5f13d",
+            "f8fc22ea0250b4d7a4849a56169bf761d7c1d1bf",
+            "5b56ea9c20b54ec62c995741422ecaf033aec0cc10d62d57b606c1dc5b0bd717",
+            "sha512-/BSEniM+DKBrPG3QNRFukDPeAkHWsJ+qCBsepIkw/kRYjZs31pQYJ38qfis/b8zuP3YPt0KhnJ7yX3qsl//5Lg==",
             "registry tarball byte-identical",
             "64 files",
             "path-security.ts",
@@ -1804,6 +1804,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-08-30-bridge-1.6.0-published.md",
             "docs/verification-reports/2026-09-04-bridge-1.7.1-published.md",
             "docs/verification-reports/2026-09-06-bridge-1.7.2-published.md",
+            "docs/verification-reports/2026-09-08-bridge-1.7.3-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
