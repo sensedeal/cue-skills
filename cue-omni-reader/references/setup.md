@@ -48,7 +48,7 @@ When a controlling agent is attached to a TTY but must not read stdin, use `--he
 
 `OMNI_ALLOWED_ROOTS` contains only explicitly authorized absolute directories. Separate multiple roots with `:` on macOS/Linux and `;` on Windows. Do not authorize a whole home directory or disk by default. The current agent workspace remains the default allowed area.
 
-After changing roots, reload or restart the MCP client so it receives the new environment. A parse request for a file already inside an allowed root needs no second generic confirmation.
+After changing roots, reload the MCP connection so it receives the new environment — most clients only need a reconnect (Claude Code / WorkBuddy: `/mcp` → `omni-reader` → reconnect), not a full restart. A parse request for a file already inside an allowed root needs no second generic confirmation.
 
 ## Verify after setup
 
@@ -58,7 +58,7 @@ Run:
 npx -y @cueai/omni-reader-mcp@1.7.3 doctor --json
 ```
 
-`doctor` checks package version, key presence, root safety, cache/artifact mode, and the client reload instruction; it reports only authenticated Cube control/configuration facts. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. Reload or restart the client, then verify these tools are visible: `parse`, `get_parse_status`, `cancel_parse`, `read_result`, `read_outline`, `discard_result`, and `save_result`.
+`doctor` checks package version, key presence, root safety, cache/artifact mode, and the client reload instruction; it reports only authenticated Cube control/configuration facts. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. Reload the MCP connection (most clients: `/mcp` → `omni-reader` → reconnect; a full client restart is usually unnecessary), then verify these tools are visible: `parse`, `get_parse_status`, `cancel_parse`, `read_result`, `read_outline`, `discard_result`, and `save_result`.
 
 `doctor --json` must not reveal the API key, a private source path, or source content.
 
