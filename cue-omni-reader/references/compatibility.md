@@ -1,8 +1,8 @@
 # Cue Omni Reader compatibility
 
 - Skill version: `0.5.0`
-- Bridge version: `1.7.3`
-- Evidence date: 2026-08-11 (Bridge 1.2.0 pin: 2026-08-14; Bridge 1.2.1 pin: 2026-08-14; Bridge 1.2.2 pin: 2026-08-15; Bridge 1.3.0 pin: 2026-08-17; Bridge 1.3.1 pin: 2026-08-18; Bridge 1.3.2 pin: 2026-08-18; Bridge 1.3.3 pin: 2026-08-18; Bridge 1.4.0 pin: 2026-08-19; Bridge 1.4.1 pin: 2026-08-19; I1 parameter-unification sync: 2026-08-20; Bridge 1.5.0 pin: 2026-08-20; Bridge 1.5.1 pin: 2026-08-20; Bridge 1.5.2 pin: 2026-08-21; Skill 0.3.5 stage-aware diagnostics correction: 2026-08-24; Bridge 1.5.5 pin: 2026-08-26; Bridge 1.6.0 pin and release acceptance: 2026-08-30; Bridge 1.7.1 guidance fix, exact admission, and publication: 2026-09-04; Bridge 1.7.2 pin: 2026-09-06; Bridge 1.7.3 pin: 2026-09-08)
+- Bridge version: `1.8.0`
+- Evidence date: 2026-08-11 (Bridge 1.2.0 pin: 2026-08-14; Bridge 1.2.1 pin: 2026-08-14; Bridge 1.2.2 pin: 2026-08-15; Bridge 1.3.0 pin: 2026-08-17; Bridge 1.3.1 pin: 2026-08-18; Bridge 1.3.2 pin: 2026-08-18; Bridge 1.3.3 pin: 2026-08-18; Bridge 1.4.0 pin: 2026-08-19; Bridge 1.4.1 pin: 2026-08-19; I1 parameter-unification sync: 2026-08-20; Bridge 1.5.0 pin: 2026-08-20; Bridge 1.5.1 pin: 2026-08-20; Bridge 1.5.2 pin: 2026-08-21; Skill 0.3.5 stage-aware diagnostics correction: 2026-08-24; Bridge 1.5.5 pin: 2026-08-26; Bridge 1.6.0 pin and release acceptance: 2026-08-30; Bridge 1.7.1 guidance fix, exact admission, and publication: 2026-09-04; Bridge 1.7.2 pin: 2026-09-06; Bridge 1.7.3 pin: 2026-09-08; Bridge 1.8.0 pin: 2026-09-09)
 
 ## Tool-surface boundary
 
@@ -10,12 +10,13 @@ The local Bridge exposes a source-only `parse(source)` schema and automatically 
 
 ## Release history
 
-Current: **Bridge 1.7.3** — metadata-only release: the package `license` field is corrected `UNLICENSED` → `MIT` and the version advances `1.7.2` → `1.7.3` (npm will not republish an existing version with changed content, so the fix ships as a new patch). No tool-surface or parsing change. The trusted managed-entry pair advances to **1.7.2 / 1.7.3**; the only bare-`npx` Windows migration exception remains 1.5.1. See the [1.7.3 publication report](../docs/verification-reports/2026-09-08-bridge-1.7.3-published.md).
+Current: **Bridge 1.8.0** — adds `doctor --silent-check` (a version-only npm-`latest` comparison, cached 24 h, fails open) so an agent can notice an outdated Bridge cheaply, and corrects the reconnect guidance (most clients: `/mcp` → `omni-reader` → reconnect; no full restart). No tool-surface change. The trusted managed-entry pair advances to **1.7.3 / 1.8.0**; the only bare-`npx` Windows migration exception remains 1.5.1. See the [1.8.0 publication report](../docs/verification-reports/2026-09-09-bridge-1.8.0-published.md).
 
 The wire contract has been stable since 1.2.0: strict `structuredContent` with the 1.1.3 traditional-text channel for clients that hide it; completed inline parses return exact Markdown, and processing / artifact / cleanup / cancellation / expiration / failure / `read_result` / `discard_result` return compact JSON in `content[].text` (artifact consumers append only each `result.text` and follow every `next_cursor`). See the [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md).
 
 | Bridge | Date | One-line change | Report |
 |---|---|---|---|
+| 1.8.0 | 2026-09-09 | add `doctor --silent-check` (cached update probe); reconnect guidance | [report](../docs/verification-reports/2026-09-09-bridge-1.8.0-published.md) |
 | 1.7.3 | 2026-09-08 | `license` `UNLICENSED` → `MIT` (metadata only) | [report](../docs/verification-reports/2026-09-08-bridge-1.7.3-published.md) |
 | 1.7.2 | 2026-09-06 | local extension allowlist catches up (`rar`/`tar`/`tgz`/`gz`/`bz2`; `tsv`/`json`/`yaml`/`yml`/`toml`/`xml`/`ini`/`cfg`/`conf`/`log`; RDF; FreeMind); `parquet`/`xmind`/`mmap` stay unsupported | [report](../docs/verification-reports/2026-09-06-bridge-1.7.2-published.md) |
 | 1.7.1 | 2026-09-04 | non-circular `BRIDGE_UPGRADE_REQUIRED` guidance | [report](../docs/verification-reports/2026-09-04-bridge-1.7.1-published.md) |
