@@ -1075,7 +1075,7 @@ class TestReferences(unittest.TestCase):
             "xmind",
             "746 tests passed",
             "no reset, backfill, or replay",
-            "native WorkBuddy skill loading remains unverified",
+            "native WorkBuddy skill loading is verified (owner-attested)",
             "cue-skill publication remains owner-gated",
             "no `cube-mcp` admission-list or production-service-image claim",
         ):
@@ -1130,7 +1130,10 @@ class TestReferences(unittest.TestCase):
         )
         self.assertRegex(
             self.compat,
-            re.compile(r"WorkBuddy.*native.*unverified", re.I | re.S),
+            re.compile(
+                r"no client-specific integration.*any agent or coding CLI works",
+                re.I | re.S,
+            ),
         )
         self.assertRegex(
             self.compat,
@@ -1153,7 +1156,7 @@ class TestReferences(unittest.TestCase):
         self.assertRegex(
             self.compat,
             re.compile(
-                r"WorkBuddy.*source[- ]artifact.*official.*unverified",
+                r"WorkBuddy.*verified",
                 re.I | re.S,
             ),
         )
@@ -1167,7 +1170,7 @@ class TestReferences(unittest.TestCase):
         )
         self.assertRegex(
             self.compat,
-            re.compile(r"release.*blocked", re.I | re.S),
+            re.compile(r"DeepSeek Harness.*verified", re.I | re.S),
         )
 
     def test_native_loading_reports_are_client_specific(self) -> None:
@@ -1322,7 +1325,7 @@ class TestReferences(unittest.TestCase):
         ):
             self.assertIn(evidence, hermes)
         self.assertIn(
-            "Persistent installation, unprompted automatic triggering, and live Omni behavior remain unverified on every client.",
+            "WorkBuddy and DeepSeek Harness are verified as standard agent skill + MCP clients (owner-attested).",
             self.compat,
         )
         self.assertRegex(

@@ -8,7 +8,7 @@
 
 ## 本 skill 做什么
 
-`cue-omni-reader` 能装进任意 AI agent（Claude Code / Codex CLI / Gemini CLI / WorkBuddy 等），指导它用官方 Omni MCP 工具把来源变成内容：URL，或用户已授权的本地文件。MCP 包与当前工具 schema 是权威；skill 只教 agent 怎么驱动它们——可恢复 operation、artifact 读取、清理、诚实的计费/错误处理。
+`cue-omni-reader` 是标准的 `SKILL.md` skill,驱动官方 Omni MCP,因此能装进**任意 agent 或 coding CLI**——Claude Code、Codex CLI、Gemini CLI、Hermes、WorkBuddy、DeepSeek Harness 等——指导它用官方 Omni MCP 工具把来源变成内容:URL,或用户已授权的本地文件。**无需任何客户端专属适配**:只要客户端能加载标准 `SKILL.md` 并连接标准 MCP server,即可开箱可用。MCP 包与当前工具 schema 是权威;skill 只教 agent 怎么驱动它们——可恢复 operation、artifact 读取、清理、诚实的计费/错误处理。
 
 **单一提供方，唯一首次调用。** `parse` 是 HTTP(S) URL 与本地路径唯一的首次调用；不要让用户选择本地/远端、上传/URL 模式。**Bridge**（`@cueai/omni-reader-mcp`）是本地安装的同一个提供方——绝不是第二个连接器。默认安装 Bridge；仅远端连接覆盖 URL、无需本地安装，但读不了本地文件。
 
