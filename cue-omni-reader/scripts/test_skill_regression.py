@@ -22,8 +22,8 @@ _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
 _EXPECTED_SKILL_VERSION = "0.5.0"
-_EXPECTED_BRIDGE_VERSION = "1.7.3"
-_CURRENT_PUBLICATION_REPORT = "2026-09-08-bridge-1.7.3-published.md"
+_EXPECTED_BRIDGE_VERSION = "1.8.0"
+_CURRENT_PUBLICATION_REPORT = "2026-09-09-bridge-1.8.0-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
@@ -455,8 +455,8 @@ class TestSkillMd(unittest.TestCase):
         ):
             self.assertIn(tool, self.md)
         self.assertNotIn("mcp" + "__", self.md)
-        # 1000: unified parse/error guidance sits below this; preserve a tight guard.
-        self.assertLess(len(self.md.split()), 1000, "SKILL.md is no longer thin")
+        # 1050: unified parse/error + the silent update-check clause sit below this.
+        self.assertLess(len(self.md.split()), 1050, "SKILL.md is no longer thin")
 
     def test_source_handling_preserves_the_security_boundary(self) -> None:
         self.assertIn("Only HTTP(S) strings are URLs", self.md)
@@ -954,13 +954,13 @@ class TestReferences(unittest.TestCase):
 
     def test_setup_documents_exact_trusted_uninstall_entries(self) -> None:
         expected = (
-            "Uninstall removes a normal trusted 1.7.2 or 1.7.3 Bridge entry; it "
+            "Uninstall removes a normal trusted 1.7.3 or 1.8.0 Bridge entry; it "
             "also removes the exact broken bare-npx Windows entry written by 1.5.1 "
             "and restores a matching trusted URL-only entry when available."
         )
         self.assertIn(expected, self.setup)
         self.assertNotIn(
-            "Uninstall removes a normal trusted 1.7.1 or 1.7.2 Bridge entry",
+            "Uninstall removes a normal trusted 1.7.2 or 1.7.3 Bridge entry",
             self.setup,
         )
 
@@ -1059,21 +1059,21 @@ class TestReferences(unittest.TestCase):
             self.assertIn("v0.4.0", report)
             self.assertNotIn("v0.5.0", report)
 
-    def test_current_publication_report_records_verified_1_7_3_release(self) -> None:
+    def test_current_publication_report_records_verified_1_8_0_release(self) -> None:
         current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
         for fact in (
-            "7ff4fac738341494ff7e357cf752713bcc6dcd52",
-            "b46836d3241ead98e31aead1713e7121ada5f13d",
-            "f8fc22ea0250b4d7a4849a56169bf761d7c1d1bf",
-            "5b56ea9c20b54ec62c995741422ecaf033aec0cc10d62d57b606c1dc5b0bd717",
-            "sha512-/BSEniM+DKBrPG3QNRFukDPeAkHWsJ+qCBsepIkw/kRYjZs31pQYJ38qfis/b8zuP3YPt0KhnJ7yX3qsl//5Lg==",
+            "c801745abc2aac2957fb76086d3112a61695deb7",
+            "3c5024b0fa725406858cbde2375349a43691417b",
+            "97724fcb3022fb56ad3ebcd48bdac24e84b888f2",
+            "e790306a3e91e5c5246c33b1719ca576d5d768ef1fcb5eb30b8630e2cba3fc51",
+            "sha512-bsG7Z+oMYAWtPvJXf+RojNKOa65jQPpCUWj2LDuuLK+cdW6FpoEFfSuOk651W2HQ1bq5VsLpi27l8FySXYkTPA==",
             "registry tarball byte-identical",
             "64 files",
             "path-security.ts",
             "rar",
             "xmind",
-            "746 tests passed",
+            "749 tests passed",
             "no reset, backfill, or replay",
             "native WorkBuddy skill loading is verified (owner-attested)",
             "cue-skill publication remains owner-gated",
@@ -1808,6 +1808,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-09-04-bridge-1.7.1-published.md",
             "docs/verification-reports/2026-09-06-bridge-1.7.2-published.md",
             "docs/verification-reports/2026-09-08-bridge-1.7.3-published.md",
+            "docs/verification-reports/2026-09-09-bridge-1.8.0-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",

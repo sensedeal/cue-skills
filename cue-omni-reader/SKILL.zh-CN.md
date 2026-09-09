@@ -19,7 +19,7 @@ metadata:
 
 1. **保留来源。** 只有 HTTP(S) 字符串才是 URL。把用户的来源字符串直接传给 `parse`。不要预读、附件化、base64 编码或粘贴本地来源内容；不要使用 `file://`、localhost 或公共临时上传服务。
 2. **单一提供方，唯一首次调用。** `parse` 是 HTTP(S) URL 与本地路径唯一的首次调用；不要让用户选择本地/远端、上传/URL 模式。本地 Bridge 是同一个 Omni 提供方，不是第二个连接器；仅远端连接可处理 URL，但不能读取本地文件。
-3. **仅在同意后自举。** 安装 Bridge 或扩展允许根目录前，先获得用户确认，并只加入最小必需目录。阅读 [`references/setup.md`](references/setup.md)，使用其精确审计 pin，运行 `doctor`，再重连 MCP server——多数客户端只需重连(Claude Code / WorkBuddy:`/mcp` → `omni-reader` → reconnect),通常无需重启客户端。绝不让用户在对话里粘贴 API key。文件已在允许根目录内时，不要再要求一次确认。
+3. **仅在同意后自举。** 安装 Bridge 或扩展允许根目录前，先获得用户确认，并只加入最小必需目录。阅读 [`references/setup.md`](references/setup.md)，使用其精确审计 pin，运行 `doctor`，再重连 MCP server——多数客户端只需重连(Claude Code / WorkBuddy:`/mcp` → `omni-reader` → reconnect),通常无需重启客户端。首次使用跑 `doctor --json --silent-check`;若 `version_check.status=outdated`,告知用户 installed→latest,仅在确认后升级。绝不让用户在对话里粘贴 API key。文件已在允许根目录内时，不要再要求一次确认。
 4. **调用当前 schema。** 遵守当前 `parse` schema，绝不发明参数。如果 schema 暴露 `wait`，长媒体或大文档使用 `wait: false`；仅来源的 Bridge 会返回可恢复 operation。`source`/`url` 只传一个。`grounded`/`layout` 仅 Bridge 本地支持；远端 `UNSUPPORTED_DETAIL` 是终局。不要让同步与异步提交竞争。
 5. **读取任一种响应通道。** 有 `structuredContent` 时优先使用；只有 `content[].text` 时，先解析紧凑 JSON。完成的 inline 内容可能是精确 Markdown；非 inline 状态是紧凑 JSON。通用成功字符串不等于完成。只拼接 `result.text`；绝不追加 JSON 包装。
 6. **保住同一个操作。** 收到 `processing` 时保存 `operation_id`，按返回时机或 `wait_ms` 调 `get_parse_status`。重提之前先恢复既有操作。丢失 operation ID 是含糊超时：解释重复工作/计费风险，取得确认后才能替换提交。
@@ -63,7 +63,7 @@ Tasks、Roots、宿主超时及 cwd/workspace 行为，只能依据客户端直�
 
 工具级错误不是 MCP 断连。保留鉴权、计费、解析器、可重试性、operation 与清理事实。只报告本次 operation 返回的计费事实；仅在 `retryable=true` 时重试。绝不估算费用或复制页数/媒体时长换算。
 
-先运行 `npx -y @cueai/omni-reader-mcp@1.7.3 doctor --json`。`CUBE_UNAVAILABLE` 是上传前的控制面失败；grant 后失败属于安全上传阶段；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据已报告的端点事实——绝不猜测或发布内部主机名、端口。
+先运行 `npx -y @cueai/omni-reader-mcp@1.8.0 doctor --json`。`CUBE_UNAVAILABLE` 是上传前的控制面失败；grant 后失败属于安全上传阶段；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据已报告的端点事实——绝不猜测或发布内部主机名、端口。
 
 - `OMNI_NOT_ENTITLED` / HTTP 403 才是账号 entitlement 信号。
 - `DIRECT_UPLOAD_DISABLED`（旧版）或 `DIRECT_UPLOAD_UNAVAILABLE` 表示直传路由/能力不可用，不表示账号被禁用或账号只能使用 text。
