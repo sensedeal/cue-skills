@@ -8,7 +8,7 @@
 
 ## What this skill is
 
-`cue-omni-reader` plugs into any AI agent (Claude Code, Codex CLI, Gemini CLI, WorkBuddy, etc.) and tells it how to use the official Omni MCP tools to turn a source into content: a URL, or a local file the user has authorized. The MCP package and its active tool schemas are authoritative; the skill only instructs the agent how to drive them — recoverable operations, artifact reading, cleanup, truthful billing/error handling.
+`cue-omni-reader` is a standard `SKILL.md` skill that drives the official Omni MCP, so it plugs into **any agent or coding CLI** — Claude Code, Codex CLI, Gemini CLI, Hermes, WorkBuddy, DeepSeek Harness, etc. — and tells it how to use the official Omni MCP tools to turn a source into content: a URL, or a local file the user has authorized. No client-specific integration is needed: anything that loads standard `SKILL.md` files and connects a standard MCP server works out of the box. The MCP package and its active tool schemas are authoritative; the skill only instructs the agent how to drive them — recoverable operations, artifact reading, cleanup, truthful billing/error handling.
 
 **One provider, one first call.** Use `parse` as the only first call for both HTTP(S) URLs and local paths; do not ask the user to choose a local, remote, upload, or URL mode. The **Bridge** (`@cueai/omni-reader-mcp`) is that same provider installed locally — never a second connector. Install the Bridge as the default; a remote-only connection covers URLs with no local install, but cannot read local files.
 
