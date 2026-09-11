@@ -29,7 +29,7 @@ metadata:
 ## 准备 Cue runner（首次用时，幂等）
 本 skill 不自带脚本，靠 Cue 开源 runner 跑研究。先确认 runner 是否就绪：
 - 若你已安装 `cue-skills`（或本 skill 来自整包发布）→ 直接用其中的 `cue-research/scripts/research_run.py`，**跳过本节**。
-- 否则克隆开源仓（含 cue-research + cue-buddy 全套依赖），**有则更新、无则克隆**（GitHub 不通走镜像）：
+- 否则克隆开源仓（拿到自包含的 cue-research runner；整仓克隆最省事），**有则更新、无则克隆**（GitHub 不通走镜像）：
   ```bash
   if [ -d ~/.cue/cue-skills/.git ]; then
     git -C ~/.cue/cue-skills pull --ff-only
@@ -48,6 +48,6 @@ metadata:
 5. **回报**：把带来源链接的报告交给用户，不去掉来源、不杜撰。
 
 ## 前置
-- Cue 账号 API key（cue CLI 登录后在 `~/.cue/config.json`，runner 自动读）；新账号送免费积分（注册 50 + 每天 10），可先免费试。
+- Cue 账号 API key（cue CLI 登录后在 `~/.cue/config.json`，runner 自动读）；新账号赠送积分（注册 500 + 每天 10），可先用赠送额度试。
 - `git` + `python3`（自举 runner 用；runner 仅标准库）。
 - 跑深度研究**消耗 credits**；只覆盖公开数据，不替代尽调/法律/核保。
