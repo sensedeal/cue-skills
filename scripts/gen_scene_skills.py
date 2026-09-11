@@ -47,6 +47,25 @@ def existing_scene_dirs(base: str) -> set:
     return {d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))}
 
 
+
+def normalize_skill_md(md: str) -> str:
+    """Patch known-stale strings until the Cue backend skill template is updated.
+
+    Source of truth for scene SKILL.md is GET /api/playbook/scenes/<scene>/skill.
+    These replacements keep regenerated snapshots aligned with repo docs (#105/#107/#111)
+    when the backend still emits older copy.
+    """
+    md = md.replace(
+        "新账号送免费积分（注册 50 + 每天 10），可先免费试。",
+        "新账号赠送积分（注册 500 + 每天 10），可先用赠送额度试。",
+    )
+    md = md.replace(
+        "否则克隆开源仓（含 cue-research + cue-buddy 全套依赖）",
+        "否则克隆开源仓（拿到自包含的 cue-research runner；整仓克隆最省事）",
+    )
+    return md
+
+
 def fetch_scene_skills(api_base: str) -> dict:
     """{dir_name: skill_md} for 每个当前浮现场景。"""
     pb = json.loads(_get(f"{api_base}/api/playbook"))
@@ -79,7 +98,7 @@ def main(argv=None) -> int:
         path = os.path.join(REPO_PLAYBOOK_DIR, d)
         os.makedirs(path, exist_ok=True)
         with open(os.path.join(path, "SKILL.md"), "w", encoding="utf-8") as f:
-            f.write(md)
+            f.write(normalize_skill_md(md))
     for d in delete:
         shutil.rmtree(os.path.join(REPO_PLAYBOOK_DIR, d), ignore_errors=True)
     print("done.")
