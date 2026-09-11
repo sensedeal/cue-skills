@@ -5,9 +5,10 @@ fetch + 写文件 + 删退场，不复制渲染逻辑。运行时查 live 设计
 仅场景集合变化才增删文件。仓分离,故走 HTTP（不能直接 import 后端代码）。
 
 用法: python3 gen_scene_skills.py [--api-base https://cuecue.cn] [--apply]
-默认 dry-run（只打印 diff）；--apply 才写盘。
+默认 dry-run（打印每个场景的 unified diff + 新增/退场）；--apply 才写盘。
 """
 import argparse
+import difflib
 import json
 import os
 import re
@@ -66,6 +67,39 @@ def normalize_skill_md(md: str) -> str:
     return md
 
 
+def diff_snapshots(skills: dict, base: str) -> dict:
+    """{dir_name: (status, unified_diff)} — 对比 live(normalize 后) vs 磁盘快照。
+
+    status ∈ {"new", "changed", "unchanged"}。只覆盖 live 场景；退场场景由
+    plan_changes 的 delete 集负责。dry-run 用它回答"这次刷新到底会动哪些文件"
+    ——--apply 是幂等的，无 diff 的场景 git 不动，故该集合可先看后写。
+    """
+    out = {}
+    for d, md in sorted(skills.items()):
+        new = normalize_skill_md(md)
+        path = os.path.join(base, d, "SKILL.md")
+        if not os.path.exists(path):
+            out[d] = ("new", "")
+            continue
+        with open(path, encoding="utf-8") as f:
+            old = f.read()
+        if old == new:
+            out[d] = ("unchanged", "")
+            continue
+        out[d] = (
+            "changed",
+            "".join(
+                difflib.unified_diff(
+                    old.splitlines(True),
+                    new.splitlines(True),
+                    f"playbook/{d}/SKILL.md (on disk)",
+                    f"playbook/{d}/SKILL.md (live, normalized)",
+                )
+            ),
+        )
+    return out
+
+
 def fetch_scene_skills(api_base: str) -> dict:
     """{dir_name: skill_md} for 每个当前浮现场景。"""
     pb = json.loads(_get(f"{api_base}/api/playbook"))
@@ -92,7 +126,14 @@ def main(argv=None) -> int:
         f"live scenes: {len(live)} | 写/更新: {sorted(add)} | 删除(退场): {sorted(delete)}"
     )
     if not args.apply:
-        print("(dry-run；加 --apply 写盘)")
+        diffs = diff_snapshots(skills, REPO_PLAYBOOK_DIR)
+        changed = [d for d, (st, _) in diffs.items() if st != "unchanged"]
+        print(f"\n将写/更新 {len(changed)}/{len(diffs)} 个场景:")
+        for d in sorted(changed):
+            status, text = diffs[d]
+            print(f"\n=== {d} ({status}) ===")
+            print(text if text else "(新场景，无旧快照)")
+        print("\n(dry-run；加 --apply 写盘)")
         return 0
     for d, md in skills.items():
         path = os.path.join(REPO_PLAYBOOK_DIR, d)

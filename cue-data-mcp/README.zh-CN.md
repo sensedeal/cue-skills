@@ -36,7 +36,7 @@ curl -sS https://mcp.cuecue.cn/api/<group>/mcp/ \
 
 ## 赠送积分
 
-每个 Cue 账号每天送 10 积分——约合 **每天 16 次数据查询**（0.625 积分/次）；新账号申请 `CUE_API_KEY` 时另送一次性 50 积分（首日约 96 次）。在 <https://cuecue.cn/hub/api-key> 获取 key。具体额度以服务端计费政策为准——live 值不同时报 live 值。
+每个 Cue 账号每天送 10 积分——约合 **每天 16 次数据查询**（0.625 积分/次）；新账号申请 `CUE_API_KEY` 时另送一次性 500 积分（首日约 816 次）。在 <https://cuecue.cn/hub/api-key> 获取 key。具体额度以服务端计费政策为准——live 值不同时报 live 值。
 
 ## 仓库布局
 
