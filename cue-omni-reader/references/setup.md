@@ -1,6 +1,6 @@
 # Omni Reader setup reference
 
-- **Audited package:** `@cueai/omni-reader-mcp@1.8.0`
+- **Audited package:** `@cueai/omni-reader-mcp@1.8.1`
 - **Runtime:** Node.js 20.12 or newer
 - **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/hub/api-key>
 
@@ -22,22 +22,22 @@ Do not paste an API key into chat, command arguments, skill files, logs, or gene
 Never use an implicit `latest`:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.0 setup
+npx -y @cueai/omni-reader-mcp@1.8.1 setup
 ```
 
 The interactive setup supports native configuration for Hermes, Cursor, and Claude Desktop. Choose **Other** for another client. Generic setup prints a reviewed stdio entry; apply it through that client's documented MCP configuration mechanism. Do not invent a configuration path or claim a client adapter is supported when it has not been verified.
 
 The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md) and the [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md).
 
-Current audited release: **Bridge 1.8.0** — adds a cheap `doctor --silent-check` update probe (version-only, 24 h cached, fails open) and clarifies that most clients only need an MCP reconnect, not a restart. The trusted managed-entry pair is **1.7.3 / 1.8.0**; the only bare-`npx` Windows migration exception remains 1.5.1. See the [1.8.0 publication report](../docs/verification-reports/2026-09-09-bridge-1.8.0-published.md); per-release history is in [`compatibility.md`](./compatibility.md).
+Current audited release: **Bridge 1.8.1** — accepts an optional inline `media_type` so a future result-bundle label can be installed locally (no Omni service emits it yet; remote `grounded`/`layout` still fails closed) and adds a `media_too_long` message; `doctor --silent-check` is unchanged. The trusted managed-entry pair is **1.8.0 / 1.8.1**; the only bare-`npx` Windows migration exception remains 1.5.1. See the [1.8.1 publication report](../docs/verification-reports/2026-09-22-bridge-1.8.1-published.md); per-release history is in [`compatibility.md`](./compatibility.md).
 
 
 Supported non-interactive native-adapter examples:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.0 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.8.0 setup --client cursor --add-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.8.0 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.8.1 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.8.1 setup --client cursor --add-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.8.1 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
 ```
 
 Use `--allowed-root` to replace the explicit additional-root set with one minimum directory. Use `--add-root` to append one minimum directory to roots already configured for that client. Both require an absolute path and cannot be combined.
@@ -55,7 +55,7 @@ After changing roots, reload the MCP connection so it receives the new environme
 Run:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.0 doctor --json
+npx -y @cueai/omni-reader-mcp@1.8.1 doctor --json
 ```
 
 `doctor` checks package version, key presence, root safety, cache/artifact mode, and the client reload instruction; it reports only authenticated Cube control/configuration facts. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. Reload the MCP connection (most clients: `/mcp` → `omni-reader` → reconnect; a full client restart is usually unnecessary), then verify these tools are visible: `parse`, `get_parse_status`, `cancel_parse`, `read_result`, `read_outline`, `discard_result`, and `save_result`.
@@ -67,7 +67,7 @@ npx -y @cueai/omni-reader-mcp@1.8.0 doctor --json
 On the first Omni use in a session, run the cheap probe:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.0 doctor --json --silent-check
+npx -y @cueai/omni-reader-mcp@1.8.1 doctor --json --silent-check
 ```
 
 It does **only** a version comparison against npm `latest` (no API, onboarding, or artifact work), caches the verdict for 24 hours so it never hammers the registry, and fails open when the registry is unreachable or the cache is unwritable. Read `version_check.status`:
@@ -80,10 +80,10 @@ Never auto-upgrade; check at most once per session. A cached verdict is only tru
 ## Roll back
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.0 uninstall --yes --json
+npx -y @cueai/omni-reader-mcp@1.8.1 uninstall --yes --json
 ```
 
-Uninstall removes a normal trusted 1.7.3 or 1.8.0 Bridge entry; it also removes the exact broken bare-npx Windows entry written by 1.5.1 and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
+Uninstall removes a normal trusted 1.8.0 or 1.8.1 Bridge entry; it also removes the exact broken bare-npx Windows entry written by 1.5.1 and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
 
 ## Granted credits and onboarding
 
