@@ -39,7 +39,7 @@ The product of this skill is the **4 fields** that define the research companion
 | Field | What it decides | ⚠️ Common misunderstanding |
 |---|---|---|
 | `title` | The buddy's **name on its card** | Concise and value-bearing (~≤8–10 chars); cut filler words (公开/全量/细项/与分析/简报/深度) but **don't over-simplify away distinguishing value** (keep 信披属实/需求匹配/海外执法 type qualifiers) |
-| `input_form_spec` | **User input form spec** (required/optional variables + defaults) | One line: `需提供: [属性_主体_类型]，可提供: [属性_主体_类型] (默认: ...)`; the frontend renders `[...]` as input boxes. **Not** free-text prose |
+| `input_form_spec` | **User input form spec** (required/optional variables + defaults) | One line: `需提供: [属性_主体_类型](示例: X)，可提供: [属性_主体_类型] (默认: ...)`; every 需提供 variable carries `(示例: X)` (frontend placeholder); 可提供 variables carry `(默认: X)` (prefilled, user-clearable). Example values must not contain 默认/缺省/需提供/可提供. The frontend renders `[...]` as form fields. **Not** free-text prose |
 | `goal` | The buddy intro = card copy: what problem it solves / what value it delivers | Concise, one paragraph (~40–80 chars, value-first); no "how it works", no implementation leaks, no hardcoded subjects, no disclaimers, no numbered lists |
 | `search_plan` | Which data sources you gather evidence from, and the strategy | Cluster by **data source**, not by report-section order |
 | `report_format` | What report you deliver (sections/blueprints) | Main heading must contain three-part variables; every section carries a `[执行蓝图]` block |
@@ -242,7 +242,7 @@ After each drafting step, run `+validate` immediately; fix any rule violation on
 
 Full version: [`references/hard-rules.md`](references/hard-rules.md). The 5 most important:
 
-1. **`input_form_spec` must use three-part variables** — `需提供: [属性_主体_类型]，可提供: [属性_主体_类型] (默认: ...)` in one line
+1. **`input_form_spec` must use three-part variables** — `需提供: [属性_主体_类型](示例: X)，可提供: [属性_主体_类型] (默认: ...)` in one line; every required variable needs its `(示例: X)` annotation (validator error without it)
 2. **`goal` must be concise, forceful, value-first** (it IS the card copy) — one ~40–80-char paragraph about the problem it solves / the value it delivers; no "how it works" (that goes in search_plan), no implementation leaks, no hardcoded subjects, no disclaimers, no numbered lists (see hard-rules R2)
 3. **`search_plan` must cluster by "data source"** — not linear by section order
 4. **`report_format` main heading must contain variables** — `# [目标_<场景>_主体] <场景>底稿`, never a hardcoded string
