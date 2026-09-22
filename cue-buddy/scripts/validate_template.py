@@ -120,14 +120,10 @@ def _check_input_form_spec(intro: str, out: list[Finding]) -> None:
     # Must be single line
     if "\n" in intro.strip("\n"):
         out.append(Finding("error", "input_form_spec", "必须单行，不能含换行"))
-    # Must start with 需提供:
-    if not (intro.startswith("需提供:") or intro.startswith("需提供：")):
-        out.append(Finding("error", "input_form_spec", "必须以 `需提供:` 开头"))
-    # Must reference 可提供 + 默认
-    if "可提供:" not in intro and "可提供：" not in intro:
-        out.append(Finding("error", "input_form_spec", "缺少 `可提供:` 段"))
-    if "默认:" not in intro and "默认：" not in intro:
-        out.append(Finding("warning", "input_form_spec", "建议带 `(默认: ...)` 兜底值"))
+    # Must start with 需提供: or 可提供:（零参数简报类搭子只有可提供段）
+    if not (intro.startswith("需提供:") or intro.startswith("需提供：")
+            or intro.startswith("可提供:") or intro.startswith("可提供：")):
+        out.append(Finding("error", "input_form_spec", "必须以 `需提供:` 或 `可提供:` 开头"))
     # Three-segment variable [属性_主体_类型]
     three_seg = re.compile(r"\[[一-鿿]+_[一-鿿]+_[一-鿿]+\]")
     if not three_seg.search(intro):
@@ -138,6 +134,56 @@ def _check_input_form_spec(intro: str, out: list[Finding]) -> None:
                 "必须至少包含一个三段式变量 [属性_主体_类型]，例如 [目标_授信_企业]",
             )
         )
+    _check_spec_sections(intro, out)
+
+
+# 表单时代 spec 规则（配套前端 BuddyInputForm 表单化渲染）：
+# - 需提供段：每变量紧跟 (示例: X)，示例值禁词 默认/缺省/需提供/可提供
+#   （后端 _template_default_params 只认「默认/缺省」触发词，示例值含它们会被误提为默认值）
+# - 带 (默认: X)/(缺省: X) 的变量一律放可提供段（默认值语义 = 选填预填）
+# - 可提供段可选；老规则「必须带可提供段」放开为条件必填
+_VAR_ANNOTATION_RE = re.compile(
+    r"\[(?P<var>[^\[\]]+)\](?P<annot>[^\[\]]*?)(?=\[[^\[\]]+\]|$)"
+)
+_SECTION_SPLIT_RE = re.compile(
+    r"(需提供|可提供)\s*[:：]\s*(.*?)(?=[，,、]?\s*(?:需提供|可提供)\s*[:：]|$)"
+)
+_EXAMPLE_FORBIDDEN_RE = re.compile(r"默认|缺省|需提供|可提供")
+
+
+def _check_spec_sections(intro: str, out: list[Finding]) -> None:
+    sections: list[tuple[str, str]] = _SECTION_SPLIT_RE.findall(intro)
+    for section, seg in sections:
+        required = section == "需提供"
+        for m in _VAR_ANNOTATION_RE.finditer(seg):
+            var = m.group("var").strip()
+            annot = m.group("annot")
+            has_example = re.search(r"[（(]\s*示例\s*[:：]\s*([^）)]*)[）)]", annot)
+            has_default = re.search(r"[（(]?\s*(?:默认|缺省)\s*[:：]", annot)
+            if required and not has_example:
+                out.append(
+                    Finding(
+                        "error",
+                        "input_form_spec",
+                        f"需提供段变量 [{var}] 缺 `(示例: ...)` 括注——前端表单以它作输入框 placeholder",
+                    )
+                )
+            if has_example and _EXAMPLE_FORBIDDEN_RE.search(has_example.group(1)):
+                out.append(
+                    Finding(
+                        "error",
+                        "input_form_spec",
+                        f"[{var}] 的示例值含禁词（默认/缺省/需提供/可提供）——会被后端解析器误提为默认值",
+                    )
+                )
+            if has_default and required:
+                out.append(
+                    Finding(
+                        "error",
+                        "input_form_spec",
+                        f"带默认值的变量 [{var}] 必须放可提供段（默认值 = 选填预填，非必填兜底）",
+                    )
+                )
 
 
 # title 是搭子在卡片上的「名字」：简洁有力、体现价值。砍虚词，但**别过度简化丢掉区分价值**。

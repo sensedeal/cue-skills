@@ -138,7 +138,7 @@ class Case3_SearchPlanMissingTripletInOneDimension(unittest.TestCase):
             "secondary_category": "x",
             # 三段式变量必须中文(R1);用合规 `[目标_授信_企业]` 避免 fixture 污染
             # (codex !450 r3 review: 旧 `[目标_X_主体]` 含英文 X 会污染 errors)
-            "input_form_spec": "需提供: [目标_授信_企业]，可提供: [关注_风险_主题] (默认: 通用)",
+            "input_form_spec": "需提供: [目标_授信_企业](示例: 比亚迪)，可提供: [关注_风险_主题] (默认: 通用)",
             "goal": "作为银行客户经理的预尽调助手，识别风险信号",
             "search_plan": sp,
             "report_format": (
@@ -194,7 +194,7 @@ class Case4_ReportSectionMissingBlueprint(unittest.TestCase):
             "primary_category": "x",
             "secondary_category": "x",
             # 合规三段式 + 合规维度 label (codex !450 r3 fixture cleanup)
-            "input_form_spec": "需提供: [目标_授信_企业]，可提供: [关注_风险_主题] (默认: 通用)",
+            "input_form_spec": "需提供: [目标_授信_企业](示例: 比亚迪)，可提供: [关注_风险_主题] (默认: 通用)",
             "goal": "作为银行客户经理的预尽调助手，识别风险信号",
             "search_plan": (
                 "**[[主体核验] 公开身份]**\n- **数据路由**: 工商\n"
@@ -1180,6 +1180,48 @@ class Case19_VersionConsistent(unittest.TestCase):
         unique = set(vs.values())
         self.assertEqual(len(unique), 1,
                          f"version drift across surfaces: {vs}")
+
+
+
+class Case20_InputFormSpecFormEra(unittest.TestCase):
+    """表单时代 input_form_spec 规则（配套前端 BuddyInputForm 表单化）:
+    R-form-1 需提供段变量必须带 (示例: X)；R-form-2 示例值禁词
+    默认/缺省/需提供/可提供（后端 _template_default_params 只认「默认/缺省」
+    触发词，示例值含它们会被误提为默认值）；R-form-3 带默认值变量必须放
+    可提供段（默认值 = 选填预填）；零参数简报类可只含可提供段。"""
+
+    def _spec_errors(self, spec: str) -> list:
+        from validate_template import _check_input_form_spec
+        out = []
+        _check_input_form_spec(spec, out)
+        return out
+
+    def test_good_spec_passes(self):
+        errs = self._spec_errors(
+            "需提供: [目标_靶点_模态](示例: TROP2 ADC)，"
+            "可提供: [关注_交易_阶段] (默认: License-Out 与股权融资)。"
+        )
+        self.assertEqual(errs, [])
+
+    def test_optional_only_spec_passes(self):
+        # 零参数简报类：只有可提供段
+        errs = self._spec_errors("可提供: [目标_简报_日期] (默认: 今日)。")
+        self.assertEqual(errs, [])
+
+    def test_required_without_example_is_error(self):
+        errs = self._spec_errors("需提供: [目标_靶点_模态]。")
+        self.assertTrue(any("示例" in e.message for e in errs), errs)
+
+    def test_example_with_forbidden_word_is_error(self):
+        errs = self._spec_errors("需提供: [目标_报告_日期](示例: 默认今日)。")
+        self.assertTrue(any("禁词" in e.message for e in errs), errs)
+
+    def test_defaulted_var_in_required_section_is_error(self):
+        errs = self._spec_errors(
+            "需提供: [目标_报告_日期](示例: 2026-09-21) (默认: 今日)。"
+        )
+        self.assertTrue(any("可提供段" in e.message for e in errs), errs)
+
 
 
 if __name__ == "__main__":
