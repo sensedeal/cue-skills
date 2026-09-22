@@ -3,7 +3,7 @@ name: cue-buddy
 description: "Use when the user wants to author / validate / debug / test / tune / pin-as-frequent a Cue 搭子(buddy) research template for a recurring scenario (corporate-credit pre-diligence, compliance snapshot, earnings review, private-fund DD, etc.) via natural conversation. Triggers: 创建搭子 / 做一个 X 搭子 / 调试模板 / 测试我的搭子 / 提交模板 / 设为常用 / design a buddy for X / mark template as frequent. Public-data tool surface only — refuse for private-data scenarios (real AML / medical diagnosis / internal accounting)."
 license: MIT
 metadata:
-  version: "0.3.6"
+  version: "0.3.7"
   requires:
     bins: ["python3"]
     envOptional: ["CUE_API_KEY", "CUE_API_BASE"]
@@ -41,7 +41,7 @@ metadata:
 | 字段 | 决定 | ⚠️ 常见误解 |
 |---|---|---|
 | `title` | 搭子在卡片上的**名字** | 简洁有力、体现价值（~≤8-10字）；砍虚词（公开/全量/细项/与分析/简报/深度），但**别过度简化丢掉区分价值**（信披属实/需求匹配/海外执法 这类要留） |
-| `input_form_spec` | **用户输入表单规范**（必填/可填变量 + 默认值） | 单行 `需提供: [属性_主体_类型]，可提供: [属性_主体_类型] (默认: ...)`，前端把 `[...]` 渲染成输入框。**不是**自由文字介绍 |
+| `input_form_spec` | **用户输入表单规范**（必填/可填变量 + 默认值） | 单行 `需提供: [属性_主体_类型](示例: X)，可提供: [属性_主体_类型] (默认: ...)`；需提供段每个变量必须紧跟 `(示例: X)`（前端输入框 placeholder），可提供段变量带 `(默认: X)`（预填可清空）。示例值内不得出现 默认/缺省/需提供/可提供。前端把 `[...]` 渲染成表单输入框。**不是**自由文字介绍 |
 | `goal` | 搭子简介=卡片文案：解决什么问题/给什么价值 | 简洁有力一段（~40-80字，价值优先）；不堆"怎么做"、不泄漏实现、不硬码主体、不写免责、不写编号清单 |
 | `search_plan` | 你按哪些数据源、用什么策略取证 | 按"数据来源"聚类，不按章节顺序线性走 |
 | `report_format` | 你交付什么样的报告（章节/蓝图） | 主标题必须含三段式变量，每章带 `[执行蓝图]` 块 |
@@ -90,7 +90,7 @@ metadata:
 
 | 问题 | 字段名 | 例子 |
 |---|---|---|
-| 用户给你什么输入？ | `input_form_spec` | "需提供：[目标_授信_企业]，可提供：[关注_风险_主题] (默认：通用授信审查)" |
+| 用户给你什么输入？ | `input_form_spec` | "需提供：[目标_授信_企业](示例: 宁德时代)，可提供：[关注_风险_主题] (默认: 通用授信审查)" |
 | 你是谁、要解决什么痛点？ | `goal` | "作为银行客户经理的预尽调助手，从公开监管披露和司法记录穿透 [目标_授信_企业] 的偿债与合规风险..." |
 | 你怎么调研？（按数据来源分组） | `search_plan` | 主体核验 / 财务实证 / 行业景气 / 经营动态 4 个聚类，每个写明数据路由+执行动作+验证策略 |
 | 报告交付什么样？ | `report_format` | `> **关键配置**` 头部 + 13 个章节，每节带 `> **[执行蓝图]**` 块（研究目标/逻辑链条/信息需求/输出形式） |
@@ -244,7 +244,7 @@ Agent 用 `Read` / `WebFetch` 读取后，**只在本地 agent 上下文里使�
 
 完整版见 [`references/hard-rules.md`](references/hard-rules.md)，最重要的 5 条：
 
-1. **`input_form_spec` 必须三段式变量** — `需提供: [属性_主体_类型]，可提供: [属性_主体_类型] (默认: ...)` 单行
+1. **`input_form_spec` 必须三段式变量** — `需提供: [属性_主体_类型](示例: X)，可提供: [属性_主体_类型] (默认: ...)` 单行；每个需提供变量必须带 `(示例: X)` 括注（校验器缺括注即报错）
 2. **`goal` 必须简洁有力、价值优先**（它就是卡片简介）— ~40-80字一段，讲解决什么问题/给什么价值；不堆怎么做（放 search_plan）、不泄漏实现、不硬码主体、不写免责、不写编号清单（详见 hard-rules R2）
 3. **`search_plan` 必须按"数据来源"聚类** — 而不是按章节顺序线性走
 4. **`report_format` 主标题必须含变量** — `# [目标_<场景>_主体] <场景>底稿`，不要写死字符串

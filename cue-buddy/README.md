@@ -48,7 +48,7 @@ Agent: [reads SKILL.md → triggers +author flow]
 
 ## Status
 
-**v0.3.6** — current (exact version in `SKILL.md` frontmatter). Cross-agent verified: the detailed write-up ([`docs/verification-reports/2026-05-20-gemini-cli.md`](./docs/verification-reports/2026-05-20-gemini-cli.md)) documents the v0.1.0 Gemini CLI run that drove the `+test` long-stream replay-fallback hardening (Claude Code + Codex CLI verified alongside); v0.2.0 added live cross-agent runs (real tasks against the production API) on Hermes, OpenClaw, and Kimi. Since then: v0.3.3 unified versioning with cue-research, v0.3.4 consolidated all runtime files under a single writable root (`CUE_HOME`), v0.3.6 enforces business-language user queries in the validator.
+**v0.3.7** — current (exact version in `SKILL.md` frontmatter). Cross-agent verified: the detailed write-up ([`docs/verification-reports/2026-05-20-gemini-cli.md`](./docs/verification-reports/2026-05-20-gemini-cli.md)) documents the v0.1.0 Gemini CLI run that drove the `+test` long-stream replay-fallback hardening (Claude Code + Codex CLI verified alongside); v0.2.0 added live cross-agent runs (real tasks against the production API) on Hermes, OpenClaw, and Kimi. Since then: v0.3.3 unified versioning with cue-research, v0.3.4 consolidated all runtime files under a single writable root (`CUE_HOME`), v0.3.6 enforces business-language user queries in the validator.
 
 ## Who this is for
 
@@ -159,4 +159,4 @@ cue-buddy/
 Issues and PRs welcome. Especially valuable:
 - New `references/examples/<scenario>.md` covering domain templates not yet shipped (private-fund DD, public-record compliance snapshot, gov-procurement lead scan, policy-watch, sector-tracking, etc. — `corporate-credit.md` and `earnings-review.md` are already in the repo) — scope should align with Cue's actual tool surface (finance / 工商 / 司法 / 监管 / 资金流 / 行业研报 / 政府采购),avoid scenarios requiring private data (e.g. real AML on bank-internal transactions, medical diagnosis)
 - Cross-agent verification reports (Codex / Gemini / OpenClaw)
-- Hard-rule additions backed by failure-mode evidence
+- Hard-rule additions backed by failure-mode evidence v0.3.7 enforces form-era `input_form_spec`: every 需提供 variable requires an `(示例: X)` annotation, example values must not contain 默认/缺省/需提供/可提供, and default-annotated variables belong in the 可提供 section.

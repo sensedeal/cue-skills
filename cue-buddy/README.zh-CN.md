@@ -161,4 +161,4 @@ Issue 和 PR 都欢迎。特别有价值的:
 
 ## License
 
-MIT — 见根目录 [LICENSE](../LICENSE)。
+MIT — 见根目录 [LICENSE](../LICENSE)。 v0.3.7 校验器强制 form-era `input_form_spec`：需提供段每个变量必须带 `(示例: X)` 括注、示例值不得含 默认/缺省/需提供/可提供、带默认值变量归可提供段。
