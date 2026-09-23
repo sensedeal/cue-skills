@@ -1059,18 +1059,21 @@ class TestReferences(unittest.TestCase):
             self.assertIn("v0.4.0", report)
             self.assertNotIn("v0.5.0", report)
 
-    def test_current_publication_report_declares_pending_publication(self) -> None:
+    def test_current_publication_report_records_verified_1_8_3_release(self) -> None:
         current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
-        # 1.8.3 is prepared but not yet published; the report must say so and must
-        # already pin the rename disclosure.
+        # Registry facts are byte-verified against the tagged tree; the rename
+        # disclosure is pinned in the same report.
         for fact in (
-            "Pending",
-            "owner-gated 2FA publish",
+            "2923fe899ad6b160d1c2dff4320a02e11d00ebc1",
+            "82d0cecb1f5aa16bd5ccd47c661cad4d4af474b35f561738402f76cd2bd4fede",
+            "sha512-0N0J0t89FEp5+Zcq/rqBRfioCt7Fd/QZIBLg0CNevIR12KGyEL5ekh5LrS8Fwta/NlvfXkVLb6Mq5Lv+Qgp8Xg==",
+            "registry tarball byte-identical",
+            "64 files",
+            "764 tests passed",
             "OMNI_READER_UNAVAILABLE",
             "INSECURE_OMNI_READER_URL",
             "hard cut with no alias",
-            "764 tests passed",
             "no reset, backfill, or replay",
             "cue-skill publication remains owner-gated",
         ):
