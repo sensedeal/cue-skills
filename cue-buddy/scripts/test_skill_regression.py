@@ -959,6 +959,124 @@ class Case14b_UpgradeOriginVersion(unittest.TestCase):
         self.assertTrue(seen[1].startswith(_GITEE_RAW_SKILL_URL.format(
             branch="main", skill="cue-buddy")))
 
+    def test_published_fetch_skips_a_github_page_with_no_version(self) -> None:
+        import io
+        from update_skill import fetch_remote_version
+
+        seen = []
+
+        def urlopen(req, timeout):
+            seen.append(req.full_url)
+            if "githubusercontent" in req.full_url:
+                return io.BytesIO(b"<html>not a skill</html>")
+            return io.BytesIO(b'---\nmetadata:\n  version: "0.3.8"\n---\n')
+
+        with mock.patch("update_skill.urllib.request.urlopen", urlopen):
+            version = fetch_remote_version("cue-buddy", "main", timeout=1)
+        self.assertEqual(version, "0.3.8")
+        self.assertEqual(len(seen), 2)
+
+    def test_published_fetch_stops_when_github_has_a_version(self) -> None:
+        import io
+        from update_skill import fetch_remote_version
+
+        seen = []
+
+        def urlopen(req, timeout):
+            seen.append(req.full_url)
+            return io.BytesIO(b'---\nmetadata:\n  version: "0.3.7"\n---\n')
+
+        with mock.patch("update_skill.urllib.request.urlopen", urlopen):
+            version = fetch_remote_version("cue-buddy", "main", timeout=1)
+        self.assertEqual(version, "0.3.7")
+        self.assertEqual(len(seen), 1)
+
+    def _copy_mode_text(self) -> str:
+        import io
+        from update_skill import run_upgrade
+        out = io.StringIO()
+        with mock.patch("update_skill.detect_install_mode", return_value=("copy", None)), \
+             mock.patch("update_skill.fetch_remote_version", return_value="9.9.9"), \
+             mock.patch("sys.stdout", out):
+            code = run_upgrade(skill="cue-buddy")
+        self.assertEqual(code, 1)
+        return out.getvalue()
+
+    def _run_method_a(self, prelude: str):
+        import subprocess
+        text = self._copy_mode_text()
+        start = text.index("# 方式 A")
+        block = text[start:text.index("# 方式 B")]
+        return subprocess.run(
+            ["bash", "-c", prelude + "\n" + block],
+            capture_output=True, text=True,
+            env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": "/tmp"},
+        )
+
+    def test_mktemp_failure_does_not_delete_root(self) -> None:
+        # An empty tmp makes "$tmp/cue-skills" into /cue-skills. The printed
+        # commands must exit before any rm/diff/cp in that case.
+        proc = self._run_method_a(
+            "mktemp() { return 1; }\n"
+            "git() { printf 'GIT %s\\n' \"$*\"; return 1; }\n"
+            "rm() { printf 'RM %s\\n' \"$*\"; return 0; }\n"
+            "diff() { printf 'DIFF %s\\n' \"$*\" >&2; return 0; }\n"
+            "cp() { printf 'CP %s\\n' \"$*\"; return 0; }\n"
+            "export -f mktemp git rm diff cp\n"
+        )
+        leaked = Path("/cue-buddy.local-diff")
+        seen = proc.stdout + proc.stderr
+        try:
+            self.assertNotEqual(proc.returncode, 0, seen)
+            self.assertNotIn("RM ", seen)
+            self.assertNotIn("DIFF ", seen)
+            self.assertNotIn("CP ", seen)
+            self.assertNotIn("/cue-skills", seen)
+            self.assertFalse(leaked.exists())
+        finally:
+            if leaked.exists():
+                leaked.unlink()
+
+    def test_both_clones_failing_does_not_copy(self) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as sandbox:
+            proc = self._run_method_a(
+                "mktemp() { mkdir -p \"$1\"; printf '%s\\n' \"$1\"; }\n".replace(
+                    "$1", sandbox + "/t") +
+                "git() { printf 'GIT %s\\n' \"$*\"; return 1; }\n"
+                "rm() { printf 'RM %s\\n' \"$*\"; return 0; }\n"
+                "diff() { printf 'DIFF %s\\n' \"$*\" >&2; return 0; }\n"
+                "cp() { printf 'CP %s\\n' \"$*\"; return 0; }\n"
+                "export -f mktemp git rm diff cp\n"
+            )
+        seen = proc.stdout + proc.stderr
+        self.assertNotEqual(proc.returncode, 0, seen)
+        self.assertNotIn("DIFF ", seen)
+        self.assertNotIn("CP ", seen)
+        self.assertIn("RM ", proc.stdout)
+        for line in proc.stdout.splitlines():
+            if line.startswith("RM "):
+                self.assertTrue(line.split(" ", 2)[-1].startswith(sandbox), line)
+                self.assertNotEqual(line.split(" ", 2)[-1], "/cue-skills")
+
+    def test_gitee_clone_success_still_reaches_the_copy(self) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as sandbox:
+            proc = self._run_method_a(
+                'mktemp() { mkdir -p "' + sandbox + '/t"; printf "%s\\n" "' + sandbox + '/t"; }\n'
+                'git() { printf "GIT %s\\n" "$*"; case "$*" in *gitee.com*) return 0;; *) return 1;; esac; }\n'
+                'rm() { printf "RM %s\\n" "$*"; return 0; }\n'
+                'diff() { printf "DIFF %s\\n" "$*" >&2; return 0; }\n'
+                'cp() { printf "CP %s\\n" "$*"; return 0; }\n'
+                "export -f mktemp git rm diff cp\n"
+            )
+        seen = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, seen)
+        self.assertIn("DIFF ", proc.stderr)
+        self.assertIn("CP ", proc.stdout)
+        # The repo URL contains "cue-skills"; the hazard is a root path.
+        self.assertIsNone(re.search(r"(?:^|\s)/cue-skills(?:\s|/|$)", seen))
+
     def test_copy_mode_instructions_offer_github_and_gitee(self) -> None:
         import io
         from update_skill import run_upgrade
@@ -1042,6 +1160,12 @@ class Case14c_ZhEnVersionParity(unittest.TestCase):
         en_cells = cell(root / "README.md")
         zh_cells = cell(root / "README.zh-CN.md")
         self.assertEqual(en_cells, zh_cells)
+        # English==Chinese is not enough: both tables can stay stale together.
+        # Each versioned row has to match that skill's own SKILL.md.
+        for skill, shown in en_cells.items():
+            skill_md = root / skill / "SKILL.md"
+            self.assertTrue(skill_md.is_file(), skill)
+            self.assertEqual(shown, f"v{self._version(skill_md)}", skill)
 
         for skill, zh_marker, en_marker in (
             ("cue-buddy", "**v{v}** — 当前版本", "**v{v}** — current"),

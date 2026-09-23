@@ -158,7 +158,9 @@ def fetch_remote_version(
     """Fetch the published SKILL.md (GitHub raw, then the Gitee mirror) and
     parse its version. Used for copy installs, which have no git remote.
 
-    Returns None when neither host answers (caller handles gracefully).
+    Returns None when neither host returns a body whose frontmatter has a
+    version. An HTTP 200 that is not a SKILL.md (a proxy error page, a login
+    wall) is not an answer — try the other host.
     """
     for template in (_RAW_SKILL_URL, _GITEE_RAW_SKILL_URL):
         url = template.format(branch=branch, skill=skill)
@@ -168,7 +170,9 @@ def fetch_remote_version(
                 body = resp.read().decode("utf-8")
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError):
             continue
-        return parse_version_from_md(body)
+        version = parse_version_from_md(body)
+        if version:
+            return version
     return None
 
 
@@ -577,9 +581,11 @@ def run_upgrade(
     print(
         f"""
   # 方式 A — 重新 clone 整个 repo,先 diff 备份再覆盖(GitHub 不通时走 Gitee 镜像)
-  tmp=$(mktemp -d)   # portable (Linux/macOS/git-bash); avoids Windows-less /tmp
+  # mktemp 失败时 tmp 为空,"$tmp/cue-skills" 会变成 /cue-skills,所以失败必须停。
+  tmp=$(mktemp -d) || exit 1
   git clone --depth=1 -b {branch} {_GITHUB_REPO_URL}.git "$tmp/cue-skills" \\
-    || {{ rm -rf "$tmp/cue-skills"; git clone --depth=1 -b {branch} {_GITEE_REPO_URL}.git "$tmp/cue-skills"; }}
+    || {{ rm -rf "$tmp/cue-skills"; git clone --depth=1 -b {branch} {_GITEE_REPO_URL}.git "$tmp/cue-skills"; }} \\
+    || exit 1
   diff -ru {skill_dir} "$tmp/cue-skills/{skill}/" > "$tmp/{skill}.local-diff" || true
   # ⬇️ 这一步覆盖(可改成 `cp -R -i` 加交互确认,或先看上面 diff):
   cp -R "$tmp/cue-skills/{skill}/"* {skill_dir}/
