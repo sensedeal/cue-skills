@@ -63,7 +63,12 @@ _RAW_SKILL_URL = (
     "https://raw.githubusercontent.com/sensedeal/cue-skills/"
     "{branch}/{skill}/SKILL.md"
 )
+# Same content mirrored on Gitee, for networks where GitHub is unreachable.
+_GITEE_RAW_SKILL_URL = (
+    "https://gitee.com/sensedeal/cue-skills/raw/{branch}/{skill}/SKILL.md"
+)
 _GITHUB_REPO_URL = "https://github.com/sensedeal/cue-skills"
+_GITEE_REPO_URL = "https://gitee.com/sensedeal/cue-skills"
 
 # Cooldown file: stores per-skill timestamp of last silent-check (seconds since
 # epoch). Lives in the config dir ($CUE_HOME or ~/.cue) - deterministic, no
@@ -141,7 +146,7 @@ def detect_install_mode(skill_dir: Path) -> tuple[str, Path | None]:
 
 
 # ---------------------------------------------------------------------------
-# Remote version fetch (GitHub raw)
+# Remote version fetch
 # ---------------------------------------------------------------------------
 
 
@@ -150,18 +155,58 @@ def fetch_remote_version(
     branch: str = _DEFAULT_BRANCH,
     timeout: float = 15.0,
 ) -> str | None:
-    """Fetch the remote SKILL.md from GitHub raw and parse its version.
+    """Fetch the published SKILL.md (GitHub raw, then the Gitee mirror) and
+    parse its version. Used for copy installs, which have no git remote.
 
-    Returns None on network error (caller handles gracefully).
+    Returns None when neither host answers (caller handles gracefully).
     """
-    url = _RAW_SKILL_URL.format(branch=branch, skill=skill)
-    req = urllib.request.Request(url, headers={"Accept": "text/plain"})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            body = resp.read().decode("utf-8")
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError):
-        return None
-    return parse_version_from_md(body)
+    for template in (_RAW_SKILL_URL, _GITEE_RAW_SKILL_URL):
+        url = template.format(branch=branch, skill=skill)
+        req = urllib.request.Request(url, headers={"Accept": "text/plain"})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                body = resp.read().decode("utf-8")
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError):
+            continue
+        return parse_version_from_md(body)
+    return None
+
+
+def fetch_origin_version(
+    repo_root: Path,
+    skill_dir: Path,
+    branch: str = _DEFAULT_BRANCH,
+    timeout: float | None = None,
+) -> tuple[str | None, str]:
+    """Fetch origin/<branch> and read SKILL.md's version from it.
+
+    A git install upgrades by pulling origin, so origin (whatever host it
+    points at: GitHub, Gitee, a fork) is the only honest reference for
+    "is there something newer". Returns (version, error); error is "" on
+    success.
+    """
+    ok, err = git_fetch(repo_root, branch, timeout=timeout)
+    if not ok:
+        return None, err or "git fetch failed"
+    rel = (skill_dir / "SKILL.md").relative_to(repo_root).as_posix()
+    res = _git(["show", f"origin/{branch}:{rel}"], repo_root, timeout=timeout)
+    if res.returncode != 0:
+        return None, res.stderr.strip() or "git show failed"
+    return parse_version_from_md(res.stdout), ""
+
+
+def remote_version(
+    skill_dir: Path,
+    branch: str = _DEFAULT_BRANCH,
+    timeout: float = 15.0,
+) -> str | None:
+    """The version +upgrade would move to: origin/<branch> for a git install,
+    the published SKILL.md for a copy install. None when unreachable."""
+    mode, repo_root = detect_install_mode(skill_dir)
+    if mode == "git":
+        assert repo_root is not None
+        return fetch_origin_version(repo_root, skill_dir, branch, timeout)[0]
+    return fetch_remote_version(skill_dir.name, branch, timeout)
 
 
 # ---------------------------------------------------------------------------
@@ -218,14 +263,20 @@ def _cooldown_expired(skill: str, now: float, cooldown_s: int = _COOLDOWN_SECOND
 # ---------------------------------------------------------------------------
 
 
-def _git(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
+def _git(
+    args: list[str], cwd: Path, timeout: float | None = None
+) -> subprocess.CompletedProcess:
     """Run a git command capturing stdout/stderr. Never raises."""
-    return subprocess.run(
-        ["git"] + args,
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-    )
+    try:
+        return subprocess.run(
+            ["git"] + args,
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except (subprocess.TimeoutExpired, OSError) as e:
+        return subprocess.CompletedProcess(["git"] + args, 1, "", str(e))
 
 
 def git_local_status(repo_root: Path) -> str:
@@ -249,9 +300,11 @@ def git_current_branch(repo_root: Path) -> str | None:
     return name or None
 
 
-def git_fetch(repo_root: Path, branch: str = _DEFAULT_BRANCH) -> tuple[bool, str]:
+def git_fetch(
+    repo_root: Path, branch: str = _DEFAULT_BRANCH, timeout: float | None = None
+) -> tuple[bool, str]:
     """Run `git fetch origin <branch>`. Return (ok, stderr-on-failure)."""
-    res = _git(["fetch", "origin", branch], repo_root)
+    res = _git(["fetch", "origin", branch], repo_root, timeout=timeout)
     return (res.returncode == 0, res.stderr.strip())
 
 
@@ -305,7 +358,9 @@ def silent_check_for_update(
 
     Behaviour:
       - If cooldown not expired → return 0 silently.
-      - Else attempt to fetch remote SKILL.md version (short timeout).
+      - Else read the version +upgrade would move to (short timeout):
+        origin/<branch> for a git install, the published SKILL.md for a
+        copy install.
       - On network failure: return 0 silently, DO NOT update cooldown
         (so the next session will retry — don't hide outages forever).
       - On success: update cooldown timestamp regardless of behind/equal.
@@ -319,7 +374,9 @@ def silent_check_for_update(
     if now is None:
         now = time.time()
     if fetch_fn is None:
-        fetch_fn = lambda s, b=branch: fetch_remote_version(s, b, timeout=5.0)
+        fetch_fn = lambda s, b=branch: remote_version(
+            _resolve_skill_dir(s), b, timeout=5.0
+        )
 
     if not _cooldown_expired(skill, now, cooldown_s, cooldown_path):
         return 0
@@ -388,24 +445,34 @@ def run_upgrade(
     print(f"[+upgrade] skill: {skill}")
     print(f"           local version: {local_v or '(missing)'}")
 
-    # 1. Fetch remote version
-    remote_v = fetch_remote_version(skill, branch)
-    if remote_v is None:
-        sys.stderr.write(
-            "[+upgrade] 无法从 GitHub 拉取最新 SKILL.md。可能是:\n"
-            "           1) 网络不可达 / 被代理拦截\n"
-            "           2) GitHub raw 临时故障\n"
-            "           3) 仓库或分支名不对(默认 sensedeal/cue-skills@main)\n"
-        )
-        return 2
-    print(f"           remote version (origin/{branch}): {remote_v}")
-
-    # 2. Detect install mode
+    # 1. Detect install mode — it decides where "remote" is.
     mode, repo_root = detect_install_mode(skill_dir)
     print(
         f"           install mode: {mode}"
         + (f" (repo at {repo_root})" if repo_root else "")
     )
+
+    # 2. Remote version: origin/<branch> for git (what `git pull` would
+    #    bring), the published SKILL.md for copy installs.
+    if mode == "git":
+        assert repo_root is not None
+        print(f"\n[+upgrade] git fetch origin {branch} …")
+        remote_v, err = fetch_origin_version(repo_root, skill_dir, branch)
+        if err:
+            sys.stderr.write(f"[+upgrade] 读取 origin/{branch} 版本失败: {err}\n")
+            return 2
+        print(f"           remote version (origin/{branch}): {remote_v or '(missing)'}")
+    else:
+        remote_v = fetch_remote_version(skill, branch)
+        if remote_v is None:
+            sys.stderr.write(
+                "[+upgrade] 无法从 GitHub 或 Gitee 镜像拉取最新 SKILL.md。可能是:\n"
+                "           1) 网络不可达 / 被代理拦截\n"
+                "           2) GitHub / Gitee raw 临时故障\n"
+                "           3) 仓库或分支名不对(默认 sensedeal/cue-skills@main)\n"
+            )
+            return 2
+        print(f"           remote version (published {branch}): {remote_v}")
 
     if check_only:
         if local_v == remote_v:
@@ -439,12 +506,6 @@ def run_upgrade(
                 f"`git rebase {branch}`/`git merge {branch}`,看你的工作流)。\n"
             )
             return 1
-
-        print(f"\n[+upgrade] git fetch origin {branch} …")
-        ok, err = git_fetch(repo_root, branch)
-        if not ok:
-            sys.stderr.write(f"[+upgrade] git fetch failed: {err}\n")
-            return 2
 
         ahead = git_log_ahead(repo_root, branch)
         if not ahead:
@@ -505,7 +566,7 @@ def run_upgrade(
     print("\n[+upgrade] 此 skill 是 copy 装的(无 .git),无法自动 pull。")
     if local_v == remote_v:
         print(
-            "           metadata.version 一致;如需 GitHub main 上的最新提交,需手动:"
+            f"           metadata.version 一致;如需 {branch} 上的最新提交,需手动:"
         )
     else:
         print(f"           有新版可用: {local_v} → {remote_v}。手动更新方式:")
@@ -515,15 +576,17 @@ def run_upgrade(
     )
     print(
         f"""
-  # 方式 A — 重新 clone 整个 repo,先 diff 备份再覆盖
+  # 方式 A — 重新 clone 整个 repo,先 diff 备份再覆盖(GitHub 不通时走 Gitee 镜像)
   tmp=$(mktemp -d)   # portable (Linux/macOS/git-bash); avoids Windows-less /tmp
-  git clone --depth=1 {_GITHUB_REPO_URL}.git "$tmp/cue-skills"
+  git clone --depth=1 -b {branch} {_GITHUB_REPO_URL}.git "$tmp/cue-skills" \\
+    || {{ rm -rf "$tmp/cue-skills"; git clone --depth=1 -b {branch} {_GITEE_REPO_URL}.git "$tmp/cue-skills"; }}
   diff -ru {skill_dir} "$tmp/cue-skills/{skill}/" > "$tmp/{skill}.local-diff" || true
   # ⬇️ 这一步覆盖(可改成 `cp -R -i` 加交互确认,或先看上面 diff):
   cp -R "$tmp/cue-skills/{skill}/"* {skill_dir}/
 
   # 方式 B — 下载最新 SKILL.md 单文件(只更新单个文件,不动 scripts/)
-  curl -L {_RAW_SKILL_URL.format(branch=branch, skill=skill)} -o {skill_md}
+  curl -fL {_RAW_SKILL_URL.format(branch=branch, skill=skill)} -o {skill_md} \\
+    || curl -fL {_GITEE_RAW_SKILL_URL.format(branch=branch, skill=skill)} -o {skill_md}
 """
     )
     _print_session_cache_note()
