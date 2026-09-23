@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "当用户需要外部 AI agent 通过 Cue Omni Reader 解析或理解一个 HTTP(S) URL 或已授权的本地文档、音频、视频源时使用。触发词：解析/读取 URL、本地文档、音频、视频、OCR、PDF、网页内容。"
 license: MIT
 metadata:
-  version: "0.5.0"
+  version: "0.5.1"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -20,7 +20,7 @@ metadata:
 1. **保留来源。** 只有 HTTP(S) 字符串才是 URL。把用户的来源字符串直接传给 `parse`。不要预读、附件化、base64 编码或粘贴本地来源内容；不要使用 `file://`、localhost 或公共临时上传服务。
 2. **单一提供方，唯一首次调用。** `parse` 是 HTTP(S) URL 与本地路径唯一的首次调用；不要让用户选择本地/远端、上传/URL 模式。本地 Bridge 是同一个 Omni 提供方，不是第二个连接器；仅远端连接可处理 URL，但不能读取本地文件。
 3. **仅在同意后自举。** 安装 Bridge 或扩展允许根目录前，先获得用户确认，并只加入最小必需目录。阅读 [`references/setup.md`](references/setup.md)，使用其精确审计 pin，运行 `doctor`，再重连 MCP server——多数客户端只需重连(Claude Code / WorkBuddy:`/mcp` → `omni-reader` → reconnect),通常无需重启客户端。首次使用跑 `doctor --json --silent-check`;若 `version_check.status=outdated`,告知用户 installed→latest,仅在确认后升级。绝不让用户在对话里粘贴 API key。文件已在允许根目录内时，不要再要求一次确认。
-4. **调用当前 schema。** 遵守当前 `parse` schema，绝不发明参数。如果 schema 暴露 `wait`，长媒体或大文档使用 `wait: false`；仅来源的 Bridge 会返回可恢复 operation。`source`/`url` 只传一个。`grounded`/`layout` 仅 Bridge 本地支持；远端 `UNSUPPORTED_DETAIL` 是终局。不要让同步与异步提交竞争。
+4. **调用当前 schema。** 遵守当前 `parse` schema，绝不发明参数。如果 schema 暴露 `wait`，长媒体或大文档使用 `wait: false`；仅来源的 Bridge 会返回可恢复 operation。`source`/`url` 只传一个。`grounded`/`layout` 在能力广告支持的地方对文件和 URL 都可用；`UNSUPPORTED_DETAIL`/`DETAIL_CAPABILITIES_UNAVAILABLE` 是终局。不要让同步与异步提交竞争。
 5. **读取任一种响应通道。** 有 `structuredContent` 时优先使用；只有 `content[].text` 时，先解析紧凑 JSON。完成的 inline 内容可能是精确 Markdown；非 inline 状态是紧凑 JSON。通用成功字符串不等于完成。只拼接 `result.text`；绝不追加 JSON 包装。
 6. **保住同一个操作。** 收到 `processing` 时保存 `operation_id`，按返回时机或 `wait_ms` 调 `get_parse_status`。重提之前先恢复既有操作。丢失 operation ID 是含糊超时：解释重复工作/计费风险，取得确认后才能替换提交。
 7. **自动选择后续工具与交付方式。** 根据结构化结果选择后续工具；绝不把工具列表作为菜单交给用户选择。使用以下决策表：
@@ -32,7 +32,7 @@ metadata:
    交付文件 → `save_result`
    ```
 
-   保存、章节导航、多份文档或严格控制上下文时使用 `result_delivery="artifact"`；省略/`auto` 会在可行时让有界小文本 inline。对于 `result.kind=artifact`，preview 并非完整内容；读取到 `next_cursor` 消失为止。`read_outline` 不要求先调用 `save_result`。文本输出是 Markdown，可保留标题、列表、GFM 表格或原始 HTML 表格；它缺少 grounding/layout sidecar，不是完全没有结构。空 outline 只表示没有识别到标题，不表示文本没有结构。多来源使用有界并发的独立 `parse` 调用，并把每个 operation/result handle 分开。
+   保存、章节导航、多份文档或严格控制上下文时使用 `result_delivery="artifact"`；省略/`auto` 会在可行时让有界小文本 inline。对于 `result.kind=artifact`，preview 并非完整内容；读取到 `next_cursor` 消失为止。`read_outline` 不要求先调用 `save_result`。文本输出是 Markdown，可保留标题、列表、GFM 表格或原始 HTML 表格；它缺少 grounding/layout sidecar，不是完全没有结构。需要 sidecar 时请求 `detail=grounded`/`layout`（结果为 `kind: bundle`）。空 outline 只表示没有识别到标题，不表示文本没有结构。多来源使用有界并发的独立 `parse` 调用，并把每个 operation/result handle 分开。
 8. **收尾并清理。** 解析后继续用户的原始任务。摘要前先组装完整结果，不要截断。仅解析时交付完整 Markdown 或文件，可选地提供摘要。任务完成前保留 artifact；除非用户要求保留，之后调用 `discard_result`。只在 discard 或清理被确认后声称已删除。
 
 ## 操作状态
@@ -63,7 +63,7 @@ Tasks、Roots、宿主超时及 cwd/workspace 行为，只能依据客户端直�
 
 工具级错误不是 MCP 断连。保留鉴权、计费、解析器、可重试性、operation 与清理事实。只报告本次 operation 返回的计费事实；仅在 `retryable=true` 时重试。绝不估算费用或复制页数/媒体时长换算。
 
-先运行 `npx -y @cueai/omni-reader-mcp@1.8.1 doctor --json`。`CUBE_UNAVAILABLE` 是上传前的控制面失败；grant 后失败属于安全上传阶段；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据已报告的端点事实——绝不猜测或发布内部主机名、端口。
+先运行 `npx -y @cueai/omni-reader-mcp@1.8.2 doctor --json`。`CUBE_UNAVAILABLE` 是上传前的控制面失败；grant 后失败属于安全上传阶段；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据已报告的端点事实——绝不猜测或发布内部主机名、端口。
 
 - `OMNI_NOT_ENTITLED` / HTTP 403 才是账号 entitlement 信号。
 - `DIRECT_UPLOAD_DISABLED`（旧版）或 `DIRECT_UPLOAD_UNAVAILABLE` 表示直传路由/能力不可用，不表示账号被禁用或账号只能使用 text。
