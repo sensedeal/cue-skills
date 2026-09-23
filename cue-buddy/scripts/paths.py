@@ -86,13 +86,19 @@ def probe_writable(path: Path) -> bool:
     candidate dir concurrently don't race on unlink (a fixed name let one
     process unlink the other's probe -> false "not writable" -> divergent
     roots)."""
+    probe = path / f".cue-wtest-{os.getpid()}"
     try:
         path.mkdir(parents=True, exist_ok=True)
-        probe = path / f".cue-wtest-{os.getpid()}"
         probe.write_text("x", encoding="utf-8")
         probe.unlink()
         return True
-    except (PermissionError, OSError):
+    except OSError:
+        # A write that half-succeeded, or an unlink refused by a transient
+        # lock (e.g. Windows antivirus), must not leave the probe behind.
+        try:
+            probe.unlink(missing_ok=True)
+        except OSError:
+            pass
         return False
 
 

@@ -24,6 +24,7 @@ import re
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
@@ -775,8 +776,9 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
         from update_skill import _cooldown_expired
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "cooldown.json"
-            self.assertTrue(_cooldown_expired("cue-buddy", now=1000.0,
-                                              cooldown_s=86400, path=p))
+            with mock.patch("update_skill._LEGACY_COOLDOWN_PATH", Path(tmp) / "no-legacy.json"):
+                self.assertTrue(_cooldown_expired("cue-buddy", now=1000.0,
+                                                  cooldown_s=86400, path=p))
 
     def test_cooldown_not_expired_when_recent(self) -> None:
         import json as _json
@@ -786,8 +788,9 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
             p = Path(tmp) / "cooldown.json"
             p.write_text(_json.dumps({"cue-buddy": 1000.0}))
             # 1 hour later, 24h cooldown → still cooling down.
-            self.assertFalse(_cooldown_expired("cue-buddy", now=1000.0 + 3600,
-                                                cooldown_s=86400, path=p))
+            with mock.patch("update_skill._LEGACY_COOLDOWN_PATH", Path(tmp) / "no-legacy.json"):
+                self.assertFalse(_cooldown_expired("cue-buddy", now=1000.0 + 3600,
+                                                    cooldown_s=86400, path=p))
 
     def test_cooldown_expired_when_old(self) -> None:
         import json as _json
@@ -797,8 +800,9 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
             p = Path(tmp) / "cooldown.json"
             p.write_text(_json.dumps({"cue-buddy": 1000.0}))
             # 25h later → expired.
-            self.assertTrue(_cooldown_expired("cue-buddy", now=1000.0 + 25 * 3600,
-                                               cooldown_s=86400, path=p))
+            with mock.patch("update_skill._LEGACY_COOLDOWN_PATH", Path(tmp) / "no-legacy.json"):
+                self.assertTrue(_cooldown_expired("cue-buddy", now=1000.0 + 25 * 3600,
+                                                   cooldown_s=86400, path=p))
 
     def test_silent_check_skips_when_cooldown_fresh(self) -> None:
         """Cooldown gate short-circuits before any network attempt."""
@@ -812,10 +816,11 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
             def boom_fetch(skill):
                 calls.append(skill)
                 return "9.9.9"
-            rc = silent_check_for_update(
-                skill="cue-buddy", now=1000.0 + 60,
-                cooldown_path=p, fetch_fn=boom_fetch,
-            )
+            with mock.patch("update_skill._LEGACY_COOLDOWN_PATH", Path(tmp) / "no-legacy.json"):
+                rc = silent_check_for_update(
+                    skill="cue-buddy", now=1000.0 + 60,
+                    cooldown_path=p, fetch_fn=boom_fetch,
+                )
             self.assertEqual(rc, 0)
             self.assertEqual(calls, [], "fetch_fn must NOT be called when cooldown is fresh")
 
@@ -831,10 +836,11 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
             local_md = (Path(__file__).resolve().parents[1] / "SKILL.md")
             from update_skill import parse_version_from_md
             local_v = parse_version_from_md(local_md.read_text(encoding="utf-8"))
-            rc = silent_check_for_update(
-                skill="cue-buddy", now=2000.0,
-                cooldown_path=p, fetch_fn=lambda s: local_v,
-            )
+            with mock.patch("update_skill._LEGACY_COOLDOWN_PATH", Path(tmp) / "no-legacy.json"):
+                rc = silent_check_for_update(
+                    skill="cue-buddy", now=2000.0,
+                    cooldown_path=p, fetch_fn=lambda s: local_v,
+                )
             self.assertEqual(rc, 0)
             data = _json.loads(p.read_text())
             self.assertEqual(data.get("cue-buddy"), 2000.0)
@@ -846,10 +852,11 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
         from update_skill import silent_check_for_update
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "cooldown.json"
-            rc = silent_check_for_update(
-                skill="cue-buddy", now=3000.0,
-                cooldown_path=p, fetch_fn=lambda s: None,
-            )
+            with mock.patch("update_skill._LEGACY_COOLDOWN_PATH", Path(tmp) / "no-legacy.json"):
+                rc = silent_check_for_update(
+                    skill="cue-buddy", now=3000.0,
+                    cooldown_path=p, fetch_fn=lambda s: None,
+                )
             self.assertEqual(rc, 0)
             self.assertFalse(p.exists(), "cooldown file must not be written on net failure")
 
@@ -878,6 +885,305 @@ class Case14_UpgradeSkillHelpers(unittest.TestCase):
         self.assertTrue(is_local_behind("v1-beta", "v1-rc"))
         # same non-semver → not behind
         self.assertFalse(is_local_behind("v1-beta", "v1-beta"))
+
+
+class Case14b_UpgradeOriginVersion(unittest.TestCase):
+    """+upgrade's "is there a newer version" must follow what the pull would
+    actually bring. A git install pulls origin, so the reference is
+    origin/<branch> — not a hardcoded GitHub raw URL, which is wrong for a
+    Gitee checkout and for a fork. Copy installs have no remote, so they
+    read the published SKILL.md, GitHub first and the Gitee mirror after.
+    """
+
+    def test_failed_fetch_is_an_error_even_with_empty_stderr(self) -> None:
+        from update_skill import fetch_origin_version
+        with mock.patch("update_skill.git_fetch", return_value=(False, "")):
+            version, err = fetch_origin_version(Path("."), Path("."), "main")
+        self.assertIsNone(version)
+        self.assertTrue(err)
+
+    def test_origin_version_is_read_from_the_fetched_remote(self) -> None:
+        import subprocess
+        import tempfile
+        from update_skill import fetch_origin_version
+
+        def init(path: Path, version: str) -> None:
+            env = {
+                "GIT_AUTHOR_NAME": "T", "GIT_AUTHOR_EMAIL": "t@t",
+                "GIT_COMMITTER_NAME": "T", "GIT_COMMITTER_EMAIL": "t@t",
+                "PATH": os.environ.get("PATH", ""),
+            }
+            subprocess.run(["git", "init", "-q", "-b", "main", str(path)],
+                           check=True, env=env)
+            skill = path / "cue-buddy"
+            skill.mkdir()
+            (skill / "SKILL.md").write_text(
+                f'---\nmetadata:\n  version: "{version}"\n---\n',
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "-C", str(path), "add", "."], check=True, env=env)
+            subprocess.run(["git", "-C", str(path), "commit", "-q", "-m", "init"],
+                           check=True, env=env)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_p = Path(tmp)
+            origin = tmp_p / "origin"
+            clone = tmp_p / "clone"
+            init(origin, "0.3.8")
+            init(clone, "0.3.7")
+            subprocess.run(
+                ["git", "-C", str(clone), "remote", "add", "origin", str(origin)],
+                check=True,
+            )
+            version, err = fetch_origin_version(clone, clone / "cue-buddy", "main")
+        self.assertEqual(err, "")
+        self.assertEqual(version, "0.3.8")
+
+    def test_published_fetch_falls_back_to_the_gitee_mirror(self) -> None:
+        import io
+        from update_skill import _GITEE_RAW_SKILL_URL, fetch_remote_version
+
+        seen = []
+
+        def urlopen(req, timeout):
+            seen.append(req.full_url)
+            if "githubusercontent" in req.full_url:
+                raise OSError("github unreachable")
+            self.assertIn("gitee.com", req.full_url)
+            return io.BytesIO(b'---\nmetadata:\n  version: "0.3.7"\n---\n')
+
+        with mock.patch("update_skill.urllib.request.urlopen", urlopen):
+            version = fetch_remote_version("cue-buddy", "main", timeout=1)
+        self.assertEqual(version, "0.3.7")
+        self.assertEqual(len(seen), 2)
+        self.assertTrue(seen[1].startswith(_GITEE_RAW_SKILL_URL.format(
+            branch="main", skill="cue-buddy")))
+
+    def test_published_fetch_skips_a_github_page_with_no_version(self) -> None:
+        import io
+        from update_skill import fetch_remote_version
+
+        seen = []
+
+        def urlopen(req, timeout):
+            seen.append(req.full_url)
+            if "githubusercontent" in req.full_url:
+                return io.BytesIO(b"<html>not a skill</html>")
+            return io.BytesIO(b'---\nmetadata:\n  version: "0.3.8"\n---\n')
+
+        with mock.patch("update_skill.urllib.request.urlopen", urlopen):
+            version = fetch_remote_version("cue-buddy", "main", timeout=1)
+        self.assertEqual(version, "0.3.8")
+        self.assertEqual(len(seen), 2)
+
+    def test_published_fetch_stops_when_github_has_a_version(self) -> None:
+        import io
+        from update_skill import fetch_remote_version
+
+        seen = []
+
+        def urlopen(req, timeout):
+            seen.append(req.full_url)
+            return io.BytesIO(b'---\nmetadata:\n  version: "0.3.7"\n---\n')
+
+        with mock.patch("update_skill.urllib.request.urlopen", urlopen):
+            version = fetch_remote_version("cue-buddy", "main", timeout=1)
+        self.assertEqual(version, "0.3.7")
+        self.assertEqual(len(seen), 1)
+
+    def _copy_mode_text(self) -> str:
+        import io
+        from update_skill import run_upgrade
+        out = io.StringIO()
+        with mock.patch("update_skill.detect_install_mode", return_value=("copy", None)), \
+             mock.patch("update_skill.fetch_remote_version", return_value="9.9.9"), \
+             mock.patch("sys.stdout", out):
+            code = run_upgrade(skill="cue-buddy")
+        self.assertEqual(code, 1)
+        return out.getvalue()
+
+    def _run_method_a(self, prelude: str):
+        import subprocess
+        text = self._copy_mode_text()
+        start = text.index("# 方式 A")
+        block = text[start:text.index("# 方式 B")]
+        return subprocess.run(
+            ["bash", "-c", prelude + "\n" + block],
+            capture_output=True, text=True,
+            env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": "/tmp"},
+        )
+
+    def test_mktemp_failure_does_not_delete_root(self) -> None:
+        # An empty tmp makes "$tmp/cue-skills" into /cue-skills, and the diff
+        # redirect becomes /cue-buddy.local-diff. The printed commands must
+        # exit before any rm/diff/cp in that case.
+        leaked = Path("/cue-buddy.local-diff")
+        # A file already at that path belongs to whoever put it there. The
+        # snippet's `>` would truncate it before finally runs, so refuse to
+        # start, and never unlink a file this test did not create.
+        if leaked.exists():
+            self.skipTest(
+                "/cue-buddy.local-diff already exists; refusing to touch it"
+            )
+        proc = self._run_method_a(
+            "mktemp() { return 1; }\n"
+            "git() { printf 'GIT %s\\n' \"$*\"; return 1; }\n"
+            "rm() { printf 'RM %s\\n' \"$*\"; return 0; }\n"
+            "diff() { printf 'DIFF %s\\n' \"$*\" >&2; return 0; }\n"
+            "cp() { printf 'CP %s\\n' \"$*\"; return 0; }\n"
+            "export -f mktemp git rm diff cp\n"
+        )
+        seen = proc.stdout + proc.stderr
+        try:
+            self.assertNotEqual(proc.returncode, 0, seen)
+            self.assertNotIn("RM ", seen)
+            self.assertNotIn("DIFF ", seen)
+            self.assertNotIn("CP ", seen)
+            self.assertNotIn("/cue-skills", seen)
+            self.assertFalse(leaked.exists())
+        finally:
+            if leaked.exists():
+                leaked.unlink()
+
+    def test_both_clones_failing_does_not_copy(self) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as sandbox:
+            proc = self._run_method_a(
+                "mktemp() { mkdir -p \"$1\"; printf '%s\\n' \"$1\"; }\n".replace(
+                    "$1", sandbox + "/t") +
+                "git() { printf 'GIT %s\\n' \"$*\"; return 1; }\n"
+                "rm() { printf 'RM %s\\n' \"$*\"; return 0; }\n"
+                "diff() { printf 'DIFF %s\\n' \"$*\" >&2; return 0; }\n"
+                "cp() { printf 'CP %s\\n' \"$*\"; return 0; }\n"
+                "export -f mktemp git rm diff cp\n"
+            )
+        seen = proc.stdout + proc.stderr
+        self.assertNotEqual(proc.returncode, 0, seen)
+        self.assertNotIn("DIFF ", seen)
+        self.assertNotIn("CP ", seen)
+        self.assertIn("RM ", proc.stdout)
+        for line in proc.stdout.splitlines():
+            if line.startswith("RM "):
+                self.assertTrue(line.split(" ", 2)[-1].startswith(sandbox), line)
+                self.assertNotEqual(line.split(" ", 2)[-1], "/cue-skills")
+
+    def test_gitee_clone_success_still_reaches_the_copy(self) -> None:
+        import tempfile
+        with tempfile.TemporaryDirectory() as sandbox:
+            proc = self._run_method_a(
+                'mktemp() { mkdir -p "' + sandbox + '/t"; printf "%s\\n" "' + sandbox + '/t"; }\n'
+                'git() { printf "GIT %s\\n" "$*"; case "$*" in *gitee.com*) return 0;; *) return 1;; esac; }\n'
+                'rm() { printf "RM %s\\n" "$*"; return 0; }\n'
+                'diff() { printf "DIFF %s\\n" "$*" >&2; return 0; }\n'
+                'cp() { printf "CP %s\\n" "$*"; return 0; }\n'
+                "export -f mktemp git rm diff cp\n"
+            )
+        seen = proc.stdout + proc.stderr
+        self.assertEqual(proc.returncode, 0, seen)
+        self.assertIn("DIFF ", proc.stderr)
+        self.assertIn("CP ", proc.stdout)
+        # The repo URL contains "cue-skills"; the hazard is a root path.
+        self.assertIsNone(re.search(r"(?:^|\s)/cue-skills(?:\s|/|$)", seen))
+
+    def test_copy_mode_instructions_offer_github_and_gitee(self) -> None:
+        import io
+        from update_skill import run_upgrade
+        out = io.StringIO()
+        with mock.patch("update_skill.detect_install_mode", return_value=("copy", None)), \
+             mock.patch("update_skill.fetch_remote_version", return_value="9.9.9"), \
+             mock.patch("sys.stdout", out):
+            code = run_upgrade(skill="cue-buddy")
+        text = out.getvalue()
+        self.assertEqual(code, 1)
+        self.assertIn("https://github.com/sensedeal/cue-skills", text)
+        self.assertIn("https://gitee.com/sensedeal/cue-skills", text)
+        self.assertIn("raw.githubusercontent.com", text)
+        self.assertIn("gitee.com/sensedeal/cue-skills/raw/", text)
+        self.assertNotIn("remote version (origin/", text)
+
+    def test_git_mode_version_comes_from_origin_not_raw(self) -> None:
+        import io
+        from update_skill import run_upgrade
+
+        def raw_must_not_be_called(*args, **kwargs):
+            raise AssertionError("git install must not read the published raw URL")
+
+        out = io.StringIO()
+        with mock.patch("update_skill.fetch_origin_version", return_value=("9.9.9", "")), \
+             mock.patch("update_skill.fetch_remote_version", raw_must_not_be_called), \
+             mock.patch("sys.stdout", out):
+            code = run_upgrade(skill="cue-buddy", check_only=True)
+        self.assertEqual(code, 0)
+        self.assertIn("remote version (origin/main): 9.9.9", out.getvalue())
+
+    def test_silent_check_asks_the_installs_own_remote(self) -> None:
+        import tempfile
+        from update_skill import silent_check_for_update
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "cooldown.json"
+            with mock.patch("update_skill.remote_version", return_value="0.3.7") as remote, \
+                 mock.patch("update_skill._LEGACY_COOLDOWN_PATH", Path(tmp) / "absent.json"):
+                silent_check_for_update(
+                    skill="cue-buddy", cooldown_path=path, now=1_000_000.0,
+                )
+        remote.assert_called_once()
+
+    def test_the_two_skills_ship_the_same_update_script(self) -> None:
+        here = Path(__file__).resolve().parent
+        research = here.parent.parent / "cue-research" / "scripts" / "update_skill.py"
+        self.assertEqual(research.read_bytes(), (here / "update_skill.py").read_bytes())
+
+
+class Case14c_ZhEnVersionParity(unittest.TestCase):
+    """A version bump that touches only the English files is how the zh-CN
+    copies drifted to 0.3.6 while SKILL.md said 0.3.7. The Chinese copy's
+    frontmatter and the "current version" lines must track SKILL.md.
+    """
+
+    @staticmethod
+    def _version(path: Path) -> str | None:
+        from update_skill import parse_version_from_md
+        return parse_version_from_md(path.read_text(encoding="utf-8"))
+
+    def test_skill_frontmatter_versions_match(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        for skill in ("cue-buddy", "cue-research"):
+            en = self._version(root / skill / "SKILL.md")
+            zh = self._version(root / skill / "SKILL.zh-CN.md")
+            self.assertIsNotNone(en, skill)
+            self.assertEqual(en, zh, skill)
+
+    def test_readme_current_version_tracks_skill_md(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+
+        def cell(readme: Path) -> dict[str, str]:
+            found = {}
+            for line in readme.read_text(encoding="utf-8").splitlines():
+                slug = re.search(r"\*\*([^*]+)\*\*", line)
+                ver = re.search(r"\|\s*(v[0-9.]+)\s*\|\s*$", line)
+                if line.startswith("|") and slug and ver:
+                    found[slug.group(1)] = ver.group(1)
+            return found
+
+        en_cells = cell(root / "README.md")
+        zh_cells = cell(root / "README.zh-CN.md")
+        self.assertEqual(en_cells, zh_cells)
+        # English==Chinese is not enough: both tables can stay stale together.
+        # Each versioned row has to match that skill's own SKILL.md.
+        for skill, shown in en_cells.items():
+            skill_md = root / skill / "SKILL.md"
+            self.assertTrue(skill_md.is_file(), skill)
+            self.assertEqual(shown, f"v{self._version(skill_md)}", skill)
+
+        for skill, zh_marker, en_marker in (
+            ("cue-buddy", "**v{v}** — 当前版本", "**v{v}** — current"),
+            ("cue-research", "状态：v{v}", "Status: v{v}"),
+        ):
+            version = self._version(root / skill / "SKILL.md")
+            zh = (root / skill / "README.zh-CN.md").read_text(encoding="utf-8")
+            en = (root / skill / "README.md").read_text(encoding="utf-8")
+            self.assertIn(zh_marker.format(v=version), zh, skill)
+            self.assertIn(en_marker.format(v=version), en, skill)
 
 
 class Case15_UpgradeGitBranchGuard(unittest.TestCase):

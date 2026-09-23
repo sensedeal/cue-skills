@@ -49,6 +49,38 @@ class TestProbeWritable(unittest.TestCase):
             finally:
                 ro.chmod(0o700)  # restore so cleanup works
 
+    def test_refused_unlink_does_not_leak_the_probe(self) -> None:
+        real_unlink = Path.unlink
+        calls = []
+
+        def unlink_refused_once(self, *args, **kwargs):
+            calls.append(self.name)
+            if len(calls) == 1:
+                raise PermissionError("locked")
+            return real_unlink(self, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(Path, "unlink", unlink_refused_once):
+                self.assertFalse(paths.probe_writable(Path(d)))
+            self.assertEqual(list(Path(d).iterdir()), [])
+
+    def test_failed_write_does_not_leak_the_probe(self) -> None:
+        def write_then_fail(self, *args, **kwargs):
+            with open(self, "w", encoding="utf-8") as f:
+                f.write("x")
+            raise OSError("disk full")
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(Path, "write_text", write_then_fail):
+                self.assertFalse(paths.probe_writable(Path(d)))
+            self.assertEqual(list(Path(d).iterdir()), [])
+
+    def test_cue_research_ships_the_same_paths_module(self) -> None:
+        research = _HERE.parent.parent / "cue-research" / "scripts" / "paths.py"
+        self.assertEqual(
+            research.read_bytes(), (_HERE / "paths.py").read_bytes()
+        )
+
 
 class TestCueRootCaching(unittest.TestCase):
     def setUp(self) -> None:
