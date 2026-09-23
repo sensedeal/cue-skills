@@ -22,8 +22,8 @@ _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
 _EXPECTED_SKILL_VERSION = "0.5.1"
-_EXPECTED_BRIDGE_VERSION = "1.8.2"
-_CURRENT_PUBLICATION_REPORT = "2026-09-23-bridge-1.8.2-published.md"
+_EXPECTED_BRIDGE_VERSION = "1.8.3"
+_CURRENT_PUBLICATION_REPORT = "2026-09-23-bridge-1.8.3-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
@@ -954,7 +954,7 @@ class TestReferences(unittest.TestCase):
 
     def test_setup_documents_exact_trusted_uninstall_entries(self) -> None:
         expected = (
-            "Uninstall removes a normal trusted 1.8.1 or 1.8.2 Bridge entry; it "
+            "Uninstall removes a normal trusted 1.8.2 or 1.8.3 Bridge entry; it "
             "also removes the exact broken bare-npx Windows entry written by 1.5.1 "
             "and restores a matching trusted URL-only entry when available."
         )
@@ -1059,8 +1059,26 @@ class TestReferences(unittest.TestCase):
             self.assertIn("v0.4.0", report)
             self.assertNotIn("v0.5.0", report)
 
-    def test_current_publication_report_records_verified_1_8_2_release(self) -> None:
+    def test_current_publication_report_declares_pending_publication(self) -> None:
         current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
+        report_index = _required_text(self, _REPORTS_DIR / "README.md")
+        # 1.8.3 is prepared but not yet published; the report must say so and must
+        # already pin the rename disclosure.
+        for fact in (
+            "Pending",
+            "owner-gated 2FA publish",
+            "OMNI_READER_UNAVAILABLE",
+            "INSECURE_OMNI_READER_URL",
+            "hard cut with no alias",
+            "764 tests passed",
+            "no reset, backfill, or replay",
+            "cue-skill publication remains owner-gated",
+        ):
+            self.assertIn(fact, current)
+        self.assertIn(_CURRENT_PUBLICATION_REPORT, report_index)
+
+    def test_historical_1_8_2_publication_report_is_preserved(self) -> None:
+        current = _required_text(self, _REPORTS_DIR / "2026-09-23-bridge-1.8.2-published.md")
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
         for fact in (
             "fc638aa0d41b66908a82967cfee835433fcb7a00",
@@ -1078,7 +1096,7 @@ class TestReferences(unittest.TestCase):
             "cue-skill publication remains owner-gated",
         ):
             self.assertIn(fact, current)
-        self.assertIn(_CURRENT_PUBLICATION_REPORT, report_index)
+        self.assertIn("2026-09-23-bridge-1.8.2-published.md", report_index)
 
     def test_historical_1_8_1_publication_report_is_preserved(self) -> None:
         current = _required_text(self, _REPORTS_DIR / "2026-09-22-bridge-1.8.1-published.md")
@@ -1833,6 +1851,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-09-09-bridge-1.8.0-published.md",
             "docs/verification-reports/2026-09-22-bridge-1.8.1-published.md",
             "docs/verification-reports/2026-09-23-bridge-1.8.2-published.md",
+            "docs/verification-reports/2026-09-23-bridge-1.8.3-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
