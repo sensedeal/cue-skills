@@ -1014,8 +1014,17 @@ class Case14b_UpgradeOriginVersion(unittest.TestCase):
         )
 
     def test_mktemp_failure_does_not_delete_root(self) -> None:
-        # An empty tmp makes "$tmp/cue-skills" into /cue-skills. The printed
-        # commands must exit before any rm/diff/cp in that case.
+        # An empty tmp makes "$tmp/cue-skills" into /cue-skills, and the diff
+        # redirect becomes /cue-buddy.local-diff. The printed commands must
+        # exit before any rm/diff/cp in that case.
+        leaked = Path("/cue-buddy.local-diff")
+        # A file already at that path belongs to whoever put it there. The
+        # snippet's `>` would truncate it before finally runs, so refuse to
+        # start, and never unlink a file this test did not create.
+        if leaked.exists():
+            self.skipTest(
+                "/cue-buddy.local-diff already exists; refusing to touch it"
+            )
         proc = self._run_method_a(
             "mktemp() { return 1; }\n"
             "git() { printf 'GIT %s\\n' \"$*\"; return 1; }\n"
@@ -1024,7 +1033,6 @@ class Case14b_UpgradeOriginVersion(unittest.TestCase):
             "cp() { printf 'CP %s\\n' \"$*\"; return 0; }\n"
             "export -f mktemp git rm diff cp\n"
         )
-        leaked = Path("/cue-buddy.local-diff")
         seen = proc.stdout + proc.stderr
         try:
             self.assertNotEqual(proc.returncode, 0, seen)
