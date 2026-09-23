@@ -21,9 +21,9 @@ _COMPAT_MD = _SKILL_DIR / "references" / "compatibility.md"
 _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
-_EXPECTED_SKILL_VERSION = "0.5.0"
-_EXPECTED_BRIDGE_VERSION = "1.8.0"
-_CURRENT_PUBLICATION_REPORT = "2026-09-09-bridge-1.8.0-published.md"
+_EXPECTED_SKILL_VERSION = "0.5.1"
+_EXPECTED_BRIDGE_VERSION = "1.8.2"
+_CURRENT_PUBLICATION_REPORT = "2026-09-23-bridge-1.8.2-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
@@ -954,13 +954,13 @@ class TestReferences(unittest.TestCase):
 
     def test_setup_documents_exact_trusted_uninstall_entries(self) -> None:
         expected = (
-            "Uninstall removes a normal trusted 1.7.3 or 1.8.0 Bridge entry; it "
+            "Uninstall removes a normal trusted 1.8.1 or 1.8.2 Bridge entry; it "
             "also removes the exact broken bare-npx Windows entry written by 1.5.1 "
             "and restores a matching trusted URL-only entry when available."
         )
         self.assertIn(expected, self.setup)
         self.assertNotIn(
-            "Uninstall removes a normal trusted 1.7.2 or 1.7.3 Bridge entry",
+            "Uninstall removes a normal trusted 1.8.0 or 1.8.1 Bridge entry",
             self.setup,
         )
 
@@ -1059,28 +1059,50 @@ class TestReferences(unittest.TestCase):
             self.assertIn("v0.4.0", report)
             self.assertNotIn("v0.5.0", report)
 
-    def test_current_publication_report_records_verified_1_8_0_release(self) -> None:
+    def test_current_publication_report_records_verified_1_8_2_release(self) -> None:
         current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
         for fact in (
-            "c801745abc2aac2957fb76086d3112a61695deb7",
-            "3c5024b0fa725406858cbde2375349a43691417b",
-            "97724fcb3022fb56ad3ebcd48bdac24e84b888f2",
-            "e790306a3e91e5c5246c33b1719ca576d5d768ef1fcb5eb30b8630e2cba3fc51",
-            "sha512-bsG7Z+oMYAWtPvJXf+RojNKOa65jQPpCUWj2LDuuLK+cdW6FpoEFfSuOk651W2HQ1bq5VsLpi27l8FySXYkTPA==",
+            "fc638aa0d41b66908a82967cfee835433fcb7a00",
+            "443561ded67a05e77ed3336dee770fac58158a9d",
+            "d8ac43172288f611261191694d5a1a2b969d24d1",
+            "8be5b9c9d39f279ea4ab9c6a437f42b1d5b02a85441061c57eb13acd60182f16",
+            "sha512-mq2EvsfqHmOt9ZPILl+bKDukD6TQS9fU1HxMinu6wmeBCw1TuG6fOLkzTOYhgwYwqt54yLn/J5ap6RpSYaiGbw==",
+            "registry tarball byte-identical",
+            "64 files",
+            "758 tests passed",
+            "cube-mcp` 1.5.52",
+            "`kind: bundle`",
+            "no reset, backfill, or replay",
+            "native WorkBuddy skill loading is verified (owner-attested)",
+            "cue-skill publication remains owner-gated",
+        ):
+            self.assertIn(fact, current)
+        self.assertIn(_CURRENT_PUBLICATION_REPORT, report_index)
+
+    def test_historical_1_8_1_publication_report_is_preserved(self) -> None:
+        current = _required_text(self, _REPORTS_DIR / "2026-09-22-bridge-1.8.1-published.md")
+        report_index = _required_text(self, _REPORTS_DIR / "README.md")
+        for fact in (
+            "a9435e95abcd3d32d1e8dcf24b3fc68ccb658b28",
+            "2bcc02f47cbb76fd6001325015882c3302524bdc",
+            "d89f6da50c60a508034936954fab1c40b2a68ae9",
+            "5a6910a9e09397b45ae56a83578ae6ace2a47add561774f299f59ac0a81551d7",
+            "sha512-AzkouLQS/2WKxhs9QQvrKlazFrY1WpdnZPKKlr5tQOEnAiaN+VJIlPE80FLxUhttUKfX46zOAgwDnkAfPAu3Gw==",
             "registry tarball byte-identical",
             "64 files",
             "path-security.ts",
             "rar",
             "xmind",
-            "749 tests passed",
+            "754 tests passed",
+            "No Omni service emits the result-bundle label today",
             "no reset, backfill, or replay",
             "native WorkBuddy skill loading is verified (owner-attested)",
             "cue-skill publication remains owner-gated",
             "no `cube-mcp` admission-list or production-service-image claim",
         ):
             self.assertIn(fact, current)
-        self.assertIn(_CURRENT_PUBLICATION_REPORT, report_index)
+        self.assertIn("2026-09-22-bridge-1.8.1-published.md", report_index)
 
     def test_compatibility_evidence_is_scoped(self) -> None:
         self.assertIn("Evidence date: 2026-08-11", self.compat)
@@ -1809,6 +1831,8 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-09-06-bridge-1.7.2-published.md",
             "docs/verification-reports/2026-09-08-bridge-1.7.3-published.md",
             "docs/verification-reports/2026-09-09-bridge-1.8.0-published.md",
+            "docs/verification-reports/2026-09-22-bridge-1.8.1-published.md",
+            "docs/verification-reports/2026-09-23-bridge-1.8.2-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
