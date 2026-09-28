@@ -242,7 +242,7 @@ After each drafting step, run `+validate` immediately; fix any rule violation on
 
 Full version: [`references/hard-rules.md`](references/hard-rules.md). The 5 most important:
 
-1. **`input_form_spec` must use three-part variables** — `需提供: [属性_主体_类型](示例: X)，可提供: [属性_主体_类型] (默认: ...)` in one line; every required variable needs its `(示例: X)` annotation (validator error without it)
+1. **`input_form_spec` must use three-part variables** — `需提供: [属性_主体_类型](示例: X)，可提供: [属性_主体_类型] (默认: ...)` in one line; every required variable needs its `(示例: X)` annotation (validator error without it). **Never model document/file inputs as variables** — contracts, judgments, reports and other whole documents arrive via the "上传素材" (material upload) channel (auto-injected into the research input at runtime); a text-box variable for them gets blocked by required-field validation — the spec lists only keyboard-typeable short values (names, stances, scopes)
 2. **`goal` must be concise, forceful, value-first** (it IS the card copy) — one ~40–80-char paragraph about the problem it solves / the value it delivers; no "how it works" (that goes in search_plan), no implementation leaks, no hardcoded subjects, no disclaimers, no numbered lists (see hard-rules R2)
 3. **`search_plan` must cluster by "data source"** — not linear by section order
 4. **`report_format` main heading must contain variables** — `# [目标_<场景>_主体] <场景>底稿`, never a hardcoded string

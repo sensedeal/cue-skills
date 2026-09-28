@@ -150,6 +150,15 @@ _SECTION_SPLIT_RE = re.compile(
 )
 _EXAMPLE_FORBIDDEN_RE = re.compile(r"默认|缺省|需提供|可提供")
 
+# R-form-4 文档型输入警告（2026-09-28 prod badcase）：
+# 合同/判决书等整份文档用户走「上传素材」提供（运行时自动注入研究输入），
+# 不该设成键盘输入型变量——必填框会挡发送。warning 级：存量不 brick。
+# 「文本/原文/内容/文章」等可粘贴短文本词不算文档信号。
+# 注意顺序：先排「全文解读/全文X」类主题描述，再判文档词。
+_DOC_VAR_RE = re.compile(r"文书|文档|判决书|起诉状|答辩状|招股书|合同|案卷|\.pdf|\.docx?|\.txt|\.md", re.I)
+_DOC_EXAMPLE_RE = re.compile(r"\.(pdf|docx?|txt|md|pptx?|xlsx?)\b|全文|整份|完整版", re.I)
+_DOC_EXAMPLE_EXEMPT_RE = re.compile(r"全文(解读|分析|点评|研究|梳理|速览)")
+
 
 def _check_spec_sections(intro: str, out: list[Finding]) -> None:
     sections: list[tuple[str, str]] = _SECTION_SPLIT_RE.findall(intro)
@@ -182,6 +191,21 @@ def _check_spec_sections(intro: str, out: list[Finding]) -> None:
                         "error",
                         "input_form_spec",
                         f"带默认值的变量 [{var}] 必须放可提供段（默认值 = 选填预填，非必填兜底）",
+                    )
+                )
+            # R-form-4 文档型输入 → 走上传素材，不设键盘输入变量（warning）
+            example_val = has_example.group(1) if has_example else ""
+            if _DOC_VAR_RE.search(var) or (
+                _DOC_EXAMPLE_RE.search(example_val)
+                and not _DOC_EXAMPLE_EXEMPT_RE.search(example_val)
+            ):
+                out.append(
+                    Finding(
+                        "warning",
+                        "input_form_spec",
+                        f"变量 [{var}] 疑似文档/文件类输入——文档类（合同、判决书、研报等"
+                        "整份文档）用户经「上传素材」提供，运行时自动注入研究输入，"
+                        "设为输入框变量会让必填框挡发送；spec 只列键盘可输入变量",
                     )
                 )
 

@@ -1530,6 +1530,54 @@ class Case20_InputFormSpecFormEra(unittest.TestCase):
 
 
 
+class Case21_DocTypeVarWarning(unittest.TestCase):
+    """文档型输入警告（2026-09-28 prod badcase: 法律文书审校把「待审校的合同全文」
+    设为需提供变量 → 前端必填框挡发送,而用户实际通过「上传素材」提供文档）。
+    R-form-4: 变量名或示例值含文档信号（文书/文档/全文/合同/判决书/起诉状/
+    答辩状/招股书/年报全文 + .pdf/.docx 等扩展名）→ warning 级（不拦 error,
+    存量不 brick）,提示文档类输入走素材上传通道。"""
+
+    def _findings(self, spec: str) -> list:
+        from validate_template import _check_input_form_spec
+        out = []
+        _check_input_form_spec(spec, out)
+        return out
+
+    def test_doc_var_name_in_required_warns(self):
+        fs = self._findings("需提供: [目标_审校_文书](示例: 待审校的合同全文)。")
+        self.assertTrue(any(e.severity == "warning" and "素材" in e.message for e in fs), fs)
+
+    def test_doc_var_name_in_optional_warns(self):
+        fs = self._findings("可提供: [待审_合同_文档] (默认: 无)。")
+        self.assertTrue(any(e.severity == "warning" and "素材" in e.message for e in fs), fs)
+
+    def test_filename_example_warns(self):
+        fs = self._findings("需提供: [待核查_金融研报_文档](示例: 待核查研报.pdf)。")
+        self.assertTrue(any(e.severity == "warning" for e in fs), fs)
+
+    def test_fulltext_example_warns(self):
+        fs = self._findings("需提供: [目标_审校_文本](示例: 待审校的合同全文)。")
+        self.assertTrue(any(e.severity == "warning" for e in fs), fs)
+
+    def test_plain_vars_no_warning(self):
+        fs = self._findings(
+            "需提供: [上诉人_名称_企业](示例: 某某建设工程有限公司)，"
+            "[被上诉人_名称_企业](示例: 某某置业集团有限公司)，"
+            "可提供: [案件性质_类型_纠纷] (默认: 建设工程施工合同纠纷)。"
+        )
+        self.assertEqual(fs, [])
+
+    def test_keyboard_typed_content_var_no_warning(self):
+        # 粘贴短文本型（事实陈述原文）不属文档信号——原文是可粘贴的短陈述
+        fs = self._findings("需提供: [待核查_通用_内容](示例: 需要核查的事实陈述原文)。")
+        self.assertEqual(fs, [])
+
+    def test_topic_style_fulltext_no_warning(self):
+        # 主题描述型（法案全文解读 = 研究主题）不触发
+        fs = self._findings("需提供: [目标_研究_文章](示例: 欧盟《人工智能法案》全文解读)。")
+        self.assertEqual(fs, [])
+
+
 if __name__ == "__main__":
     # Unbuffered + verbose for skill author workflow.
     unittest.main(verbosity=2)
