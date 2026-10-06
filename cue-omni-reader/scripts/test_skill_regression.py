@@ -21,9 +21,9 @@ _COMPAT_MD = _SKILL_DIR / "references" / "compatibility.md"
 _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
-_EXPECTED_SKILL_VERSION = "0.5.1"
-_EXPECTED_BRIDGE_VERSION = "1.8.4"
-_CURRENT_PUBLICATION_REPORT = "2026-09-28-bridge-1.8.4-published.md"
+_EXPECTED_SKILL_VERSION = "0.5.2"
+_EXPECTED_BRIDGE_VERSION = "1.8.5"
+_CURRENT_PUBLICATION_REPORT = "2026-10-06-bridge-1.8.5-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
@@ -954,7 +954,7 @@ class TestReferences(unittest.TestCase):
 
     def test_setup_documents_exact_trusted_uninstall_entries(self) -> None:
         expected = (
-            "Uninstall removes a normal trusted 1.8.3 or 1.8.4 Bridge entry; it "
+            "Uninstall removes a normal trusted 1.8.4 or 1.8.5 Bridge entry; it "
             "also removes the exact broken bare-npx Windows entry written by 1.5.1 "
             "and restores a matching trusted URL-only entry when available."
         )
@@ -1877,6 +1877,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-09-23-bridge-1.8.2-published.md",
             "docs/verification-reports/2026-09-23-bridge-1.8.3-published.md",
             "docs/verification-reports/2026-09-28-bridge-1.8.4-published.md",
+            "docs/verification-reports/2026-10-06-bridge-1.8.5-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
