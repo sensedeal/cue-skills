@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.5.2"
+  version: "0.5.3"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -63,7 +63,7 @@ Classify Tasks, Roots, host timeout, and cwd/workspace only from direct client e
 
 A tool-level error is not an MCP disconnection. Preserve authentication, billing, parser, retryability, operation, and cleanup facts. Report billing facts returned for this operation; retry only when `retryable=true`. Never estimate charges or rates.
 
-Run `npx -y @cueai/omni-reader-mcp@1.8.5 doctor --json` first. `CUBE_UNAVAILABLE` is pre-upload control-plane failure; post-grant failure is secure upload stage; `CUBE_PROTOCOL_ERROR` is contract mismatch. Use reported facts only; never publish internal hosts or ports.
+Run `npx -y @cueai/omni-reader-mcp@1.8.6 doctor --json` first. `CUBE_UNAVAILABLE` is pre-upload control-plane failure; post-grant failure is secure upload stage; `CUBE_PROTOCOL_ERROR` is contract mismatch. Use reported facts only; never publish internal hosts or ports.
 
 - `OMNI_NOT_ENTITLED` / HTTP 403 is the account-entitlement signal.
 - `DIRECT_UPLOAD_DISABLED` (legacy) or `DIRECT_UPLOAD_UNAVAILABLE` means the direct-upload route/capability is unavailable, not that the account is disabled or text-only.

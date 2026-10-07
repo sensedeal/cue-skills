@@ -1,6 +1,6 @@
 # Omni Reader setup reference
 
-- **Audited package:** `@cueai/omni-reader-mcp@1.8.5`
+- **Audited package:** `@cueai/omni-reader-mcp@1.8.6`
 - **Runtime:** Node.js 20.12 or newer
 - **Credential:** `CUE_API_KEY`, obtained from <https://cuecue.cn/hub/api-key>
 
@@ -22,22 +22,22 @@ Do not paste an API key into chat, command arguments, skill files, logs, or gene
 Never use an implicit `latest`:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.5 setup
+npx -y @cueai/omni-reader-mcp@1.8.6 setup
 ```
 
 The interactive setup supports native configuration for Hermes, Cursor, and Claude Desktop. Choose **Other** for another client. Generic setup prints a reviewed stdio entry; apply it through that client's documented MCP configuration mechanism. Do not invent a configuration path or claim a client adapter is supported when it has not been verified.
 
 The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md) and the [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md).
 
-Current audited release: **Bridge 1.8.5** — an additive release from the 2026-10-06 WorkBuddy dogfood session; no published error code was renamed and no tool shape changed. New `KEY_DELIVERY_FAILED` fails a key that arrives as an unexpanded placeholder, quoted text, or with stray whitespace before any network call (previously `INVALID_CUE_API_KEY`); new `GRANT_SIZE_LIMIT_EXCEEDED` marks a service-side grant-time size rejection (HTTP 413), distinct from the 256 MiB Bridge preflight. Budgets are deployment-tunable and clamped (`OMNI_FOREGROUND_BUDGET_MS` 5s–120s, `OMNI_STATUS_WAIT_MS` 1s–120s, `OMNI_INLINE_RESULT_MAX_BYTES` 1KiB–64KiB). `setup --client workbuddy` is a first-class WorkBuddy target: an upgrade-resilient launcher entry, migration of hand-written pinned-node entries, carry-over of the user-managed key, and install-version verification. `doctor --json` gains `client_adapters.workbuddy` and a real-process `stdio_probe` (a newline-delimited `initialize` handshake against this package's own entry). Unavailable `OMNI_ALLOWED_ROOTS` entries are skipped instead of failing every parse with `INVALID_ALLOWED_ROOT`; `INVALID_GRANT_REQUEST` names every failing metadata field and its expected shape. The trusted managed-entry pair advances to **1.8.4 / 1.8.5** — a 1.8.3 entry is no longer a trusted managed entry; the only bare-`npx` Windows migration exception remains 1.5.1. See the [1.8.5 publication report](../docs/verification-reports/2026-10-06-bridge-1.8.5-published.md); per-release history is in [`compatibility.md`](./compatibility.md).
+Current audited release: **Bridge 1.8.6** — a hygiene release; no tool-shape or wire-protocol changes. Terminal journal records are now garbage-collected once their LOCAL retained result is provably unrecoverable: deletion follows the ArtifactStore's own 24h manifest expiry, never the remote 10-minute delivery window, and a record whose local copy is retained, unproven, or structurally untrustworthy is kept with its v3/v4/v5 validators. The sweep runs fire-and-forget at server startup and counts into `clean`. `save_result` now exports atomically: the file is written to staging and renamed into place; a failed re-export (Windows cannot atomically overwrite) keeps the previous export intact and surfaces `EXPORT_REPLACE_BUSY` instead of deleting the only committed copy, and crash-leftover staging files are swept after an hour. The trusted managed-entry pair advances to **1.8.5 / 1.8.6** — a 1.8.4 entry is no longer a trusted managed entry; the only bare-`npx` Windows migration exception remains 1.5.1. See the [1.8.6 publication report](../docs/verification-reports/2026-10-07-bridge-1.8.6-published.md); per-release history is in [`compatibility.md`](./compatibility.md).
 
 
 Supported non-interactive native-adapter examples:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.5 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.8.5 setup --client cursor --add-root /absolute/minimum/root --yes --json
-npx -y @cueai/omni-reader-mcp@1.8.5 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.8.6 setup --client hermes --allowed-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.8.6 setup --client cursor --add-root /absolute/minimum/root --yes --json
+npx -y @cueai/omni-reader-mcp@1.8.6 setup --client claude-desktop --allowed-root /absolute/minimum/root --yes --json
 ```
 
 Use `--allowed-root` to replace the explicit additional-root set with one minimum directory. Use `--add-root` to append one minimum directory to roots already configured for that client. Both require an absolute path and cannot be combined.
@@ -55,7 +55,7 @@ After changing roots, reload the MCP connection so it receives the new environme
 Run:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.5 doctor --json
+npx -y @cueai/omni-reader-mcp@1.8.6 doctor --json
 ```
 
 `doctor` checks package version, key presence, root safety, cache/artifact mode, and the client reload instruction; it reports only authenticated Cube control/configuration facts. The granted data plane is not probed; only a real local-file parse validates the route end-to-end. Reload the MCP connection (most clients: `/mcp` → `omni-reader` → reconnect; a full client restart is usually unnecessary), then verify these tools are visible: `parse`, `get_parse_status`, `cancel_parse`, `read_result`, `read_outline`, `discard_result`, and `save_result`.
@@ -67,7 +67,7 @@ npx -y @cueai/omni-reader-mcp@1.8.5 doctor --json
 On the first Omni use in a session, run the cheap probe:
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.5 doctor --json --silent-check
+npx -y @cueai/omni-reader-mcp@1.8.6 doctor --json --silent-check
 ```
 
 It does **only** a version comparison against npm `latest` (no API, onboarding, or artifact work), caches the verdict for 24 hours so it never hammers the registry, and fails open when the registry is unreachable or the cache is unwritable. Read `version_check.status`:
@@ -80,10 +80,10 @@ Never auto-upgrade; check at most once per session. A cached verdict is only tru
 ## Roll back
 
 ```sh
-npx -y @cueai/omni-reader-mcp@1.8.5 uninstall --yes --json
+npx -y @cueai/omni-reader-mcp@1.8.6 uninstall --yes --json
 ```
 
-Uninstall removes a normal trusted 1.8.4 or 1.8.5 Bridge entry; it also removes the exact broken bare-npx Windows entry written by 1.5.1 and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
+Uninstall removes a normal trusted 1.8.5 or 1.8.6 Bridge entry; it also removes the exact broken bare-npx Windows entry written by 1.5.1 and restores a matching trusted URL-only entry when available. It does not delete user source files or silently discard unexpired local results. Recover any existing operation before starting replacement work.
 
 ## Granted credits and onboarding
 
