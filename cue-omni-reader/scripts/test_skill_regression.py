@@ -1059,27 +1059,33 @@ class TestReferences(unittest.TestCase):
             self.assertIn("v0.4.0", report)
             self.assertNotIn("v0.5.0", report)
 
-    def test_current_publication_report_pins_verified_1_8_4_publication(self) -> None:
+    def test_current_publication_report_pins_verified_1_8_5_publication(self) -> None:
         current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
         for fact in (
-            "dist-tags.latest=1.8.4",
-            "c3b6385880fe4f1c9ab1e3b98867a1a7e8afd817",
-            "4247bd7bf9fe9a632bdfe843f4c1c3f10a9e0fd51cd5ee8f1af5c57ceef8254f",
-            "sha512-PcAZUaZWb611IDiJscAMO+BLgBFqzhQgseb6+KxTEjbdaRuwY1XeZ04EX2fZn0TktaMRN2VxnAzvOuWdKC2WjA==",
-            "registry tarball is byte-identical",
-            "64 files",
-            "DETAIL_CAPABILITIES_UNAVAILABLE",
-            "resolveDirectProfile",
-            "1.8.3 / 1.8.4",
-            "d1ebef81",
-            "0.3.69",
+            "dist-tags.latest=1.8.5",
+            "9cac81012c924b8855ed1bf2a88964c21c964794",
+            "be5bae63ac64a6a75ab770b5ef296f7de4a10b99acc048f103514b54ef0999d0",
+            "sha512-A04OWlnjsGxOURSGpbTQGwd6webY80OnhOzf6ODxKjJzZ8a69Czd34wP/IOE25u8HHcdtox85Cd4izCO0v9+JQ==",
+            "66 files",
+            "not byte-identical",
+            "KEY_DELIVERY_FAILED",
+            "GRANT_SIZE_LIMIT_EXCEEDED",
+            "PREVIOUS_RELEASE_VERSION",
+            "1.8.4 / 1.8.5",
+            "da2ca8d5",
+            "0.3.70",
             "no reset, backfill, or replay",
             "cue-skill publication remains owner-gated",
         ):
             self.assertIn(fact, current)
         self.assertIn(_CURRENT_PUBLICATION_REPORT, report_index)
-        self.assertIn("byte-identical registry publication", report_index)
+        self.assertIn("verified per-file", report_index)
+        current_line = next(
+            line for line in report_index.splitlines()
+            if _CURRENT_PUBLICATION_REPORT in line
+        )
+        self.assertNotIn("byte-identical registry publication", current_line)
         self.assertNotIn("publication pending owner 2FA publish", report_index)
 
     def test_historical_1_8_3_publication_report_is_preserved(self) -> None:
