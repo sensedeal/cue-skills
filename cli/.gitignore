@@ -1,0 +1,9 @@
+# 依赖与构建产物不入仓。
+#
+# ⚠️ 仓库根的 .gitignore 是 Python 向的，**没有** node_modules/dist 条目 ——
+# 所以这个包必须自己带一份，否则 `git add cli/` 会把 73 个依赖包一起提交。
+#
+# dist/ 同理：它由 `prepack` 在发布时生成，npm 包里带它、仓库里不带。
+node_modules/
+dist/
+*.tsbuildinfo
