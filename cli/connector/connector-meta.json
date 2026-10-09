@@ -1,0 +1,26 @@
+{
+  "name": "Cue 调研搭子",
+  "name_zh": "Cue 调研搭子",
+  "name_en": "Cue Research Buddy",
+  "description": "用自然语言在 Cue 上跑多智能体深度研究，产出带来源的 Markdown 研究报告。",
+  "description_zh": "用自然语言在 Cue 上发起多智能体深度研究：一句话启动行业、公司、人物、政策或合规调研，自动拆解子任务、多源检索交叉验证，产出带来源引用的 Markdown 研究报告，可落盘保存、可续接同一对话追问。",
+  "description_en": "Run Cue's multi-agent deep research from natural language. One prompt launches industry, company, person, policy or compliance research: tasks are decomposed automatically, sources are cross-checked, and a cited Markdown report is returned — saveable to disk and continuable in the same conversation.",
+  "source": "cue-research",
+  "type": "cli",
+  "version": "1.1.0",
+  "minWorkbuddyVersion": "5.0.0",
+  "examples_zh": [
+    "用 Cue 深度调研比亚迪 DM-i 与长城 Hi4 的混动技术路线差异",
+    "做一份万科的合规风险体检，输出带来源的研究报告",
+    "查一下宁德时代近一年的产能扩张与海外布局，报告存到 reports/catl.md",
+    "接着刚才那个 Cue 对话追问：再补一节供应商集中度分析",
+    "按上周那篇报告的文风，调研一下固态电池的量产进度"
+  ],
+  "examples_en": [
+    "Research on Cue: how do BYD DM-i and Great Wall Hi4 hybrid architectures differ",
+    "Run a compliance risk check on China Vanke and return a cited research report",
+    "Research CATL's capacity expansion and overseas footprint over the past year, save to reports/catl.md",
+    "Continue my last Cue conversation and add a supplier-concentration section",
+    "Research solid-state battery mass-production progress, mimicking the style of last week's report"
+  ]
+}

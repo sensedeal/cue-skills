@@ -1,0 +1,36 @@
+{
+  "name": "@cueai/cue-cli",
+  "version": "1.1.0",
+  "description": "Local CLI bridge for Cue (cuecue.cn) deep research: device-flow login, playbook lookup, streaming research runs with cited Markdown reports.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "bin": {
+    "cue": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build",
+    "build:connector": "node scripts/build-connector.mjs",
+    "check:connector": "node scripts/build-connector.mjs --check"
+  },
+  "dependencies": {
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "typescript": "^5.8.0",
+    "vitest": "^4.0.0"
+  }
+}
