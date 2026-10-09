@@ -62,8 +62,9 @@ def iter_insert_rows(patch):
                 yield row
 
 
-def validate_bundle(bundle: Path) -> list[str]:
+def validate_bundle(bundle: Path, label: str | None = None) -> list[str]:
     errors: list[str] = []
+    name_label = label or bundle.name
     pkg_path = bundle / "package.json"
     if not pkg_path.exists():
         return errors  # not a bundle; callers skip
@@ -71,19 +72,19 @@ def validate_bundle(bundle: Path) -> list[str]:
     try:
         pkg = json.loads(pkg_path.read_text(encoding="utf-8"))
     except Exception as e:  # pragma: no cover
-        return [f"{bundle.name}/package.json: invalid JSON ({e})"]
+        return [f"{name_label}/package.json: invalid JSON ({e})"]
 
     patch_rel = (pkg.get("dsh") or {}).get("bundle", {}).get("patch")
     if not isinstance(patch_rel, str):
-        return [f"{bundle.name}/package.json: missing `dsh.bundle.patch` string"]
+        return [f"{name_label}/package.json: missing `dsh.bundle.patch` string"]
     patch_path = bundle / patch_rel
     if not patch_path.exists():
-        errors.append(f"{bundle.name}: patch path missing: {patch_path.name}")
+        errors.append(f"{name_label}: patch path missing: {patch_path.name}")
         return errors
 
     patch = parse_patch(patch_path.read_text(encoding="utf-8"))
     if patch is None:
-        errors.append(f"{bundle.name}/{patch_rel}: could not parse as a patch list")
+        errors.append(f"{name_label}/{patch_rel}: could not parse as a patch list")
         return errors
 
     deps = set((pkg.get("dependencies") or {}).keys()) | set(
@@ -91,18 +92,18 @@ def validate_bundle(bundle: Path) -> list[str]:
     )
     rows = list(iter_insert_rows(patch))
     if not rows:
-        errors.append(f"{bundle.name}/{patch_rel}: no `insert` rows found")
+        errors.append(f"{name_label}/{patch_rel}: no `insert` rows found")
     for row in rows:
         for k in ("id", "name", "config"):
             if k not in row:
-                errors.append(f"{bundle.name}/{patch_rel}: insert row missing `{k}`")
+                errors.append(f"{name_label}/{patch_rel}: insert row missing `{k}`")
         name = row.get("name")
         pkg_name = pkg.get("name")
         # A bundle may mount a plugin it ships itself (name == pkg name) or a
         # plugin it depends on; anything else must be a declared dependency.
         if name and name not in deps and name != pkg_name:
             errors.append(
-                f"{bundle.name}: row plugin `{name}` is not the bundle's own "
+                f"{name_label}: row plugin `{name}` is not the bundle's own "
                 f"package nor declared in dependencies/peerDependencies "
                 f"(DSH resolves bare plugins only from the resolver manifest)"
             )
@@ -110,10 +111,24 @@ def validate_bundle(bundle: Path) -> list[str]:
     if errors:
         return errors
     print(
-        f"OK {bundle.name}: {len(rows)} insert row(s); patch={patch_rel}; "
+        f"OK {name_label}: {len(rows)} insert row(s); patch={patch_rel}; "
         f"deps={sorted(deps)}"
     )
     return []
+
+
+def validate_repo_bundle() -> list[str]:
+    """Validate the repository-root bundle — the entry registries install from.
+
+    A registry that installs a repo as a DSH bundle (e.g. skillhub.cn) accepts a
+    repository only when its ROOT ``package.json`` declares ``dsh.bundle.patch``:
+    a monorepo whose bundles live solely under ``dsh/<name>/`` is reported as
+    "仓库没有有效的 package.json dsh.bundle.patch 清单". The root manifest must
+    therefore stay in sync with the bundles it mounts.
+    """
+    if not (REPO / "package.json").exists():
+        return []
+    return validate_bundle(REPO, label="<repo root>")
 
 
 def validate_docs(bundles: list[Path]) -> list[str]:
@@ -279,10 +294,13 @@ def main() -> int:
     all_errors: list[str] = []
     for bundle in bundles:
         all_errors.extend(validate_bundle(bundle))
+    all_errors.extend(validate_repo_bundle())
     all_errors.extend(validate_docs(bundles))
     if publish:
         for bundle in bundles:
             all_errors.extend(check_publish(bundle))
+        if (REPO / "package.json").exists():
+            all_errors.extend(check_publish(REPO))
     if parity:
         all_errors.extend(check_translation_parity())
     if all_errors:
@@ -295,7 +313,8 @@ def main() -> int:
         checks.append("publish-check")
     if parity:
         checks.append("translation-parity")
-    print(f"All {len(bundles)} DSH bundle(s) OK ({' + '.join(checks)}).")
+    root_note = " + repo-root bundle" if (REPO / "package.json").exists() else ""
+    print(f"All {len(bundles)} DSH bundle(s){root_note} OK ({' + '.join(checks)}).")
     return 0
 
 

@@ -25,6 +25,16 @@ bundle 声明 `dsh.bundle.patch`;`dsh plugin` 识别后会自动加入 profile �
 
 **Omni Reader** 接线包固定审校版 Bridge `@cueai/omni-reader-mcp@1.8.6`(永不用隐式 `latest`)。要固定其他审校版,改该 bundle 的 `cordis.patch.yml`(见其 `README.md`)。
 
+### 仓库根 bundle
+
+仓库根目录同样是一个 bundle([`../package.json`](../package.json) → [`../cordis.patch.yml`](../cordis.patch.yml)),用一条 `insert` 列表同时挂载 Omni Reader 那一行**和** Cue 的 15 个数据域。凡是"把仓库本身当作插件安装"的收录站——例如 [skillhub.cn](https://skillhub.cn/plugins)——校验的正是这个根清单,通过后才提供一键安装:
+
+```sh
+dsh plugin --profile web add github:sensedeal/cue-skills#<commit>
+```
+
+其中刻意不含 SSRF/同意护栏;上面按能力拆分的 bundle 仍可用于更窄的安装。
+
 ## 安装与使用
 
 ```sh

@@ -33,6 +33,16 @@ Restart dsh; the model then sees `mcp__omni__parse` / `…get_parse_status` / `�
 
 This repo also ships [DeepSeek Harness](https://github.com/deepseek-harness) **bundles** under [`dsh/`](./dsh) — thin composition packages that wire a Cue MCP server into a DSH profile so its tools surface natively (e.g. `mcp__omni__parse`). A skill is agent-loadable *instructions*; a bundle is a *composition package* (`package.json` + `cordis.patch.yml`) for the Harness. Install one with `dsh plugin --profile web add <pkg>`; see [`dsh/README.md`](./dsh) and the [`cue-omni-reader` bundle](./dsh/cue-omni-reader).
 
+### Repo-root bundle
+
+The repository root is itself a DSH bundle (`package.json` declaring `dsh.bundle.patch` → [`cordis.patch.yml`](./cordis.patch.yml)), so one command wires the whole Cue surface — the Omni Reader MCP server plus the Cue public data domains — into a profile:
+
+```sh
+dsh plugin --profile web add github:sensedeal/cue-skills#<commit>
+```
+
+Registries that install a repository as a DSH bundle (for example [skillhub.cn](https://skillhub.cn/plugins)) accept a repo only when this root manifest exists; the per-capability bundles under [`dsh/`](./dsh) stay available for narrower installs, and the optional SSRF/consent guard is deliberately **not** part of the repo-root bundle because it fails closed on local files.
+
 ## Skills in this repo
 
 | Skill | Purpose | Status |

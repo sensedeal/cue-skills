@@ -33,6 +33,16 @@ dsh plugin --profile web add @cueai/dsh-cue-data-mcp           # Cue 公开数�
 
 本仓库还提供 [DeepSeek Harness](https://github.com/deepseek-harness) 的 **bundle(组合包)**,位于 [`dsh/`](./dsh):把 Cue 的 MCP server 接进 DSH profile,让它的工具以原生形式暴露(如 `mcp__omni__parse`)。skill 是可被 agent 加载的**指令包**;bundle 是面向 Harness 的**组合包**(`package.json` + `cordis.patch.yml`)。安装:`dsh plugin --profile web add <pkg>`;详见 [`dsh/README.md`](./dsh) 与 [`cue-omni-reader` 的 bundle](./dsh/cue-omni-reader)。
 
+### 仓库根 bundle
+
+仓库根目录本身就是一个 DSH bundle(`package.json` 里声明 `dsh.bundle.patch` → [`cordis.patch.yml`](./cordis.patch.yml)),因此一条命令即可把整套 Cue 能力接进 profile——Omni Reader MCP server 加上 Cue 公开数据各域:
+
+```sh
+dsh plugin --profile web add github:sensedeal/cue-skills#<commit>
+```
+
+凡是"把仓库当作 DSH bundle 安装"的收录站(例如 [skillhub.cn](https://skillhub.cn/plugins)),只有存在这个根清单才会接受该仓库;`dsh/` 下按能力拆分的 bundle 仍可用于更窄的安装,而可选的 SSRF/同意护栏**刻意不并入**根 bundle,因为它对本地文件默认 fail-closed。
+
 ## 仓库内 skill 列表
 
 | Skill | 用途 | 状态 |

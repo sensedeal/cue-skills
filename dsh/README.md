@@ -30,6 +30,16 @@ and its config, and ships no parser, protocol driver, or MCP client.
 
 The **Omni Reader** wiring bundle pins the audited Bridge `@cueai/omni-reader-mcp@1.8.6` (never an implicit `latest`). To pin another audited release, edit that bundle's `cordis.patch.yml` (see its `README.md`).
 
+### Repo-root bundle
+
+The repository root is also a bundle ([`../package.json`](../package.json) → [`../cordis.patch.yml`](../cordis.patch.yml)), mounting the Omni Reader row **and** the 15 Cue data domains in one `insert` list. A registry that installs the repository itself — [skillhub.cn](https://skillhub.cn/plugins), for example — validates exactly this root manifest before offering a one-command install:
+
+```sh
+dsh plugin --profile web add github:sensedeal/cue-skills#<commit>
+```
+
+The SSRF/consent guard is intentionally excluded from it, and the per-capability bundles above remain available for narrower installs.
+
 ## Install & use
 
 ```sh
