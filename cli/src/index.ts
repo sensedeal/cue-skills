@@ -9,10 +9,7 @@ import { doctor } from './commands/doctor.js';
 import { getTemplate, listTemplates } from './commands/playbook.js';
 import { research } from './commands/research.js';
 import { CueError, EXIT } from './errors.js';
-
-// ⚠️ 这个字面量必须与 package.json 的 `version` 一致 —— 有测试锁住（test/version.test.ts），
-//    所以它不是第二份真相，而是被钉子钉住的一份副本。
-const CLI_VERSION = '1.1.0';
+import { CLI_VERSION } from './version.js';
 
 const program = new Command();
 program.name('cue').description('Cue (cuecue.cn) CLI — deep research from the terminal').version(CLI_VERSION);

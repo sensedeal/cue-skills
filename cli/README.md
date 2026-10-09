@@ -10,6 +10,11 @@ Cue（[cuecue.cn](https://cuecue.cn)）深度研究的本地 CLI 桥梁。定位
   读取优先级 **环境变量 `CUE_API_KEY` > `credentials.json` > `config.json`**。
 - API base：默认 `https://cuecue.cn/a/api`
   （⚠️ **必须带 `/{sso-path}`**（生产为 `/a`）—— 少了它请求会打到产品前端的根 `/api/*`，那里没有到授权服务器的反代规则，返回 404 而非 401。dev / dgts 用 `--base-url` 或 `CUE_API_BASE` 覆盖。）
+- ⚠️ **两族端点、两个前缀**：上面那个 base **只服务授权服务器（AS）的端点** —— `/{sso}/api/…` 下的
+  `/cli/device/*`、`/oauth/*`、`/.well-known/*`。而**业务 API 在 host 根 `/api/…`**
+  （`/templates*`、`/chat/stream`、`/tools/capabilities`）。CLI 会把业务端点**自动改派**到
+  `{origin}/api`，所以**你只需要配 AS 那个 base**，业务侧不用另配。
+  分族规则、实测依据与「为什么不能靠发现（AS 的 well-known 推不出业务 base）」见 `src/bases.ts`。
 
 ## 安装
 
@@ -66,7 +71,7 @@ cue research "第四范式基本面" --template-id template_fnig0i --json
 | `--json` | 输出 `{conversationId, elapsedMs, report, sources, timeline}` |
 | `-q, --quiet` | 不打印进度（进度默认走 stderr） |
 
-调用 `POST /api/chat/stream`（SSE），按 `start_of_agent(reporter)` → `message.delta.content` → `end_of_agent(reporter)` 窗口抽取正文，与 cue-buddy Python 客户端同一套契约。
+调用 `POST {业务 base}/chat/stream`（SSE；业务 base = host 根 `/api`，见上文「两族端点、两个前缀」），按 `start_of_agent(reporter)` → `message.delta.content` → `end_of_agent(reporter)` 窗口抽取正文，与 cue-buddy Python 客户端同一套契约。
 
 ## 其他
 

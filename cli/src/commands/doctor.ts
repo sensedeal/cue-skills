@@ -15,6 +15,7 @@
 import { resolveBases } from '../bases.js';
 import { API_KEY_PAGE, configPath, loadConfig, maskKey } from '../config.js';
 import { requestJson } from '../http.js';
+import { CLI_VERSION } from '../version.js';
 
 export interface DoctorOptions {
   base?: string;
@@ -53,7 +54,7 @@ export async function doctor(opts: DoctorOptions = {}): Promise<number> {
   const report = {
     node: process.version,
     platform: process.platform,
-    cliVersion: '1.0.0',
+    cliVersion: CLI_VERSION,
     configFile: cfg.filePath ?? configPath(),
     apiKey: cfg.apiKey ? maskKey(cfg.apiKey) : null,
     base,
