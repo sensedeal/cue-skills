@@ -3,6 +3,7 @@
  * No runtime dependency beyond Node itself.
  */
 
+import { baseForEndpoint, resolveBases } from './bases.js';
 import { refreshAccessToken } from './credentials.js';
 import { CueApiError, CueError, EXIT } from './errors.js';
 
@@ -21,8 +22,16 @@ export interface SseEvent {
   data: string;
 }
 
+/**
+ * 把端点拼到**它该去的那族 base** 上（wayfinder #93）。
+ *
+ * ⚠️ `base` 参数是**认证 base**（`config.base` 语义没变，见 `bases.ts`）——
+ * 业务端点会被改派到 `{origin}/api`。别在这里再做「哪个端点属于谁」的判断，
+ * 那段逻辑在 `bases.ts` 里、由 `test/bases.test.ts` 钉住。
+ */
 function urlOf(base: string, endpoint: string): string {
-  return `${base.replace(/\/+$/, '')}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const target = baseForEndpoint(endpoint, resolveBases(base));
+  return `${target.replace(/\/+$/, '')}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 }
 
 /** 只发一次请求，不判定状态码 —— 判定与重试交给 `call`（401 那条路要走一遍刷新） */
