@@ -16,6 +16,7 @@ A resolved incident may explain why a stable rule exists, but it must not remain
 
 ## Publication confirmations
 
+- [Bridge 1.8.7](2026-10-17-bridge-1.8.7-published.md) — byte-identical registry publication; structured `billing.units` on completed local direct-upload results, content stays content-only, remote URL results stay credits-only; local output `omni.local_bridge_tools.v6` stays separate from capability/grant v5; trust pair 1.8.6/1.8.7.
 - [Bridge 1.5.5](2026-08-26-bridge-1.5.5-published.md) — package publication, artifact, doctor, and clean-consumer evidence.
 - [Bridge 1.6.0](2026-08-30-bridge-1.6.0-published.md) — byte-identical registry publication, exact Cube admission, and one bounded production result-delivery acceptance identity.
 - [Bridge 1.7.1](2026-09-04-bridge-1.7.1-published.md) — byte-identical registry publication, non-circular upgrade guidance, exact Cube admission, and production rollout health evidence without a new billable parse.
