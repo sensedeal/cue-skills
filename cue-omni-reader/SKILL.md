@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.5.5"
+  version: "0.5.6"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -65,7 +65,7 @@ A tool-level error is not an MCP disconnection. Preserve authentication, billing
 
 On a remote-only surface, `get_billing_details` returns the same measurement for a settled operation. When a completed result includes `billing.units`, explain this operation's charge from those counters. The closed set is `document_class_pages_completed`, `primary_image_class_units_completed`, `additional_image_class_units_completed`, `cjk_codepoints_completed`, `other_codepoints_completed`, `normalized_units_completed`, and `normalized_pages_completed`, plus `audio_ms_completed` or `video_ms_completed` only when present. Zeros are real measurements. Missing `units` is not a failure: remote URL results stay credits-only, and a details read may be absent. Do not invent units, recompute `credits_charged`, or add normalized counts to pages. Never copy billing text into `result.text` or a saved file.
 
-Run `npx -y @cueai/omni-reader-mcp@1.8.8 doctor --json` first. `CUBE_UNAVAILABLE` is pre-upload control-plane failure; post-grant failure is secure upload stage; `CUBE_PROTOCOL_ERROR` is contract mismatch. Use reported facts only; never publish internal hosts or ports.
+Run `npx -y @cueai/omni-reader-mcp@1.8.9 doctor --json` first. `CUBE_UNAVAILABLE` is pre-upload control-plane failure; post-grant failure is secure upload stage; `CUBE_PROTOCOL_ERROR` is contract mismatch. Use reported facts only; never publish internal hosts or ports.
 
 - `OMNI_NOT_ENTITLED` / HTTP 403 is the account-entitlement signal.
 - `DIRECT_UPLOAD_DISABLED` (legacy) or `DIRECT_UPLOAD_UNAVAILABLE` means the direct-upload route/capability is unavailable, not that the account is disabled or text-only.

@@ -16,6 +16,7 @@ A resolved incident may explain why a stable rule exists, but it must not remain
 
 ## Publication confirmations
 
+- [Bridge 1.8.9](2026-10-26-bridge-1.8.9-published.md) — byte-identical registry publication; `INVALID_TOOL_ARGUMENTS` messages name the tool's expected fields (one-step self-correction for text-driven agents); dogfood on the frozen tarball verified the named-fields error and the full local parse chain.
 - [Bridge 1.8.8](2026-10-24-bridge-1.8.8-published.md) — byte-identical registry publication; completed remote URL results auto-enrich `billing.units` through one bounded optional `get_billing_details` read (absence never fails a parse, never invents units); journal monotonic binding survives restart; production live acceptance on the remote lane (real charge 0.067, units complete, credits equal to the settled facts).
 - [Bridge 1.8.7](2026-10-17-bridge-1.8.7-published.md) — byte-identical registry publication; structured `billing.units` on completed local direct-upload results, content stays content-only, remote URL results stay credits-only; local output `omni.local_bridge_tools.v6` stays separate from capability/grant v5; trust pair 1.8.6/1.8.7.
 - [Bridge 1.5.5](2026-08-26-bridge-1.5.5-published.md) — package publication, artifact, doctor, and clean-consumer evidence.
