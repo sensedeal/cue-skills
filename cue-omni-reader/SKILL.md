@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.5.3"
+  version: "0.5.7"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -63,7 +63,9 @@ Classify Tasks, Roots, host timeout, and cwd/workspace only from direct client e
 
 A tool-level error is not an MCP disconnection. Preserve authentication, billing, parser, retryability, operation, and cleanup facts. Report billing facts returned for this operation; retry only when `retryable=true`. Never estimate charges or rates.
 
-Run `npx -y @cueai/omni-reader-mcp@1.8.6 doctor --json` first. `CUBE_UNAVAILABLE` is pre-upload control-plane failure; post-grant failure is secure upload stage; `CUBE_PROTOCOL_ERROR` is contract mismatch. Use reported facts only; never publish internal hosts or ports.
+On a remote-only surface, `get_billing_details` returns the same measurement for a settled operation. When a completed result includes `billing.units`, explain this operation's charge from those counters. The closed set is `document_class_pages_completed`, `primary_image_class_units_completed`, `additional_image_class_units_completed`, `cjk_codepoints_completed`, `other_codepoints_completed`, `normalized_units_completed`, and `normalized_pages_completed`, plus `audio_ms_completed` or `video_ms_completed` only when present. Zeros are real measurements. Missing `units` is not a failure: remote URL results stay credits-only, and a details read may be absent. Do not invent units, recompute `credits_charged`, or add normalized counts to pages. Never copy billing text into `result.text` or a saved file.
+
+Run `npx -y @cueai/omni-reader-mcp@1.9.0 doctor --json` first. `CUBE_UNAVAILABLE` is pre-upload control-plane failure; post-grant failure is secure upload stage; `CUBE_PROTOCOL_ERROR` is contract mismatch. Use reported facts only; never publish internal hosts or ports.
 
 - `OMNI_NOT_ENTITLED` / HTTP 403 is the account-entitlement signal.
 - `DIRECT_UPLOAD_DISABLED` (legacy) or `DIRECT_UPLOAD_UNAVAILABLE` means the direct-upload route/capability is unavailable, not that the account is disabled or text-only.
@@ -73,7 +75,7 @@ Run `npx -y @cueai/omni-reader-mcp@1.8.6 doctor --json` first. `CUBE_UNAVAILABLE
 
 ## Protocol boundary
 
-Remote-only exposes exactly `parse`, `get_parse_status`, and `cancel_parse`. Bridge exposes the same three plus `read_result`, `read_outline`, `discard_result`, and `save_result`. Only `parse` is a first call; the other six are continuation and lifecycle primitives, not user modes. Artifact tools stay Bridge-local. Evidence: [`references/compatibility.md`](references/compatibility.md).
+Remote-only exposes exactly `parse`, `get_parse_status`, `cancel_parse`, and `get_billing_details`. Bridge exposes the same four plus `read_result`, `read_outline`, `discard_result`, and `save_result`. Only `parse` is a first call; the other seven are continuation, lifecycle, and billing-transparency primitives, not user modes. `get_billing_details` is read-only and never billed: for a settled remote operation it returns the closed `omni.billing_details.v1` measurement, and absence is a closed BILLING_DETAILS_* error, never invented units. Artifact tools stay Bridge-local. Evidence: [`references/compatibility.md`](references/compatibility.md).
 
 ## Granted credits
 

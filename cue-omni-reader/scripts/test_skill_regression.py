@@ -21,9 +21,9 @@ _COMPAT_MD = _SKILL_DIR / "references" / "compatibility.md"
 _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
-_EXPECTED_SKILL_VERSION = "0.5.3"
-_EXPECTED_BRIDGE_VERSION = "1.8.6"
-_CURRENT_PUBLICATION_REPORT = "2026-10-07-bridge-1.8.6-published.md"
+_EXPECTED_SKILL_VERSION = "0.5.7"
+_EXPECTED_BRIDGE_VERSION = "1.9.0"
+_CURRENT_PUBLICATION_REPORT = "2026-10-28-bridge-1.9.0-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
@@ -455,8 +455,8 @@ class TestSkillMd(unittest.TestCase):
         ):
             self.assertIn(tool, self.md)
         self.assertNotIn("mcp" + "__", self.md)
-        # 1050: unified parse/error + the silent update-check clause sit below this.
-        self.assertLess(len(self.md.split()), 1050, "SKILL.md is no longer thin")
+        # 1150: the fourth tool's guidance sits below this.
+        self.assertLess(len(self.md.split()), 1150, "SKILL.md is no longer thin")
 
     def test_source_handling_preserves_the_security_boundary(self) -> None:
         self.assertIn("Only HTTP(S) strings are URLs", self.md)
@@ -683,6 +683,10 @@ class TestSkillMd(unittest.TestCase):
 
     def test_billing_errors_and_original_task_remain_truthful(self) -> None:
         self.assertRegex(self.md, re.compile(r"Report.*billing facts", re.I))
+        self.assertIn("billing.units", self.md)
+        self.assertIn("remote URL results stay credits-only", self.md)
+        self.assertIn("Do not invent units", self.md)
+        self.assertIn("Never copy billing text into `result.text`", self.md)
         self.assertRegex(
             self.md,
             re.compile(r"retry only when.*retryable", re.I | re.S),
@@ -792,27 +796,29 @@ class TestReferences(unittest.TestCase):
 
     def test_physical_tool_sets_are_fixed_but_not_user_modes(self) -> None:
         self.assertIn(
-            "Remote-only exposes exactly `parse`, `get_parse_status`, and `cancel_parse`",
+            "Remote-only exposes exactly `parse`, `get_parse_status`, `cancel_parse`, and `get_billing_details`",
             self.skill,
         )
         self.assertIn(
-            "Bridge exposes the same three plus `read_result`, `read_outline`, `discard_result`, and `save_result`",
+            "Bridge exposes the same four plus `read_result`, `read_outline`, `discard_result`, and `save_result`",
             self.skill,
         )
         self.assertIn(
-            "Only `parse` is a first call; the other six are continuation and lifecycle primitives",
+            "Only `parse` is a first call; the other seven are continuation, lifecycle, and billing-transparency primitives",
             self.skill,
         )
+        self.assertIn("`get_billing_details` is read-only and never billed", self.skill)
         self.assertNotIn("## Public tools", self.skill)
         self.assertNotIn("## Public tools (seven)", self.readme)
         self.assertIn(
-            "仅远端表面恰好暴露 `parse`、`get_parse_status`、`cancel_parse`",
+            "仅远端表面恰好暴露 `parse`、`get_parse_status`、`cancel_parse`、`get_billing_details`",
             self.skill_zh,
         )
         self.assertIn(
-            "Bridge 暴露同样三个工具，再加 `read_result`、`read_outline`、`discard_result`、`save_result`",
+            "Bridge 暴露同样四个工具，再加 `read_result`、`read_outline`、`discard_result`、`save_result`",
             self.skill_zh,
         )
+        self.assertIn("`get_billing_details` 只读且永不计费", self.skill_zh)
         self.assertIn("只有 `parse` 是首次调用", self.skill_zh)
         self.assertNotIn("## 公共工具", self.skill_zh)
         self.assertNotIn("## 公共工具（七个）", self.readme_zh)
@@ -954,7 +960,7 @@ class TestReferences(unittest.TestCase):
 
     def test_setup_documents_exact_trusted_uninstall_entries(self) -> None:
         expected = (
-            "Uninstall removes a normal trusted 1.8.5 or 1.8.6 Bridge entry; it "
+            "Uninstall removes a normal trusted 1.8.8 or 1.9.0 Bridge entry; it "
             "also removes the exact broken bare-npx Windows entry written by 1.5.1 "
             "and restores a matching trusted URL-only entry when available."
         )
@@ -1006,6 +1012,41 @@ class TestReferences(unittest.TestCase):
             compat,
             re.compile(r"no production parse.*no Omni credits", re.I | re.S),
         )
+
+
+    def test_structured_billing_units_are_explained_without_entering_content(self) -> None:
+        for token in (
+            "billing.units",
+            "remote URL results stay credits-only",
+            "Do not invent units",
+            "Never copy billing text into `result.text`",
+        ):
+            self.assertIn(token, self.skill)
+        for token in (
+            "billing.units",
+            "远程 URL 结果仍只有 credits",
+            "不要编造 units",
+            "绝不要把计费文字写入 `result.text`",
+        ):
+            self.assertIn(token, self.skill_zh)
+        self.assertIn("billing.units", self.compat)
+        self.assertIn("omni.local_bridge_tools.v6", self.setup)
+
+    def test_remote_surface_exposes_the_details_read_without_billing_it(self) -> None:
+        for token in (
+            "get_billing_details",
+            "read-only and never billed",
+            "omni.billing_details.v1",
+            "BILLING_DETAILS_*",
+        ):
+            self.assertIn(token, self.skill)
+        for token in (
+            "get_billing_details",
+            "只读且永不计费",
+            "omni.billing_details.v1",
+            "BILLING_DETAILS_*",
+        ):
+            self.assertIn(token, self.skill_zh)
 
     def test_versions_match_across_skill_setup_and_current_reports(self) -> None:
         skill_version = re.search(
@@ -1059,8 +1100,8 @@ class TestReferences(unittest.TestCase):
             self.assertIn("v0.4.0", report)
             self.assertNotIn("v0.5.0", report)
 
-    def test_current_publication_report_pins_verified_1_8_6_publication(self) -> None:
-        current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
+    def test_historical_1_8_6_publication_report_is_preserved(self) -> None:
+        current = _required_text(self, _REPORTS_DIR / "2026-10-07-bridge-1.8.6-published.md")
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
         for fact in (
             "dist-tags.latest=1.8.6",
@@ -1078,14 +1119,94 @@ class TestReferences(unittest.TestCase):
             "cue-skill publication remains owner-gated",
         ):
             self.assertIn(fact, current)
-        self.assertIn(_CURRENT_PUBLICATION_REPORT, report_index)
+        self.assertIn("2026-10-07-bridge-1.8.6-published.md", report_index)
         self.assertIn("verified per-file", report_index)
+        historical_line = next(
+            line for line in report_index.splitlines()
+            if "2026-10-07-bridge-1.8.6-published.md" in line
+        )
+        self.assertNotIn("byte-identical registry publication", historical_line)
+        self.assertNotIn("publication pending owner 2FA publish", report_index)
+
+    def test_historical_1_8_7_publication_report_is_preserved(self) -> None:
+        current = _required_text(self, _REPORTS_DIR / "2026-10-17-bridge-1.8.7-published.md")
+        report_index = _required_text(self, _REPORTS_DIR / "README.md")
+        for fact in (
+            "dist-tags.latest=1.8.7",
+            "7e0b27c5973b1ab7d306201b89fd94305e53639b",
+            "d9244b540fca1b1be6036bfcb4d287cbb7eba9dd6e214fc7d782048341312006",
+            "sha512-f8U8MBAXReGCyuofYXM9UfsRUtpZkdOB34oPiDLX4/6WyI8nqkBaqmjaWAjbr9J+5p9NZUux02cnnnaV775ZBg==",
+            "68 files",
+            "152192",
+            "byte-identical",
+            "7eb7d7aba0836ab5a6a83917607d132cc25bcb3c",
+            "1.8.6 / 1.8.7",
+            "billing.units",
+            "omni.local_bridge_tools.v6",
+            "omni.local_bridge_tools.v5",
+            "Remote URL results stay credits-only",
+            "no reset, backfill, or replay",
+            "cue-skill publication remains owner-gated",
+        ):
+            self.assertIn(fact, current)
+        self.assertIn("2026-10-17-bridge-1.8.7-published.md", report_index)
+        current_line = next(
+            line for line in report_index.splitlines()
+            if "2026-10-17-bridge-1.8.7-published.md" in line
+        )
+        self.assertIn("byte-identical registry publication", current_line)
+
+    def test_historical_1_8_8_publication_report_is_preserved(self) -> None:
+        current = _required_text(self, _REPORTS_DIR / "2026-10-24-bridge-1.8.8-published.md")
+        report_index = _required_text(self, _REPORTS_DIR / "README.md")
+        for fact in (
+            "dist-tags.latest=1.8.8",
+            "89d4c9c656bfddf3032f567452c0598f5d1474ab29af15e830d27ce68f648878",
+            "f5b3c42d6de8922c5f331b0e94010769de6cd59c",
+            "sha512-FD/RsexVP7eBYfT+/j2k1PyHYpm6NqBkZrCC98gV4/UzqWN8p8bdyK36uQSN68WWtBCz3ysiNwQCWj3mznE7Og==",
+            "68 files",
+            "byte-identical",
+            "d41a14cb",
+            "1.8.7 / 1.8.8",
+            "omni.billing_details.v1",
+            "2-second",
+            "production URL parse",
+            "0.067",
+            "no reset, backfill, or replay",
+            "cue-skill publication remains owner-gated",
+        ):
+            self.assertIn(fact, current)
+        self.assertIn("2026-10-24-bridge-1.8.8-published.md", report_index)
+        current_line = next(
+            line for line in report_index.splitlines()
+            if "2026-10-24-bridge-1.8.8-published.md" in line
+        )
+        self.assertIn("byte-identical registry publication", current_line)
+
+    def test_current_publication_report_pins_verified_1_9_0_publication(self) -> None:
+        current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
+        report_index = _required_text(self, _REPORTS_DIR / "README.md")
+        for fact in (
+            "dist-tags.latest=1.9.0",
+            "5d7073f7ff2ee18c343ddac09f2d79970cd22cba",
+            "sha512-6YD8+PPpSFbPtvc+j8dWaCiWPTd+3Alc1OVMV",
+            "158,317 bytes",
+            "68 files",
+            "byte-identical",
+            "675038a5",
+            "no_store",
+            "parse_result_cache",
+            "cache-hit rate",
+            "no reset, backfill, or replay",
+            "cue-skill publication remains owner-gated",
+        ):
+            self.assertIn(fact, current)
+        self.assertIn(_CURRENT_PUBLICATION_REPORT, report_index)
         current_line = next(
             line for line in report_index.splitlines()
             if _CURRENT_PUBLICATION_REPORT in line
         )
-        self.assertNotIn("byte-identical registry publication", current_line)
-        self.assertNotIn("publication pending owner 2FA publish", report_index)
+        self.assertIn("byte-identical registry publication", current_line)
 
     def test_historical_1_8_3_publication_report_is_preserved(self) -> None:
         current = _required_text(self, _REPORTS_DIR / "2026-09-23-bridge-1.8.3-published.md")
@@ -1884,6 +2005,10 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-09-28-bridge-1.8.4-published.md",
             "docs/verification-reports/2026-10-06-bridge-1.8.5-published.md",
             "docs/verification-reports/2026-10-07-bridge-1.8.6-published.md",
+            "docs/verification-reports/2026-10-17-bridge-1.8.7-published.md",
+            "docs/verification-reports/2026-10-24-bridge-1.8.8-published.md",
+            "docs/verification-reports/2026-10-26-bridge-1.8.9-published.md",
+            "docs/verification-reports/2026-10-28-bridge-1.9.0-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",

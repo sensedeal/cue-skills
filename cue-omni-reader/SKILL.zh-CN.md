@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "当用户需要外部 AI agent 通过 Cue Omni Reader 解析或理解一个 HTTP(S) URL 或已授权的本地文档、音频、视频源时使用。触发词：解析/读取 URL、本地文档、音频、视频、OCR、PDF、网页内容。"
 license: MIT
 metadata:
-  version: "0.5.3"
+  version: "0.5.7"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -63,7 +63,9 @@ Tasks、Roots、宿主超时及 cwd/workspace 行为，只能依据客户端直�
 
 工具级错误不是 MCP 断连。保留鉴权、计费、解析器、可重试性、operation 与清理事实。只报告本次 operation 返回的计费事实；仅在 `retryable=true` 时重试。绝不估算费用或复制页数/媒体时长换算。
 
-先运行 `npx -y @cueai/omni-reader-mcp@1.8.6 doctor --json`。`CUBE_UNAVAILABLE` 是上传前的控制面失败；grant 后失败属于安全上传阶段；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据已报告的端点事实——绝不猜测或发布内部主机名、端口。
+仅远端表面上，`get_billing_details` 为已结算 operation 返回同一份计量。完成结果若带 `billing.units`，用这些计数解释本次为什么计费。封闭集合是 `document_class_pages_completed`、`primary_image_class_units_completed`、`additional_image_class_units_completed`、`cjk_codepoints_completed`、`other_codepoints_completed`、`normalized_units_completed`、`normalized_pages_completed`，以及仅在出现时的 `audio_ms_completed` 或 `video_ms_completed`。零是真实计量。缺少 `units` 不是失败：远程 URL 结果仍只有 credits，明细读取也可能缺失。不要编造 units，不要重算 `credits_charged`，也不要把归一化计数与页数相加。绝不要把计费文字写入 `result.text` 或保存的文件。
+
+先运行 `npx -y @cueai/omni-reader-mcp@1.9.0 doctor --json`。`CUBE_UNAVAILABLE` 是上传前的控制面失败；grant 后失败属于安全上传阶段；`CUBE_PROTOCOL_ERROR` 是响应契约不匹配。只依据已报告的端点事实——绝不猜测或发布内部主机名、端口。
 
 - `OMNI_NOT_ENTITLED` / HTTP 403 才是账号 entitlement 信号。
 - `DIRECT_UPLOAD_DISABLED`（旧版）或 `DIRECT_UPLOAD_UNAVAILABLE` 表示直传路由/能力不可用，不表示账号被禁用或账号只能使用 text。
@@ -73,7 +75,7 @@ Tasks、Roots、宿主超时及 cwd/workspace 行为，只能依据客户端直�
 
 ## 协议边界
 
-仅远端表面恰好暴露 `parse`、`get_parse_status`、`cancel_parse`。Bridge 暴露同样三个工具，再加 `read_result`、`read_outline`、`discard_result`、`save_result`。只有 `parse` 是首次调用；其余六个是根据结构化状态选择的后续与生命周期原语，不是让用户选择的模式。四个 artifact 工具只存在于本地 Bridge；远端表面绝不暴露。客户端与服务证据见 [`references/compatibility.md`](references/compatibility.md)。
+仅远端表面恰好暴露 `parse`、`get_parse_status`、`cancel_parse`、`get_billing_details`。Bridge 暴露同样四个工具，再加 `read_result`、`read_outline`、`discard_result`、`save_result`。只有 `parse` 是首次调用；其余七个是根据结构化状态选择的后续、生命周期与计费透明原语，不是让用户选择的模式。`get_billing_details` 只读且永不计费：对已结算的远程 operation 返回封闭的 `omni.billing_details.v1` 计量，缺失一律是封闭的 BILLING_DETAILS_* 错误，绝不编造 units。四个 artifact 工具只存在于本地 Bridge；远端表面绝不暴露。客户端与服务证据见 [`references/compatibility.md`](references/compatibility.md)。
 
 ## 赠送额度
 
