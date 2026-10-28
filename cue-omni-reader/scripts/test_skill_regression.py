@@ -23,7 +23,7 @@ _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
 _EXPECTED_SKILL_VERSION = "0.5.7"
 _EXPECTED_BRIDGE_VERSION = "1.9.0"
-_CURRENT_PUBLICATION_REPORT = "2026-10-26-bridge-1.9.0-published.md"
+_CURRENT_PUBLICATION_REPORT = "2026-10-28-bridge-1.9.0-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
 _ACCOUNT_OR_CREDIT_BALANCE = re.compile(
     r"(?<![A-Za-z0-9_])(?:\*\*|__|`)?\s*"
@@ -1183,20 +1183,20 @@ class TestReferences(unittest.TestCase):
         )
         self.assertIn("byte-identical registry publication", current_line)
 
-    def test_current_publication_report_pins_verified_1_8_9_publication(self) -> None:
+    def test_current_publication_report_pins_verified_1_9_0_publication(self) -> None:
         current = _required_text(self, _REPORTS_DIR / _CURRENT_PUBLICATION_REPORT)
         report_index = _required_text(self, _REPORTS_DIR / "README.md")
         for fact in (
             "dist-tags.latest=1.9.0",
-            "e9210aa649d2cdc61e419e630a33462d48ae8fd6211793305cac472609c9cba7",
-            "89eda1d226d181d493620adbf4566f2be01ecb3c",
-            "sha512-b6W5xZeJPB0Lg+aPFqINJy67Qg/Fflk16SGQ6MywXCpV0H+tMy9zGH6akAQHYP3o30BZyPb5+yZPlkiMRdlJlg==",
+            "5d7073f7ff2ee18c343ddac09f2d79970cd22cba",
+            "sha512-6YD8+PPpSFbPtvc+j8dWaCiWPTd+3Alc1OVMV",
+            "158,317 bytes",
             "68 files",
             "byte-identical",
-            "583f4248",
-            "1.8.8 / 1.9.0",
-            "INVALID_TOOL_ARGUMENTS",
-            "expects: result_id",
+            "675038a5",
+            "no_store",
+            "parse_result_cache",
+            "cache-hit rate",
             "no reset, backfill, or replay",
             "cue-skill publication remains owner-gated",
         ):
@@ -2007,7 +2007,8 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-10-07-bridge-1.8.6-published.md",
             "docs/verification-reports/2026-10-17-bridge-1.8.7-published.md",
             "docs/verification-reports/2026-10-24-bridge-1.8.8-published.md",
-            "docs/verification-reports/2026-10-26-bridge-1.9.0-published.md",
+            "docs/verification-reports/2026-10-26-bridge-1.8.9-published.md",
+            "docs/verification-reports/2026-10-28-bridge-1.9.0-published.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",
