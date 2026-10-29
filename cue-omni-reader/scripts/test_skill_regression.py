@@ -1030,7 +1030,7 @@ class TestReferences(unittest.TestCase):
         ):
             self.assertIn(token, self.skill_zh)
         self.assertIn("billing.units", self.compat)
-        self.assertIn("omni.local_bridge_tools.v6", self.setup)
+        self.assertIn("omni.local_bridge_tools.v7", self.setup)
 
     def test_remote_surface_exposes_the_details_read_without_billing_it(self) -> None:
         for token in (

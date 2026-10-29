@@ -29,7 +29,13 @@ The interactive setup supports native configuration for Hermes, Cursor, and Clau
 
 The setup, root, and rollback contract was separately audited against packaged Bridge 1.1.2 source; see the [Bridge CLI package-source audit](../docs/verification-reports/2026-08-08-bridge-cli-audit.md) and the [content-only compatibility report](../docs/verification-reports/2026-08-11-content-only-compat.md).
 
-Current audited release: **Bridge 1.9.0** — an agent-experience fix, with no tool-shape change. `INVALID_TOOL_ARGUMENTS` messages now name the tool's expected fields: a text-driven agent that guesses `operation_id` for an artifact tool (they take `result_id`) self-corrects in one step (`read_outline expects: result_id, optionally node_id.`). No schema widened; no frozen contract touched. The local output contract is `omni.local_bridge_tools.v6`; capability and grant negotiation stay `omni.local_bridge_tools.v5`. The trusted managed-entry pair advances to **1.8.8 / 1.9.0** — a 1.8.7 entry is no longer a trusted managed entry; the only bare-`npx` Windows migration exception remains 1.5.1. See the [1.9.0 publication report](../docs/verification-reports/2026-10-26-bridge-1.9.0-published.md); per-release history is in [`compatibility.md`](./compatibility.md).
+Current audited release: **Bridge 1.9.0** — `parse` gains the caller-chosen `no_store` argument
+(default `false`: the parsing service may cache the parse result, keyed by content hash per
+parsing pod and TTL-bounded, so an identical re-parse is served from cache and bills the
+cache-hit rate; `no_store: true` forbids every cache read/write and always bills full price).
+Completed results disclose the choice in `data_handling.parse_result_cache`
+(`"enabled"`/`"disabled"`) — on the tool result, not the journal record. No schema widened; no
+frozen contract touched. The local output contract is `omni.local_bridge_tools.v7`; capability and grant negotiation stay `omni.local_bridge_tools.v5`. The trusted managed-entry pair advances to **1.8.8 / 1.9.0** — a 1.8.7 entry is no longer a trusted managed entry; the only bare-`npx` Windows migration exception remains 1.5.1. See the [1.9.0 publication report](../docs/verification-reports/2026-10-26-bridge-1.9.0-published.md); per-release history is in [`compatibility.md`](./compatibility.md).
 
 
 Supported non-interactive native-adapter examples:
