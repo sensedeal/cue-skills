@@ -1,0 +1,21 @@
+{
+  "name": "Cue 全能解析助手",
+  "name_zh": "Cue 全能解析助手",
+  "name_en": "Cue All-in-One Parsing Assistant",
+  "description": "支持 PDF、Office 文档、图片、扫描件、音视频、网页、代码及压缩包的高精度解析：复杂表格与模糊扫描件可精准还原，视频免下载、链接直出，输出 Markdown 或 JSON，可在 Agent 或业务流程中批量调用。",
+  "description_zh": "支持 PDF、Office 文档、图片、扫描件、音视频、网页、代码及压缩包的高精度解析：复杂表格与模糊扫描件可精准还原，视频免下载、链接直出，输出 Markdown 或 JSON，可在 Agent 或业务流程中批量调用。",
+  "description_en": "High-accuracy parsing for PDFs, Office documents, images, scans, audio/video, web pages, code and archives: complex tables and blurry scans are restored faithfully, videos are parsed directly from a link without downloading, output as Markdown or JSON, callable in bulk from agents or business workflows.",
+  "source": "cue-parser",
+  "type": "mcp",
+  "version": "1.2.3",
+  "examples_zh": [
+    "请调用 Cue 全能解析助手连接器，解析这个 B 站视频链接，把口播内容整理成逐字稿。",
+    "请调用 Cue 全能解析助手连接器，解析这份 PDF 研报，提取正文并整理出其中的表格数据。",
+    "请调用 Cue 全能解析助手连接器，解析这段会议录音，转成文字并按议题整理成纪要。"
+  ],
+  "examples_en": [
+    "Call the Cue All-in-One Parsing Assistant connector to parse this Bilibili video link and turn the spoken content into a verbatim transcript.",
+    "Call the Cue All-in-One Parsing Assistant connector to parse this PDF research report, extract the body text and organize the tables in it.",
+    "Call the Cue All-in-One Parsing Assistant connector to parse this meeting recording, transcribe it and organize it into minutes by topic."
+  ]
+}
