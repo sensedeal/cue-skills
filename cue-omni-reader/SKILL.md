@@ -3,7 +3,7 @@ name: cue-omni-reader
 description: "Use when the user wants an external AI agent to parse or understand an HTTP(S) URL or an authorized local document, audio, or video source through Cue Omni Reader."
 license: MIT
 metadata:
-  version: "0.5.7"
+  version: "0.5.8"
   requires:
     bins: ["node"]
   envOptional: ["CUE_API_KEY"]
@@ -19,11 +19,12 @@ Use official Omni MCP tools to parse the source, then complete the user's task. 
 
 1. **Preserve the source.** Only HTTP(S) strings are URLs. Pass the user's source string directly to `parse`. Do not pre-read or base64-encode local content; never use `file://`, localhost, or a public temporary upload service.
 2. **One provider, one first call.** Use `parse` as the only first call for both HTTP(S) URLs and local paths; do not ask the user to choose a local, remote, upload, or URL mode. Bridge is the same provider; remote-only cannot read local files.
-3. **Bootstrap only with consent.** Before installing the Bridge or expanding an allowed root, obtain user confirmation and add only the minimum required directory. Follow [`references/setup.md`](references/setup.md)'s exact pin, run `doctor`, then reload/reconnect the MCP server. Run `doctor --json --silent-check` on first use; if `version_check.status=outdated`, tell the user installed→latest and upgrade only on confirmation. Never ask for an API key in chat. If already inside an allowed root, do not ask for another confirmation.
+3. **Bootstrap only with consent.** Before installing the Bridge or expanding an allowed root, obtain user confirmation and add only the minimum required directory. Follow [`references/setup.md`](references/setup.md)'s exact pin; run `doctor`, then reload/reconnect the MCP server. Run `doctor --json --silent-check` on first use; if `version_check.status=outdated`, tell the user installed→latest and upgrade only on confirmation. Never ask for an API key in chat. If already inside an allowed root, do not ask for another confirmation.
 4. **Call the active schema.** Obey the active `parse` schema. If the schema exposes `wait`, use `wait: false` for long media or a large document; the source-only Bridge returns a recoverable operation. Send one of `source`/`url`. `grounded`/`layout` work for files and URLs where capabilities advertise them; `UNSUPPORTED_DETAIL`/`DETAIL_CAPABILITIES_UNAVAILABLE` is final. Do not race synchronous and asynchronous submissions.
 5. **Read either response channel.** Prefer `structuredContent` when available; if only `content[].text` exists, parse compact JSON. Completed inline content may be exact Markdown; non-inline states are compact JSON. A generic success is not a completed result. Append only `result.text`; never append the JSON wrapper.
 6. **Preserve one operation.** On `processing`, save the `operation_id` and poll `get_parse_status` at the returned timing/`wait_ms`. Recover the existing operation before resubmitting. A lost ID is an ambiguous timeout; explain duplicate-work/billing risk and get confirmation.
-7. **Choose continuation and delivery automatically.** Choose continuation tools from the structured result; never present the tool list as a menu for the user. Use this decision table:
+7. **Honor admission rejections.** `PRINCIPAL_CONCURRENCY_LIMIT` carries `retry_after` seconds: wait it out, then retry the same submission at most twice — never immediately, never other URLs. Any other code is final for that input.
+8. **Choose continuation and delivery automatically.** Choose continuation tools from the structured result; never present the tool list as a menu for the user. Use this decision table:
 
    ```text
    Answer directly → inline when present; otherwise `read_result`
@@ -33,7 +34,7 @@ Use official Omni MCP tools to parse the source, then complete the user's task. 
    ```
 
    Use `result_delivery="artifact"` for saving, section navigation, multiple documents, or strict context control. For `result.kind=artifact`, the preview is not complete; read until `next_cursor` is absent. `read_outline` does not require `save_result`. Text output is Markdown and may retain headings, lists, GFM tables, or raw HTML tables; it lacks grounding/layout sidecars, not all structure. For sidecars, request `detail=grounded`/`layout` (a `kind: bundle`). An empty outline means no recognized headings, not that the text has no structure. For multiple sources, use bounded concurrent independent `parse` calls and keep handles separate.
-8. **Finish and clean up.** Continue the user's original task after parsing. For a summary, assemble the complete result first; do not truncate. For parse only, return complete Markdown or a file and optionally offer a summary. Keep artifacts through the task, then `discard_result` unless retained. Claim deletion only after discard or cleanup is confirmed.
+9. **Finish and clean up.** Continue the user's original task after parsing. For a summary, assemble the complete result first; do not truncate. For parse only, return complete Markdown or a file and optionally offer a summary. Keep artifacts through the task, then `discard_result` unless retained. Claim deletion only after discard or cleanup is confirmed.
 
 ## Operation states
 

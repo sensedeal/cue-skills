@@ -21,7 +21,7 @@ _COMPAT_MD = _SKILL_DIR / "references" / "compatibility.md"
 _REPORTS_DIR = _SKILL_DIR / "docs" / "verification-reports"
 _BRIDGE_AUDIT_MD = _REPORTS_DIR / "2026-08-08-bridge-cli-audit.md"
 _CONTENT_ONLY_REPORT_MD = _REPORTS_DIR / "2026-08-11-content-only-compat.md"
-_EXPECTED_SKILL_VERSION = "0.5.7"
+_EXPECTED_SKILL_VERSION = "0.5.8"
 _EXPECTED_BRIDGE_VERSION = "1.9.0"
 _CURRENT_PUBLICATION_REPORT = "2026-10-28-bridge-1.9.0-published.md"
 _STANDALONE_IIIS = re.compile(r"(?<![A-Za-z0-9])iiis(?![A-Za-z0-9])", re.I)
@@ -455,8 +455,10 @@ class TestSkillMd(unittest.TestCase):
         ):
             self.assertIn(tool, self.md)
         self.assertNotIn("mcp" + "__", self.md)
-        # 1150: the fourth tool's guidance sits below this.
-        self.assertLess(len(self.md.split()), 1150, "SKILL.md is no longer thin")
+        # 1200: per-rule budget, not a global freeze — 0.5.8 added rule 7 (admission
+        # rejections, 2026-11-03) to the core flow; the thin-skill contract is that each
+        # rule stays tight, not that no rule may ever be added.
+        self.assertLess(len(self.md.split()), 1200, "SKILL.md is no longer thin")
 
     def test_source_handling_preserves_the_security_boundary(self) -> None:
         self.assertIn("Only HTTP(S) strings are URLs", self.md)
@@ -2009,6 +2011,7 @@ class TestSecurityAndLayout(unittest.TestCase):
             "docs/verification-reports/2026-10-24-bridge-1.8.8-published.md",
             "docs/verification-reports/2026-10-26-bridge-1.8.9-published.md",
             "docs/verification-reports/2026-10-28-bridge-1.9.0-published.md",
+            "docs/verification-reports/2026-11-03-skill-0.5.8-admission-discipline.md",
             "docs/verification-reports/README.md",
             "references/compatibility.md",
             "references/setup.md",

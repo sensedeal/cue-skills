@@ -1,6 +1,6 @@
 # Cue Omni Reader compatibility
 
-- Skill version: `0.5.7`
+- Skill version: `0.5.8`
 - Bridge version: `1.9.0`
 - Evidence date: 2026-08-11 (Bridge 1.2.0 pin: 2026-08-14; Bridge 1.2.1 pin: 2026-08-14; Bridge 1.2.2 pin: 2026-08-15; Bridge 1.3.0 pin: 2026-08-17; Bridge 1.3.1 pin: 2026-08-18; Bridge 1.3.2 pin: 2026-08-18; Bridge 1.3.3 pin: 2026-08-18; Bridge 1.4.0 pin: 2026-08-19; Bridge 1.4.1 pin: 2026-08-19; I1 parameter-unification sync: 2026-08-20; Bridge 1.5.0 pin: 2026-08-20; Bridge 1.5.1 pin: 2026-08-20; Bridge 1.5.2 pin: 2026-08-21; Skill 0.3.5 stage-aware diagnostics correction: 2026-08-24; Bridge 1.5.5 pin: 2026-08-26; Bridge 1.6.0 pin and release acceptance: 2026-08-30; Bridge 1.7.1 guidance fix, exact admission, and publication: 2026-09-04; Bridge 1.7.2 pin: 2026-09-06; Bridge 1.7.3 pin: 2026-09-08; Bridge 1.8.0 pin: 2026-09-09; Bridge 1.8.1 pin: 2026-09-22; Bridge 1.8.2 pin and remote grounded/layout live: 2026-09-23; Bridge 1.8.3 pin and data-plane error-code rename disclosure: 2026-09-23; Bridge 1.8.4 pin and local grounded/layout preflight fix: 2026-09-28; Bridge 1.8.5 pin and workbuddy dogfood blockers: 2026-10-06; Bridge 1.8.6 pin and workbuddy hygiene (journal GC + atomic save_result export): 2026-10-07; Bridge 1.8.7 pin and structured billing units: 2026-10-17; Bridge 1.8.8 pin and remote-lane delivery parity: 2026-10-24; Bridge 1.9.0 pin and the no-store caller choice: 2026-10-28)
 
