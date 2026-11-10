@@ -32,3 +32,5 @@ buddy-run-*.md
 
 # local MCP client config (not repo content)
 .mcp.json
+
+.omc/
