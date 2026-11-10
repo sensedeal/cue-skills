@@ -7,7 +7,7 @@
   "description_en": "High-accuracy parsing for PDFs, Office documents, images, scans, audio/video, web pages, code and archives: complex tables and blurry scans are restored faithfully, videos are parsed directly from a link without downloading, output as Markdown or JSON, callable in bulk from agents or business workflows.",
   "source": "cue-parser",
   "type": "mcp",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "examples_zh": [
     "请调用 Cue 全能解析助手连接器，解析这个 B 站视频链接，把口播内容整理成逐字稿。",
     "请调用 Cue 全能解析助手连接器，解析这份 PDF 研报，提取正文并整理出其中的表格数据。",
@@ -17,5 +17,14 @@
     "Call the Cue All-in-One Parsing Assistant connector to parse this Bilibili video link and turn the spoken content into a verbatim transcript.",
     "Call the Cue All-in-One Parsing Assistant connector to parse this PDF research report, extract the body text and organize the tables in it.",
     "Call the Cue All-in-One Parsing Assistant connector to parse this meeting recording, transcribe it and organize it into minutes by topic."
-  ]
+  ],
+  "auth_mode": "server-side",
+  "server_auth": {
+    "auth_type": "mcp_oauth",
+    "data": {
+      "mcp_oauth": {
+        "server_url": "https://mcp.cuecue.cn/api/omni-reader/mcp/"
+      }
+    }
+  }
 }
