@@ -2,18 +2,23 @@
 /**
  * 组装 WorkBuddy 连接器包（wayfinder #77 的裁定）。
  *
- * ## 它存在的唯一理由：消灭版本号漂移
+ * ## 它存在的理由：消灭 `minVersion` 漂移
  *
- * `cli.json` 的 `versionCheck.minVersion` 必须与 CLI 的实际版本一致 —— 不一致的后果是
- * **用户可见**的：`versionCheck` 不满足时 WorkBuddy 会**重跑 `init` 重装**（#68 实测，
- * 不是硬阻断）。手工同步两处数字早晚会忘，所以这里**从 `package.json` 派生**。
+ * `cli.json` 的 `versionCheck.minVersion` 必须与 **npm 上真实发布的 CLI 版本**一致 ——
+ * 不一致的后果是**用户可见**的：`versionCheck` 不满足时 WorkBuddy 会**重跑 `init`
+ * 重装**（#68 实测，不是硬阻断）。手工同步两处数字早晚会忘，所以这里**从
+ * `package.json` 派生**。
  *
- * 顺手也让 `connector-meta.json` 的 `version` 跟同一个数字走（一个产品、一个版本号）。
+ * ⚠️ `connector-meta.json` 的 `version` 是**连接器在 WorkBuddy 市场的版本**，随每次
+ *    送审递增；它与 CLI 二进制版本**不是同一个数字**（2026-11-11 实测：连接器送审
+ *    1.1.1 时 npm 上 CLI 仍是 1.1.0）。故 meta 的版本不再由本脚本改写，只做校验；
+ *    两者不同仅告警，不阻断。
  *
  * ## 产物形态（#68 查实的官方要求）
  *
- * zip **根目录即连接器内容**：`connector-meta.json` / `cli.json` / `icon.svg` /
- * `skills/<name>/SKILL.md` —— 没有外层目录、没有 `__MACOSX`。
+ * zip **根目录即连接器内容**：`connector-meta.json` / `cli.json` / 图标（`icon.svg`
+ * 或 `icon.png`，官方二者皆可）/ `skills/<name>/SKILL.md` —— 没有外层目录、没有
+ * `__MACOSX`。
  *
  * 用法：
  *     node scripts/build-connector.mjs            # 同步版本号 + 重新打包
@@ -77,17 +82,28 @@ if (cliJson.versionCheck?.minVersion !== version) {
   cliJson.versionCheck = { ...cliJson.versionCheck, minVersion: version };
   if (writeJsonIfChanged(cliJsonPath, cliJson)) changed.push(`cli.json minVersion: ${previous} → ${version}`);
 }
-if (metaJson.version !== version) {
-  const previous = metaJson.version;
-  metaJson.version = version;
-  if (writeJsonIfChanged(metaJsonPath, metaJson)) changed.push(`connector-meta.json version: ${previous} → ${version}`);
+
+// 连接器版本（WorkBuddy 市场）由 connector-meta.json 自己持有，不再被 package.json 覆盖。
+const connectorVersion = String(metaJson.version || '').trim();
+if (!/^\d+\.\d+\.\d+$/.test(connectorVersion)) {
+  fail(`connector-meta.json 的 version 不是语义化版本: ${connectorVersion || '(空)'}`);
+}
+if (connectorVersion !== version) {
+  console.warn(
+    `ℹ️ connector 版本 ${connectorVersion} 与 CLI 版本 ${version} 不同（允许：minVersion 指向已发布的 CLI）`
+  );
 }
 
 // --------------------------------------------------------------------------
 // 2. 结构校验（缺件早失败，别等送审被退回来）
 // --------------------------------------------------------------------------
 
-const REQUIRED_IN_CONNECTOR = ['connector-meta.json', 'cli.json', 'icon.svg'];
+// 官方允许 icon.svg 或 icon.png（docs「准备图标」），二者取其一即可。
+const ICON_CANDIDATES = ['icon.svg', 'icon.png'];
+const iconName = ICON_CANDIDATES.find((name) => fs.existsSync(path.join(CONNECTOR_DIR, name)));
+if (!iconName) fail(`connector/ 缺少图标（${ICON_CANDIDATES.join(' 或 ')}）`);
+
+const REQUIRED_IN_CONNECTOR = ['connector-meta.json', 'cli.json', iconName];
 for (const name of REQUIRED_IN_CONNECTOR) {
   if (!fs.existsSync(path.join(CONNECTOR_DIR, name))) fail(`connector/ 缺少必需文件: ${name}`);
 }
@@ -160,6 +176,7 @@ const listed = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf-8' })
 
 console.log(`连接器包: ${path.relative(root, zipPath)} (${size} B)`);
 console.log(`  内容: ${listed.join(', ')}`);
-console.log(`  版本: ${version}（minVersion 与 connector-meta.version 均由 package.json 派生）`);
+console.log(`  connector 版本: ${connectorVersion}（取自 connector-meta.json）`);
+console.log(`  CLI minVersion: ${version}（取自 package.json，须是 npm 已发布版本）`);
 if (changed.length) console.log(`  已同步: ${changed.join('; ')}`);
 else console.log('  版本号已是最新，未改动任何文件');
