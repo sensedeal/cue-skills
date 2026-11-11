@@ -1,0 +1,32 @@
+{
+  "name": "cue-omni-parser",
+  "version": "1.2.3",
+  "description": "支持 PDF、Office 文档、图片、扫描件、音视频、网页、代码及压缩包的高精度解析：复杂表格与模糊扫描件可精准还原，视频免下载、链接直出，输出 Markdown 或 JSON，可在 Agent 或业务流程中批量调用。",
+  "extensions": {
+    "com.doubao": {
+      "displayName": {
+        "zh": "Cue 全能解析助手",
+        "en": "Cue All-in-One Parsing Assistant"
+      },
+      "displayDescription": {
+        "zh": "把公网网页、在线文档、PDF 与音视频链接解析成 Markdown、带来源定位的正文或检索分块，供摘要、引用核查与 RAG 使用。",
+        "en": "Parse public web pages, online documents, PDFs and audio/video links into Markdown, source-grounded text or retrieval chunks for summaries, fact checking and RAG."
+      },
+      "icon": "./com.doubao/assets/plugin-icon.png",
+      "chatIcon": "./com.doubao/assets/plugin-icon.png",
+      "mcpServers": {
+        "cue-parser": {
+          "displayName": {
+            "zh": "Cue 全能解析服务",
+            "en": "Cue Omni Parse Service"
+          },
+          "displayDescription": {
+            "zh": "提供公网链接的高精度解析能力，包含发起解析、查询进度与结果、取消解析三个工具。",
+            "en": "High-accuracy parsing of public URLs, exposing tools to start a parse, poll its status and result, and cancel a parse."
+          },
+          "icon": "./com.doubao/assets/plugin-icon.png"
+        }
+      }
+    }
+  }
+}
