@@ -7,7 +7,7 @@
   "description_en": "Run Cue's multi-agent deep research from natural language. One prompt launches industry, company, person, policy or compliance research: tasks are decomposed automatically, sources are cross-checked, and a cited Markdown report is returned — saveable to disk and continuable in the same conversation.",
   "source": "cue-research",
   "type": "cli",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "minWorkbuddyVersion": "5.0.0",
   "examples_zh": [
     "用 Cue 深度调研比亚迪 DM-i 与长城 Hi4 的混动技术路线差异",
@@ -22,5 +22,14 @@
     "Research on Cue: Research CATL's capacity expansion and overseas footprint over the past year, save to reports/catl.md",
     "Research on Cue: Continue my last Cue conversation and add a supplier-concentration section",
     "Research on Cue: Research solid-state battery mass-production progress, mimicking the style of last week's report"
-  ]
+  ],
+  "auth_mode": "server-side",
+  "server_auth": {
+    "auth_type": "mcp_oauth",
+    "data": {
+      "mcp_oauth": {
+        "server_url": "https://mcp.cuecue.cn/api/omni-reader/mcp/"
+      }
+    }
+  }
 }
